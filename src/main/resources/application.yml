@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: drug-agent
+
+server:
+  port: 8123
+  servlet:
+    context-path: /api
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+  group-configs:
+    - group: 'default'
+      paths-to-match: '/**'
+      packages-to-scan: com.liang.drugagent.controller
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+
+# 阿里云百炼(DashScope) 千问模型配置
+aliyun:
+  dashscope:
+    api-key: sk-a433391322b54c3db665851b085ba4d4  # 请替换为您的真实 API Key
