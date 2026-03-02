@@ -29,40 +29,55 @@ public class QwenService {
     }
 
     /**
-     * 调用千问模型进行对话
+     * 调用千问模型进行对话 (兼容旧方法)
      *
      * @param prompt 用户输入的提示词
      * @return 模型返回的文本内容
      */
     public String chat(String prompt) {
+        return chatWithSystem("You are a helpful assistant.", prompt);
+    }
+    
+    /**
+     * 带System Prompt的单轮对话（药品分析专用）
+     * 
+     * @param systemPrompt 系统角色设定
+     * @param userPrompt 用户业务提示词
+     * @return 模型返回内容
+     */
+    public String chatWithSystem(String systemPrompt, String userPrompt) {
+        return chatWithMessages(Arrays.asList(
+                Message.builder().role(Role.SYSTEM.getValue()).content(systemPrompt).build(),
+                Message.builder().role(Role.USER.getValue()).content(userPrompt).build()
+        ));
+    }
+    
+    /**
+     * 多轮消息对话（合规对话及通用场景使用）
+     * 
+     * @param messages 历史与当前消息列表
+     * @return 模型返回内容
+     */
+    public String chatWithMessages(java.util.List<Message> messages) {
         Generation gen = new Generation();
-
-        Message systemMsg = Message.builder()
-                .role(Role.SYSTEM.getValue())
-                .content("You are a helpful assistant.")
-                .build();
-
-        Message userMsg = Message.builder()
-                .role(Role.USER.getValue())
-                .content(prompt)
-                .build();
-
         GenerationParam param = GenerationParam.builder()
-                .apiKey(qwenConfig.getApiKey())  // 直接通过参数传入 API Key
-                .model("qwen-turbo")
-                .messages(Arrays.asList(systemMsg, userMsg))
+                .apiKey(qwenConfig.getApiKey())
+                .model("qwen-plus")
+                .messages(messages)
                 .resultFormat(GenerationParam.ResultFormat.MESSAGE)
                 .topP(0.8)
+                .temperature(0.7f)
+                .maxTokens(4096)
                 .build();
-
+                
         try {
             GenerationResult result = gen.call(param);
             String content = result.getOutput().getChoices().get(0).getMessage().getContent();
-            log.info("千问调用成功，prompt={}, response={}", prompt, content);
+            log.info("千问多轮对话调用成功，返回长度={}", content.length());
             return content;
         } catch (ApiException | NoApiKeyException | InputRequiredException e) {
-            log.error("调用千问接口异常", e);
-            return "调用千问接口异常: " + e.getMessage();
+            log.error("千问多轮对话调用异常", e);
+            throw new RuntimeException("AI服务暂时不可用，请稍后重试", e);
         }
     }
 }
