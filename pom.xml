@@ -64,6 +64,20 @@
             <artifactId>spring-ai-alibaba-starter</artifactId>
             <version>1.0.0-M6.1</version>
         </dependency>
+
+        <!-- Hutool All for HttpAiInvoke -->
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+            <version>5.8.26</version>
+        </dependency>
+
+        <!-- LangChain4j DashScope -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-dashscope</artifactId>
+            <version>0.36.2</version>
+        </dependency>
     </dependencies>
 
     <repositories>
