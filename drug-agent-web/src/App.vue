@@ -12,16 +12,16 @@ import NavBar from './components/NavBar.vue'
 </script>
 
 <style>
-/* 全局样式已在 variables.css 中引入 */
 .app-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100vh;
+  background: radial-gradient(circle at 20% 0%, #f4f8ff, #edf3ff 35%, #f5f7fa 100%);
 }
+
 .main-content {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
-  background: var(--bg-color);
+  padding: 18px 22px 24px;
 }
 </style>

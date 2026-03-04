@@ -1,27 +1,12 @@
 package com.liang.drugagent.demo.invoke;
 
-import jakarta.annotation.Resource;
-import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.stereotype.Component;
-
 /**
  * Spring AI 框架调用 AI 大模型（Ollama）
+ * 当前项目未引入 Spring AI，保留占位避免编译报错。
  */
-// 取消注释后，项目启动时会执行
-//@Component
-public class OllamaAiInvoke implements CommandLineRunner {
+public class OllamaAiInvoke {
 
-    @Resource
-    private ChatModel ollamaChatModel;
-
-    @Override
-    public void run(String... args) throws Exception {
-        AssistantMessage assistantMessage = ollamaChatModel.call(new Prompt("你好，我是鱼皮"))
-                .getResult()
-                .getOutput();
-        System.out.println(assistantMessage.getText());
+    public static void main(String[] args) {
+        System.out.println("当前项目未启用 Spring AI Ollama 示例");
     }
 }
