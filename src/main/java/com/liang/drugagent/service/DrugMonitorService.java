@@ -2,10 +2,10 @@ package com.liang.drugagent.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.liang.drugagent.dto.DrugAnalyzeDTO;
+import com.liang.drugagent.domain.req.DrugAnalyzeReq;
 import com.liang.drugagent.prompt.DrugAnalysisPrompt;
-import com.liang.drugagent.vo.AnalysisReportVO;
-import com.liang.drugagent.vo.DrugStatsSummaryVO;
+import com.liang.drugagent.domain.resp.AnalysisReportResp;
+import com.liang.drugagent.domain.resp.DrugStatsSummaryResp;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,28 +34,28 @@ public class DrugMonitorService {
      * @param dto 分析请求参数
      * @return 结构化分析报告
      */
-    public AnalysisReportVO analyzeDrug(DrugAnalyzeDTO dto) {
+    public AnalysisReportResp analyzeDrug(DrugAnalyzeReq req) {
         // 1. 聚合统计 (这部分后续对接真实数据库，目前先提供一个测试数据组装)
-        DrugStatsSummaryVO stats = aggregateStatsMock(dto.getDrugName(), dto.getStartDate(), dto.getEndDate());
+        DrugStatsSummaryResp stats = aggregateStatsMock(req.getDrugName(), req.getStartDate(), req.getEndDate());
         
         // 2. 构建 Prompt
         String systemPrompt = DrugAnalysisPrompt.SYSTEM_PROMPT;
         String userPrompt = DrugAnalysisPrompt.buildUserPrompt(stats);
         
         // 3. 调用千问
-        log.info("开始调用千问进行药品分析: {}", dto.getDrugName());
+        log.info("开始调用千问进行药品分析: {}", req.getDrugName());
         String aiResponse = qwenService.chatWithSystem(systemPrompt, userPrompt);
         log.info("千问分析结果为: \n{}", aiResponse);
         
         // 4. 解析 JSON 响应
-        AnalysisReportVO report;
+        AnalysisReportResp report;
         try {
             // 清理可能包含的 markdown json 标记
             String cleanJson = aiResponse.replaceAll("```json\\n", "").replaceAll("```", "").trim();
-            report = objectMapper.readValue(cleanJson, AnalysisReportVO.class);
+            report = objectMapper.readValue(cleanJson, AnalysisReportResp.class);
         } catch (JsonProcessingException e) {
             log.error("JSON解析失败，降级处理返回纯文本", e);
-            report = new AnalysisReportVO();
+            report = new AnalysisReportResp();
             report.setTrendSummary(aiResponse);
             report.setRiskLevel("UNKNOWN");
             report.setRiskReason("JSON解析失败");
@@ -70,8 +70,8 @@ public class DrugMonitorService {
     /**
      * Mock 统计数据（后续可替换为查库聚合）
      */
-    private DrugStatsSummaryVO aggregateStatsMock(String drugName, LocalDate startDate, LocalDate endDate) {
-        return DrugStatsSummaryVO.builder()
+    private DrugStatsSummaryResp aggregateStatsMock(String drugName, LocalDate startDate, LocalDate endDate) {
+        return DrugStatsSummaryResp.builder()
                 .drugName(drugName)
                 .dateRange(startDate + " ~ " + endDate)
                 .totalDays(30)

@@ -1,7 +1,7 @@
 package com.liang.drugagent.prompt;
 
-import com.liang.drugagent.vo.AnomalyPointVO;
-import com.liang.drugagent.vo.DrugStatsSummaryVO;
+import com.liang.drugagent.domain.resp.AnomalyPointResp;
+import com.liang.drugagent.domain.resp.DrugStatsSummaryResp;
 
 /**
  * 药品分析 Prompt 模板
@@ -22,7 +22,7 @@ public class DrugAnalysisPrompt {
         }
         """;
     
-    public static String buildUserPrompt(DrugStatsSummaryVO stats) {
+    public static String buildUserPrompt(DrugStatsSummaryResp stats) {
         StringBuilder sb = new StringBuilder();
         sb.append("## 药品使用数据分析请求\n\n");
         sb.append("**药品名称**：").append(stats.getDrugName()).append("\n");
@@ -38,7 +38,7 @@ public class DrugAnalysisPrompt {
         
         if (stats.getAnomalies() != null && !stats.getAnomalies().isEmpty()) {
             sb.append("### 已检测到的异常点\n");
-            for (AnomalyPointVO a : stats.getAnomalies()) {
+            for (AnomalyPointResp a : stats.getAnomalies()) {
                 sb.append("- ").append(a.getDate()).append("：用量 ")
                   .append(a.getAmount()).append("，").append(a.getType()).append("\n");
             }

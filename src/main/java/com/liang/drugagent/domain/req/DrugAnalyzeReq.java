@@ -1,14 +1,14 @@
-package com.liang.drugagent.dto;
+package com.liang.drugagent.domain.req;
 
 import lombok.Data;
 
 import java.time.LocalDate;
 
 /**
- * 药品分析请求 DTO
+ * 药品分析请求 Req
  */
 @Data
-public class DrugAnalyzeDTO {
+public class DrugAnalyzeReq {
     /**
      * 药品名称
      */

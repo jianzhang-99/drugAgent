@@ -1,0 +1,37 @@
+:root {
+    --primary-color: #409eff;
+    --success-color: #67c23a;
+    --warning-color: #e6a23c;
+    --danger-color: #f56c6c;
+    --bg-color: #f5f7fa;
+    --card-bg: #ffffff;
+    --text-primary: #303133;
+    --text-secondary: #909399;
+    --border-color: #dcdfe6;
+    --border-radius: 8px;
+    --shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.risk-tag-LOW { background: #67c23a; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+.risk-tag-MEDIUM { background: #e6a23c; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+.risk-tag-HIGH { background: #f56c6c; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+.risk-tag-CRITICAL { background: #c00000; color: white; animation: pulse 1s infinite; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+}
+
+#app {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}

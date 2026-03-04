@@ -1,4 +1,4 @@
-package com.liang.drugagent.vo;
+package com.liang.drugagent.domain.resp;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -13,7 +13,7 @@ import java.time.LocalDate;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class DailyUsageVO {
+public class DailyUsageResp {
     private LocalDate usageDate;
     private BigDecimal dailyTotal;
     private Integer recordCount;

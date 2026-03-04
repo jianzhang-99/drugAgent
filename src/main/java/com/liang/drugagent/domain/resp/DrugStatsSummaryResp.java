@@ -1,4 +1,4 @@
-package com.liang.drugagent.vo;
+package com.liang.drugagent.domain.resp;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,7 +16,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class DrugStatsSummaryVO {
+public class DrugStatsSummaryResp {
     private String drugName;
     private String dateRange;
     private Integer totalDays;
@@ -25,6 +25,6 @@ public class DrugStatsSummaryVO {
     private Double dailyMin;
     private Double stdDev;
     private Double growthRate;
-    private List<AnomalyPointVO> anomalies;
-    private List<DailyUsageVO> dailyDetails;
+    private List<AnomalyPointResp> anomalies;
+    private List<DailyUsageResp> dailyDetails;
 }

@@ -1,8 +1,8 @@
 package com.liang.drugagent.controller;
 
-import com.liang.drugagent.dto.DrugAnalyzeDTO;
+import com.liang.drugagent.domain.req.DrugAnalyzeReq;
 import com.liang.drugagent.service.DrugMonitorService;
-import com.liang.drugagent.vo.AnalysisReportVO;
+import com.liang.drugagent.domain.resp.AnalysisReportResp;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -24,8 +24,8 @@ public class DrugController {
 
     @Operation(summary = "AI 智能分析", description = "对指定时间段内的药品使用数据进行统计，并通过千问大模型生成分析报告")
     @PostMapping("/analyze")
-    public AnalysisReportVO analyze(@RequestBody DrugAnalyzeDTO dto) {
+    public AnalysisReportResp analyze(@RequestBody DrugAnalyzeReq req) {
         // 在实际项目中，外层应该包装一个统一的 Result<T> 对象
-        return drugMonitorService.analyzeDrug(dto);
+        return drugMonitorService.analyzeDrug(req);
     }
 }
