@@ -9,7 +9,7 @@ spring:
           model: qwen-plus
 
 server:
-  port: 8123
+  port: 8124
   servlet:
     context-path: /api
 
