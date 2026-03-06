@@ -9,7 +9,6 @@ import com.alibaba.dashscope.exception.ApiException;
 import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
 import com.liang.drugagent.config.QwenConfig;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -18,7 +17,6 @@ import java.util.Arrays;
  * 千问调用服务
  * 封装 DashScope SDK 的调用逻辑，提供简洁的业务方法
  */
-@Slf4j
 @Service
 public class QwenService {
 
@@ -73,10 +71,10 @@ public class QwenService {
         try {
             GenerationResult result = gen.call(param);
             String content = result.getOutput().getChoices().get(0).getMessage().getContent();
-            log.info("千问多轮对话调用成功，返回长度={}", content.length());
+            System.out.println("千问多轮对话调用成功，返回长度=" + content.length());
             return content;
         } catch (ApiException | NoApiKeyException | InputRequiredException e) {
-            log.error("千问多轮对话调用异常", e);
+            System.err.println("千问多轮对话调用异常: " + e.getMessage());
             throw new RuntimeException("AI服务暂时不可用，请稍后重试", e);
         }
     }

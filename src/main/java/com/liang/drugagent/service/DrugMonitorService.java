@@ -7,7 +7,6 @@ import com.liang.drugagent.prompt.DrugAnalysisPrompt;
 import com.liang.drugagent.domain.resp.AnalysisReportResp;
 import com.liang.drugagent.domain.resp.DrugStatsSummaryResp;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -17,7 +16,6 @@ import java.util.ArrayList;
 /**
  * 药品数据监控分析服务
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DrugMonitorService {
@@ -43,9 +41,9 @@ public class DrugMonitorService {
         String userPrompt = DrugAnalysisPrompt.buildUserPrompt(stats);
         
         // 3. 调用千问
-        log.info("开始调用千问进行药品分析: {}", req.getDrugName());
+        System.out.println("开始调用千问进行药品分析: " + req.getDrugName());
         String aiResponse = qwenService.chatWithSystem(systemPrompt, userPrompt);
-        log.info("千问分析结果为: \n{}", aiResponse);
+        System.out.println("千问分析结果为: \n" + aiResponse);
         
         // 4. 解析 JSON 响应
         AnalysisReportResp report;
@@ -54,7 +52,7 @@ public class DrugMonitorService {
             String cleanJson = aiResponse.replaceAll("```json\\n", "").replaceAll("```", "").trim();
             report = objectMapper.readValue(cleanJson, AnalysisReportResp.class);
         } catch (JsonProcessingException e) {
-            log.error("JSON解析失败，降级处理返回纯文本", e);
+            System.err.println("JSON解析失败，降级处理返回纯文本: " + e.getMessage());
             report = new AnalysisReportResp();
             report.setTrendSummary(aiResponse);
             report.setRiskLevel("UNKNOWN");
@@ -71,17 +69,17 @@ public class DrugMonitorService {
      * Mock 统计数据（后续可替换为查库聚合）
      */
     private DrugStatsSummaryResp aggregateStatsMock(String drugName, LocalDate startDate, LocalDate endDate) {
-        return DrugStatsSummaryResp.builder()
-                .drugName(drugName)
-                .dateRange(startDate + " ~ " + endDate)
-                .totalDays(30)
-                .dailyAvg(150.3)
-                .dailyMax(380.0)
-                .dailyMin(45.0)
-                .stdDev(52.7)
-                .growthRate(12.5)
-                .anomalies(new ArrayList<>())
-                .dailyDetails(new ArrayList<>())
-                .build();
+        DrugStatsSummaryResp resp = new DrugStatsSummaryResp();
+        resp.setDrugName(drugName);
+        resp.setDateRange(startDate + " ~ " + endDate);
+        resp.setTotalDays(30);
+        resp.setDailyAvg(150.3);
+        resp.setDailyMax(380.0);
+        resp.setDailyMin(45.0);
+        resp.setStdDev(52.7);
+        resp.setGrowthRate(12.5);
+        resp.setAnomalies(new ArrayList<>());
+        resp.setDailyDetails(new ArrayList<>());
+        return resp;
     }
 }

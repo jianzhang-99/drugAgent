@@ -20,5 +20,17 @@ public class AnalysisReportResp {
     private String riskLevel;        // 风险等级 (LOW/MEDIUM/HIGH/CRITICAL)
     private String riskReason;       // 风险等级判断依据
     private List<String> suggestions; // 监管建议
-    private DrugStatsSummaryResp stats; // 统计数据 (用于前端图表展示)
+    private DrugStatsSummaryResp stats;
+
+    public void setTrendSummary(String trendSummary) { this.trendSummary = trendSummary; }
+    public void setRiskLevel(String riskLevel) { this.riskLevel = riskLevel; }
+    public void setRiskReason(String riskReason) { this.riskReason = riskReason; }
+    public void setSuggestions(List<String> suggestions) { this.suggestions = suggestions; }
+    public void setStats(DrugStatsSummaryResp stats) { this.stats = stats; }
+    
+    public String getTrendSummary() { return trendSummary; }
+    public String getRiskLevel() { return riskLevel; }
+    public String getRiskReason() { return riskReason; }
+    public List<String> getSuggestions() { return suggestions; }
+    public DrugStatsSummaryResp getStats() { return stats; }
 }

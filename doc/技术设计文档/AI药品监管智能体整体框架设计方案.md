@@ -6,7 +6,9 @@
 
 ---
 
-### 图1-1 药品监管AI智能体架构图
+### 图1-1 药品监管AI智能体架构图（双层架构）
+
+> 核心设计理念：**底层传统机器学习做定量风控** + **上层大模型 Agent 做定性解读与调度**，两层通过协同调度层联动，兼顾计算效率与智能决策。
 
 ```mermaid
 graph TB
@@ -17,12 +19,12 @@ graph TB
 
     subgraph L2["业务接入层"]
         direction LR
-        B1["协议适配 HTTP/SSE/WS"] ~~~ B2["身份识别"] ~~~ B3["输入预处理"] ~~~ B4["参数转换"]
+        B1["协议适配"] ~~~ B2["身份识别"] ~~~ B3["输入预处理"] ~~~ B4["路由分发"]
     end
 
     subgraph L3["智能体编排层"]
         direction LR
-        C1["意图识别/场景分类"] ~~~ C2["任务分解/逻辑处理"] ~~~ C3["流程编排"] ~~~ C4["工具调用"]
+        C1["意图识别 / 场景分类"] ~~~ C2["任务分解 / 逻辑处理"] ~~~ C3["流程编排"] ~~~ C4["工具调用"]
     end
 
     subgraph L4["模型层"]
@@ -35,44 +37,83 @@ graph TB
         E1["Agent Skill"] ~~~ E2["MCP 工具协议"] ~~~ E3["RAG 知识检索"] ~~~ E4["Function Call"]
     end
 
-    subgraph L6["数据与基础设施层"]
+    subgraph L6["协同调度层"]
         direction LR
-        F1["向量数据库"] ~~~ F2["MySQL"] ~~~ F3["Redis"] ~~~ F4["消息队列"]
+        S1["结果融合引擎"] ~~~ S2["风控信号→Agent上下文注入"] ~~~ S3["Agent指令→ML任务触发"]
     end
 
-    L1 --> L2 --> L3 --> L4 --> L5 --> L6
+    subgraph L7["传统机器学习层（定量风控）"]
+        direction LR
+        M1["用药异常检测"] ~~~ M2["药品流向预测"] ~~~ M3["不良反应信号识别"] ~~~ M4["合规风险评分"]
+    end
+
+    subgraph L8["特征工程 & 数据管道"]
+        direction LR
+        FE1["特征提取"] ~~~ FE2["数据清洗 / ETL"] ~~~ FE3["实时流计算"] ~~~ FE4["批量离线训练"]
+    end
+
+    subgraph L9["数据与基础设施层"]
+        direction LR
+        F1["向量数据库"] ~~~ F2["MySQL"] ~~~ F3["Redis"] ~~~ F4["消息队列"] ~~~ F5["数据湖 / 数仓"]
+    end
+
+    L1 --> L2 --> L3 --> L4 --> L5 --> L6 --> L7 --> L8 --> L9
 
     style L1 fill:#E3F2FD,stroke:#1976D2,stroke-width:1px,color:#1565C0,font-weight:bold
-    style L2 fill:#EDE7F6,stroke:#5E35B1,stroke-width:1px,color:#4527A0,font-weight:bold
-    style L3 fill:#FFF8E1,stroke:#F9A825,stroke-width:1px,color:#E65100,font-weight:bold
+    style L2 fill:#FCE4EC,stroke:#C62828,stroke-width:1px,color:#B71C1C,font-weight:bold
+    style L3 fill:#EDE7F6,stroke:#5E35B1,stroke-width:1px,color:#4527A0,font-weight:bold
     style L4 fill:#E8F5E9,stroke:#388E3C,stroke-width:1px,color:#1B5E20,font-weight:bold
-    style L5 fill:#FBE9E7,stroke:#E64A19,stroke-width:1px,color:#BF360C,font-weight:bold
-    style L6 fill:#ECEFF1,stroke:#546E7A,stroke-width:1px,color:#37474F,font-weight:bold
+    style L5 fill:#FFF8E1,stroke:#F9A825,stroke-width:1px,color:#E65100,font-weight:bold
+    style L6 fill:#F3E5F5,stroke:#8E24AA,stroke-width:2px,color:#6A1B9A,font-weight:bold
+    style L7 fill:#E1F5FE,stroke:#0277BD,stroke-width:1px,color:#01579B,font-weight:bold
+    style L8 fill:#E0F7FA,stroke:#00838F,stroke-width:1px,color:#006064,font-weight:bold
+    style L9 fill:#ECEFF1,stroke:#546E7A,stroke-width:1px,color:#37474F,font-weight:bold
 
     style A1 fill:#BBDEFB,stroke:#1565C0,color:#000
     style A2 fill:#BBDEFB,stroke:#1565C0,color:#000
     style A3 fill:#BBDEFB,stroke:#1565C0,color:#000
     style A4 fill:#BBDEFB,stroke:#1565C0,color:#000
-    style B1 fill:#D1C4E9,stroke:#4527A0,color:#000
-    style B2 fill:#D1C4E9,stroke:#4527A0,color:#000
-    style B3 fill:#D1C4E9,stroke:#4527A0,color:#000
-    style B4 fill:#D1C4E9,stroke:#4527A0,color:#000
-    style C1 fill:#FFECB3,stroke:#FF8F00,color:#000
-    style C2 fill:#FFECB3,stroke:#FF8F00,color:#000
-    style C3 fill:#FFECB3,stroke:#FF8F00,color:#000
-    style C4 fill:#FFECB3,stroke:#FF8F00,color:#000
+    style B1 fill:#F8BBD0,stroke:#C62828,color:#000
+    style B2 fill:#F8BBD0,stroke:#C62828,color:#000
+    style B3 fill:#F8BBD0,stroke:#C62828,color:#000
+    style B4 fill:#F8BBD0,stroke:#C62828,color:#000
+    style C1 fill:#D1C4E9,stroke:#5E35B1,color:#000
+    style C2 fill:#D1C4E9,stroke:#5E35B1,color:#000
+    style C3 fill:#D1C4E9,stroke:#5E35B1,color:#000
+    style C4 fill:#D1C4E9,stroke:#5E35B1,color:#000
     style D1 fill:#C8E6C9,stroke:#2E7D32,color:#000
     style D2 fill:#C8E6C9,stroke:#2E7D32,color:#000
     style D3 fill:#C8E6C9,stroke:#2E7D32,color:#000
-    style E1 fill:#FFCCBC,stroke:#BF360C,color:#000
-    style E2 fill:#FFCCBC,stroke:#BF360C,color:#000
-    style E3 fill:#FFCCBC,stroke:#BF360C,color:#000
-    style E4 fill:#FFCCBC,stroke:#BF360C,color:#000
+    style E1 fill:#FFECB3,stroke:#FF8F00,color:#000
+    style E2 fill:#FFECB3,stroke:#FF8F00,color:#000
+    style E3 fill:#FFECB3,stroke:#FF8F00,color:#000
+    style E4 fill:#FFECB3,stroke:#FF8F00,color:#000
+    style S1 fill:#E1BEE7,stroke:#8E24AA,color:#000
+    style S2 fill:#E1BEE7,stroke:#8E24AA,color:#000
+    style S3 fill:#E1BEE7,stroke:#8E24AA,color:#000
+    style M1 fill:#B3E5FC,stroke:#0277BD,color:#000
+    style M2 fill:#B3E5FC,stroke:#0277BD,color:#000
+    style M3 fill:#B3E5FC,stroke:#0277BD,color:#000
+    style M4 fill:#B3E5FC,stroke:#0277BD,color:#000
+    style FE1 fill:#B2EBF2,stroke:#00838F,color:#000
+    style FE2 fill:#B2EBF2,stroke:#00838F,color:#000
+    style FE3 fill:#B2EBF2,stroke:#00838F,color:#000
+    style FE4 fill:#B2EBF2,stroke:#00838F,color:#000
     style F1 fill:#CFD8DC,stroke:#37474F,color:#000
     style F2 fill:#CFD8DC,stroke:#37474F,color:#000
     style F3 fill:#CFD8DC,stroke:#37474F,color:#000
     style F4 fill:#CFD8DC,stroke:#37474F,color:#000
+    style F5 fill:#CFD8DC,stroke:#37474F,color:#000
 ```
+
+**架构分区说明**
+
+| 区域 | 层级 | 核心职责 |
+| --- | --- | --- |
+| **上层 · 大模型 Agent** | L1 用户接入层 → L2 业务接入层 → L3 智能体编排层 → L4 模型层 → L5 工具层 | 定性解读与智能调度：意图理解、法规问答、报告生成 |
+| **协同调度** | L6 协同调度层 | 双向联动：ML 风控信号注入 Agent 上下文 / Agent 指令触发 ML 任务 |
+| **底层 · 传统 ML** | L7 机器学习层 → L8 特征工程 | 定量风控与分析：异常检测、流向预测、风险评分 |
+| **共享基础设施** | L9 数据与基础设施层 | 上下两层共享的存储与计算资源 |
 
 ### 图1-2 药品监管AI业务流程泳道图
 
@@ -127,7 +168,7 @@ sequenceDiagram
 *   **多渠道接入**：同时支持 PC 端管理后台、移动端等多终端访问，保障服务可达性
 *   **协议适配**：统一处理 HTTP / WebSocket / SSE 等通信协议，对上层屏蔽底层差异
 *   **会话管理**：维护多轮对话上下文与状态，为 Agent 编排层提供完整会话信息
-*   **流式响应**：基于 SSE 实现打字机效果，大幅提升用户交互体验与感知性能
+*   **流式响应**：基于 SSE 流式响应实现打字机效果，大幅提升用户交互体验与感知性能，也就是会有动态效果一个个字输出
 
 **技术选型**
 
@@ -197,24 +238,6 @@ sequenceDiagram
 ---
 
 ## 4. 工具层（Tool）
-
-```plaintext
-┌─────────────────────────────────────────┐
-│             Agent 核心引擎               │
-└────────────────┬────────────────────────┘
-                 │
-        ┌────────┼────────┐
-        │        │        │
-    ┌───▼───┐ ┌─▼──┐  ┌──▼───┐
-    │ Skill │ │MCP │  │ RAG  │
-    │       │ │    │  │      │
-    │专业能力│ │工具 │  │知识库 │
-    └───┬───┘ └─┬──┘  └──┬───┘
-        │       │        │
-    ┌───▼───────▼────────▼────┐
-    │  Function Call 调度层    │
-    └─────────────────────────┘
-```
 
 ### 4.1 Agent Skill
 

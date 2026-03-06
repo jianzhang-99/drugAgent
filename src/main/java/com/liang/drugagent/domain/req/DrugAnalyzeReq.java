@@ -9,18 +9,16 @@ import java.time.LocalDate;
  */
 @Data
 public class DrugAnalyzeReq {
-    /**
-     * 药品名称
-     */
     private String drugName;
-    
-    /**
-     * 分析开始日期
-     */
     private LocalDate startDate;
-    
-    /**
-     * 分析结束日期
-     */
     private LocalDate endDate;
+
+    public String getDrugName() { return drugName; }
+    public void setDrugName(String drugName) { this.drugName = drugName; }
+
+    public LocalDate getStartDate() { return startDate; }
+    public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
+
+    public LocalDate getEndDate() { return endDate; }
+    public void setEndDate(LocalDate endDate) { this.endDate = endDate; }
 }

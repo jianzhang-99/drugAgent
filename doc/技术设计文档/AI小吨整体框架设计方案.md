@@ -296,8 +296,20 @@
     
 
 *   **业务流程指导**：货源发布流程、订单操作规范、航次管理指引、结算流程说明
-    
+### 3. 多轮对话记忆 (Advisor 集成)
+引入了 `MessageChatMemoryAdvisor`，使 Agent 具备了“上下文感知”能力。在追问分析场景下，AI 能精准定位前文提到的风险点并给出解释。
 
+### 4. 内容安全与提示词增强 (自定义 Advisor)
+- **PromptAugmentationAdvisor**: 自动向每条用户消息附加全局约束（如：强制中文回答、严格遵守药监法规）。
+- **SafetyAdvisor**: 拦截 AI 响应中的敏感词（如“买一送一”、“处方药优惠”），并在发现风险时重置为安全应答。
+
+## 后端服务运行状态
+- **运行环境**：Spring Boot 3.4.4, Java 21, Spring AI Advisor
+- **暴露端口**：8124
+- **组件状态**：
+    - `ChatMemory`: 使用 `InMemoryChatMemory` 实现会话隔离存储。
+    - `Advisor 链`: 依次执行 记忆 -> 增强 -> 安全过滤。
+    
 ## 5. Memory（记忆系统，待定）
 
 ### 类型
