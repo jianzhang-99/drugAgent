@@ -20,12 +20,15 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/drug")
-@RequiredArgsConstructor
-@Tag(name = "药品数据监控", description = "药品监控模块接口")
 public class DrugController {
 
     private final AgentChatService agentChatService;
     private final DrugMonitorService drugMonitorService;
+
+    public DrugController(AgentChatService agentChatService, DrugMonitorService drugMonitorService) {
+        this.agentChatService = agentChatService;
+        this.drugMonitorService = drugMonitorService;
+    }
 
     @Operation(summary = "AI药品数据分析")
     @PostMapping("/analyze")

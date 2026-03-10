@@ -19,11 +19,13 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping("/compliance")
-@RequiredArgsConstructor
-@Tag(name = "合规审查", description = "合规分析对话相关接口 (带联调Mock实现)")
 public class ComplianceController {
 
     private final AgentChatService agentChatService;
+
+    public ComplianceController(AgentChatService agentChatService) {
+        this.agentChatService = agentChatService;
+    }
 
     // ----- 核心的大模型调用通道 -----
 

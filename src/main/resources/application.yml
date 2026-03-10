@@ -1,12 +1,17 @@
 spring:
   application:
     name: drug-agent
+  profiles:
+    active: local
   ai:
     dashscope:
       api-key: ${aliyun.dashscope.api-key}
       chat:
         options:
           model: qwen-plus
+      embedding:
+        options:
+          model: text-embedding-v3
 
 server:
   port: 8124
@@ -33,4 +38,4 @@ knife4j:
 # 阿里云百炼(DashScope) 千问模型配置
 aliyun:
   dashscope:
-    api-key: sk-a433391322b54c3db665851b085ba4d4  # 请替换为您的真实 API Key
+    api-key: ${DASHscope_API_KEY:} # 优先从环境变量读取，本地开发则由 application-local.yml 覆盖

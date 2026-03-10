@@ -1,6 +1,7 @@
 package com.liang.drugagent.service;
 
-import com.liang.drugagent.advisor.PromptAugmentationAdvisor;
+import com.liang.drugagent.advisor.LoggingAdvisor;
+import com.liang.drugagent.advisor.PromptAdvisor;
 import com.liang.drugagent.advisor.SafetyAdvisor;
 import com.liang.drugagent.prompt.SystemPromptManager;
 import org.springframework.ai.chat.client.ChatClient;
@@ -25,8 +26,9 @@ public class AgentChatService {
         this.chatClient = chatClientBuilder
                 .defaultAdvisors(
                         new MessageChatMemoryAdvisor(chatMemory),
-                        new PromptAugmentationAdvisor(),
-                        new SafetyAdvisor()
+                        new PromptAdvisor(),
+                        new SafetyAdvisor(),
+                        new LoggingAdvisor()
                 )
                 .build();
     }

@@ -17,11 +17,14 @@ import java.util.ArrayList;
  * 药品数据监控分析服务
  */
 @Service
-@RequiredArgsConstructor
 public class DrugMonitorService {
 
     private final QwenService qwenService;
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public DrugMonitorService(QwenService qwenService) {
+        this.qwenService = qwenService;
+    }
     
     // 这里如果引入了 Mapper 需要替换为实际调用，目前先 mock 后续逻辑对接
     // private final DrugUsageRecordMapper drugUsageRecordMapper;
