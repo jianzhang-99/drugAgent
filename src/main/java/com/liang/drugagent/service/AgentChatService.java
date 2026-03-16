@@ -8,6 +8,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
 /**
  * AI 监管助手基础对话服务
@@ -44,15 +45,7 @@ public class AgentChatService {
      * 根据场景和会话ID执行对话 (支持多轮记忆)
      */
     public String chatWithScene(String userMessage, String agentType, String sessionId) {
-        // 1. 根据场景选择 System Prompt
-        String systemPromptText;
-        if ("data_analysis".equals(agentType)) {
-            systemPromptText = SystemPromptManager.DATA_ANALYSIS_EXPERT_PROMPT;
-        } else if ("compliance_review".equals(agentType)) {
-            systemPromptText = SystemPromptManager.COMPLIANCE_REVIEW_EXPERT_PROMPT;
-        } else {
-            systemPromptText = SystemPromptManager.DRUG_REGULATION_EXPERT_PROMPT;
-        }
+        String systemPromptText = resolveSystemPrompt(agentType);
 
         // 2. 调用模型
         // Advisor 会自动根据 sessionId 从 chatMemory 提取历史消息拼接到 prompt 中
@@ -63,6 +56,31 @@ public class AgentChatService {
                                .param("chat_memory_response_size", 10)) // 指定会话ID和记忆深度
                 .call()
                 .content();
+    }
+
+    /**
+     * 根据场景和会话ID执行流式对话，适合前端 SSE 打字机效果。
+     */
+    public Flux<String> streamChatWithScene(String userMessage, String agentType, String sessionId) {
+        String systemPromptText = resolveSystemPrompt(agentType);
+
+        return chatClient.prompt()
+                .system(systemPromptText)
+                .user(userMessage)
+                .advisors(a -> a.param("chat_memory_conversation_id", sessionId)
+                        .param("chat_memory_response_size", 10))
+                .stream()
+                .content();
+    }
+
+    private String resolveSystemPrompt(String agentType) {
+        // 1. 根据场景选择 System Prompt
+        if ("data_analysis".equals(agentType)) {
+            return SystemPromptManager.DATA_ANALYSIS_EXPERT_PROMPT;
+        } else if ("compliance_review".equals(agentType)) {
+            return SystemPromptManager.COMPLIANCE_REVIEW_EXPERT_PROMPT;
+        }
+        return SystemPromptManager.DRUG_REGULATION_EXPERT_PROMPT;
     }
 
     @Deprecated

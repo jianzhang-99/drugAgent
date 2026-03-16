@@ -186,22 +186,27 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, nextTick, computed } from 'vue'
+import { ref, reactive, onMounted, nextTick, computed, onBeforeUnmount } from 'vue'
 import * as echarts from 'echarts'
-import { analyzeDrug } from '@/api/drug'
+import { analyzeDrug, getDrugNames, importExcel, queryDrugList } from '@/api/drug'
 import { ElMessage } from 'element-plus'
 import { Monitor } from '@element-plus/icons-vue'
 
 const importResult = ref(null)
 const importing = ref(false)
+let chartInstance = null
 
-const handleImport = async () => {
+const handleImport = async (uploadFileData) => {
+  if (!uploadFileData?.raw) return
   importing.value = true
   try {
-    await new Promise(resolve => setTimeout(resolve, 300))
-    importResult.value = { successCount: 1, failCount: 0 }
-    ElMessage.success('已读取文件（演示模式）')
-    loadDrugList()
+    const result = await importExcel(uploadFileData.raw)
+    importResult.value = {
+      successCount: Number(result.successCount || 0),
+      failCount: Math.max(Number(result.totalRows || 0) - Number(result.successCount || 0), 0)
+    }
+    ElMessage.success('Excel 导入完成')
+    await loadDrugList()
   } finally {
     importing.value = false
   }
@@ -235,7 +240,11 @@ const loadDrugList = async () => {
   }
   loading.value = true
   try {
-    await new Promise(resolve => setTimeout(resolve, 200))
+    const res = await queryDrugList(queryForm)
+    const records = Array.isArray(res?.records) ? res.records : []
+    tableData.value = records.map(normalizeTableRow)
+    total.value = Number(res?.total || tableData.value.length)
+  } catch (e) {
     tableData.value = [
       { id: 1, drugName: '阿莫西林', drugCode: 'YP001', quantity: 200, usageDate: '2026-01-15', department: '内科', drugCategory: '抗生素' },
       { id: 2, drugName: '头孢克肟', drugCode: 'YP002', quantity: 160, usageDate: '2026-01-16', department: '外科', drugCategory: '抗生素' }
@@ -262,26 +271,40 @@ const report = ref(null)
 const chartRef = ref(null)
 
 const loadNames = async () => {
-  // 演示模式保留默认药品
+  try {
+    const names = await getDrugNames()
+    if (Array.isArray(names) && names.length) {
+      drugNames.value = names
+      if (!analyzeForm.drugName) {
+        analyzeForm.drugName = names[0]
+      }
+    }
+  } catch (e) {
+    // 无后端或接口未完成时保留默认演示数据
+  }
 }
 
 const startAnalyze = async () => {
+  if (!analyzeForm.drugName) {
+    ElMessage.warning('请先选择要分析的药品')
+    return
+  }
   if (analyzeDateRange.value && analyzeDateRange.value.length === 2) {
     analyzeForm.startDate = analyzeDateRange.value[0]
     analyzeForm.endDate = analyzeDateRange.value[1]
   }
   analyzing.value = true
   try {
-    report.value = await analyzeDrug(analyzeForm)
+    report.value = normalizeReport(await analyzeDrug(analyzeForm))
     await nextTick()
     renderChart(report.value.stats.dailyDetails)
   } catch (e) {
-    report.value = {
+    report.value = normalizeReport({
       riskLevel: 'HIGH',
-      conclusion: '阿莫西林在内科的用量近一周出现异常飙升，远高于历史日均标准差，可能存在违规滥用情况。建议重点核查。',
+      trendSummary: '阿莫西林在内科的用量近一周出现异常飙升，远高于历史日均标准差，可能存在违规滥用情况。建议重点核查。',
       stats: {
         dailyAvg: 150,
-        maxUsage: 450,
+        dailyMax: 450,
         stdDev: 45,
         dailyDetails: [
           { usageDate: '01-10', dailyTotal: 120 },
@@ -290,7 +313,7 @@ const startAnalyze = async () => {
           { usageDate: '01-13', dailyTotal: 140 }
         ]
       }
-    }
+    })
     await nextTick()
     renderChart(report.value.stats.dailyDetails)
   } finally {
@@ -300,20 +323,27 @@ const startAnalyze = async () => {
 
 const renderChart = (dailyData) => {
   if (!chartRef.value) return
-  const chart = echarts.init(chartRef.value)
-  chart.setOption({
+  const safeDailyData = Array.isArray(dailyData) && dailyData.length
+    ? dailyData
+    : [{ usageDate: '暂无数据', dailyTotal: 0 }]
+
+  if (chartInstance) {
+    chartInstance.dispose()
+  }
+  chartInstance = echarts.init(chartRef.value)
+  chartInstance.setOption({
     title: { text: '药品用量趋势', textStyle: { fontSize: 14, fontWeight: 600 } },
     tooltip: { trigger: 'axis' },
     grid: { left: 45, right: 20, top: 50, bottom: 30 },
     xAxis: {
       type: 'category',
       boundaryGap: false,
-      data: dailyData.map(d => d.usageDate)
+      data: safeDailyData.map(d => d.usageDate)
     },
     yAxis: { type: 'value', name: '用量' },
     series: [{
       type: 'line',
-      data: dailyData.map(d => d.dailyTotal),
+      data: safeDailyData.map(d => d.dailyTotal),
       smooth: true,
       symbolSize: 8,
       itemStyle: { color: '#2f74ff' },
@@ -334,9 +364,50 @@ const renderChart = (dailyData) => {
   })
 }
 
+const normalizeTableRow = (row = {}) => {
+  return {
+    id: row.id || `${row.drugName || 'drug'}-${row.usageDate || Date.now()}`,
+    drugName: row.drugName || '--',
+    drugCode: row.drugCode || '--',
+    quantity: Number(row.quantity ?? row.usageAmount ?? 0),
+    usageDate: row.usageDate || '--',
+    department: row.department || '--',
+    drugCategory: row.drugCategory || '--'
+  }
+}
+
+const normalizeReport = (raw = {}) => {
+  const stats = raw.stats || {}
+  return {
+    riskLevel: raw.riskLevel || 'UNKNOWN',
+    conclusion: raw.conclusion || raw.trendSummary || raw.anomalyAnalysis || '暂无分析结论',
+    stats: {
+      dailyAvg: stats.dailyAvg ?? 0,
+      maxUsage: stats.maxUsage ?? stats.dailyMax ?? 0,
+      stdDev: stats.stdDev ?? 0,
+      dailyDetails: Array.isArray(stats.dailyDetails) ? stats.dailyDetails : []
+    }
+  }
+}
+
+const handleResize = () => {
+  if (chartInstance) {
+    chartInstance.resize()
+  }
+}
+
 onMounted(() => {
   loadDrugList()
   loadNames()
+  window.addEventListener('resize', handleResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
+  if (chartInstance) {
+    chartInstance.dispose()
+    chartInstance = null
+  }
 })
 </script>
 
@@ -484,5 +555,28 @@ onMounted(() => {
 .ai-conclusion {
   color: #4f596b;
   line-height: 1.7;
+}
+
+.risk-tag-HIGH,
+.risk-tag-CRITICAL {
+  color: #c62828;
+  font-weight: 700;
+}
+
+.risk-tag-MEDIUM {
+  color: #ef6c00;
+  font-weight: 700;
+}
+
+.risk-tag-LOW,
+.risk-tag-NONE {
+  color: #2e7d32;
+  font-weight: 700;
+}
+
+.risk-tag-UNKNOWN,
+.risk-tag-PENDING {
+  color: #607d8b;
+  font-weight: 700;
 }
 </style>

@@ -17,6 +17,11 @@
       text-color="#dbe6ff"
       active-text-color="#ffffff"
     >
+      <el-menu-item index="/agent">
+        <el-icon><Connection /></el-icon>
+        <span>Drug Agent</span>
+      </el-menu-item>
+
       <el-menu-item index="/drug">
         <el-icon><DataLine /></el-icon>
         <span>药品监管</span>
@@ -38,10 +43,11 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { DataLine, ChatDotRound, Reading } from '@element-plus/icons-vue'
+import { Connection, DataLine, ChatDotRound, Reading } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const activeIndex = computed(() => {
+  if (route.path.startsWith('/agent')) return '/agent'
   if (route.path.startsWith('/drug')) return '/drug'
   if (route.path.startsWith('/compliance')) return '/compliance'
   if (route.path.startsWith('/knowledge')) return '/knowledge'
@@ -93,7 +99,7 @@ const activeIndex = computed(() => {
 
 .top-navbar {
   border-bottom: none;
-  min-width: 420px;
+  min-width: 540px;
   justify-content: flex-end;
 }
 
