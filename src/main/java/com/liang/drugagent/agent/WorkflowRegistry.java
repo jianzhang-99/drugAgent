@@ -11,8 +11,8 @@ import java.util.Map;
 /**
  * 工作流注册表。
  *
- * <p>Spring 会自动注入所有 SceneWorkflow 实现，
- * 这里再按 SceneEnum 建立映射，方便统一 Agent 快速分发。</p>
+ * 根据前置agent判断的结果通过场景来找到对应的workflow
+ *
  * @author liangjiajian
  */
 @Component

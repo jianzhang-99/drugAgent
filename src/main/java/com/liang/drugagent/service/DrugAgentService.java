@@ -15,14 +15,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Drug Agent 主服务。
+ * Drug Agent 主服务
  *
- * <p>这里负责串起三步：</p>
- * <ul>
- *     <li>根据请求创建上下文</li>
- *     <li>完成场景路由</li>
- *     <li>分发到对应工作流，并将结果包装成统一响应</li>
- * </ul>
+ * 所有前端请求从这里进来
  *
  * @author liangjiajian
  */

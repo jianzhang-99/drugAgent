@@ -2,6 +2,8 @@ package com.liang.drugagent.agent;
 
 import com.liang.drugagent.domain.req.DrugAgentReq;
 import com.liang.drugagent.enums.SceneEnum;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.HashMap;
 import java.util.List;
@@ -11,18 +13,12 @@ import java.util.UUID;
 /**
  * Drug Agent 执行上下文。
  *
- * <p>这个对象贯穿一次完整的 Agent 调用链，负责承载：</p>
- * <ul>
- *     <li>请求中的稳定字段，如会话、用户、问题、附件</li>
- *     <li>路由阶段识别出来的场景类型</li>
- *     <li>工作流执行过程中产生的中间结果</li>
- * </ul>
  *
- * <p>MVP 阶段先用一个松散的 attributes 存储中间结果，
- * 后续如果场景稳定，再逐步收敛成强类型对象。</p>
+ * 保存本次请求的上下文 防止后续丢失上下文记忆
  *
  * @author liangjiajian
  */
+@Getter
 public class AgentContext {
 
     private final String traceId;
@@ -30,6 +26,7 @@ public class AgentContext {
     private final String userId;
     private final String query;
     private final List<String> fileIds;
+    @Setter
     private SceneEnum sceneType;
     private final Map<String, Object> attributes = new HashMap<>();
 
@@ -55,35 +52,4 @@ public class AgentContext {
         );
     }
 
-    public String getTraceId() {
-        return traceId;
-    }
-
-    public String getSessionId() {
-        return sessionId;
-    }
-
-    public String getUserId() {
-        return userId;
-    }
-
-    public String getQuery() {
-        return query;
-    }
-
-    public List<String> getFileIds() {
-        return fileIds;
-    }
-
-    public SceneEnum getSceneType() {
-        return sceneType;
-    }
-
-    public void setSceneType(SceneEnum sceneType) {
-        this.sceneType = sceneType;
-    }
-
-    public Map<String, Object> getAttributes() {
-        return attributes;
-    }
 }

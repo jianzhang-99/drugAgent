@@ -1,10 +1,9 @@
 <template>
   <header class="gov-navbar">
     <div class="navbar-left">
-      <div class="logo-mark">DA</div>
+      <div class="logo-mark">HD</div>
       <div class="title-group">
-        <h1>Drug-Agent 药品智能监管系统</h1>
-        <p>医疗机构用药监管与AI风控平台</p>
+        <h1>横渡智能监管系统</h1>
       </div>
     </div>
 

@@ -1,533 +1,509 @@
 <template>
-  <div class="drug-agent-page">
-    <section class="page-hero">
-      <div>
-        <h2>Drug Agent 工作台</h2>
-        <p>一个入口管理法规问答、合规审查和药品分析路由</p>
-      </div>
-      <div class="hero-badge">MVP 调度入口</div>
-    </section>
-
-    <div class="workbench-grid">
-      <section class="assistant-panel">
-        <div class="panel-head">
-          <div>
-            <h3>智能调度对话</h3>
-            <p>可手动指定场景，也可交给统一 Agent 自动路由</p>
-          </div>
-          <el-tag type="primary" effect="dark">/agent/drug/chat</el-tag>
-        </div>
-
-        <div class="scenario-bar">
-          <el-radio-group v-model="form.sceneHint" size="large">
-            <el-radio-button label="">自动识别</el-radio-button>
-            <el-radio-button label="GENERAL_QA">法规问答</el-radio-button>
-            <el-radio-button label="COMPLIANCE_REVIEW">合规审查</el-radio-button>
-            <el-radio-button label="DRUG_ANALYSIS">药品分析</el-radio-button>
-          </el-radio-group>
-        </div>
-
-        <div class="chat-board" ref="messageContainerRef">
-          <MessageBubble v-for="(msg, idx) in messages" :key="idx" :msg="msg" />
-          <div v-if="sending" class="thinking-row">
-            <el-icon class="thinking-icon"><Loading /></el-icon>
-            <span>Drug Agent 正在判断场景并生成结果...</span>
-          </div>
-        </div>
-
-        <div class="composer">
-          <el-input
-            v-model="form.query"
-            type="textarea"
-            :rows="4"
-            placeholder="例如：帮我分析最近一个月阿莫西林的异常用量；或审查这份材料是否符合药品管理法"
-            @keyup.ctrl.enter="handleSend"
-          />
-          <div class="composer-actions">
-            <div class="hint-text">按 Ctrl+Enter 发送</div>
-            <el-button type="primary" :loading="sending" @click="handleSend">
-              发送到 Drug Agent
-            </el-button>
-          </div>
-        </div>
+  <div class="workspace-page">
+    <aside class="workspace-sidebar">
+      <section class="sidebar-group">
+        <p class="sidebar-label">我的空间</p>
+        <button
+          v-for="item in workspaceItems"
+          :key="item.key"
+          class="sidebar-item"
+          :class="{ active: item.key === activeMenu }"
+          type="button"
+          @click="handleMenuClick(item)"
+        >
+          <el-icon><component :is="item.icon" /></el-icon>
+          <span>{{ item.label }}</span>
+        </button>
       </section>
 
-      <aside class="insight-panel">
-        <div class="summary-card">
-          <div class="summary-title">最近一次路由结果</div>
-          <div class="summary-scene">{{ sceneLabel(lastResult.scene) || '等待请求' }}</div>
-          <div class="summary-badges">
-            <span class="route-badge">{{ routeReasonLabel(lastResult.routeReason) }}</span>
-            <span class="risk-badge" :class="riskClass(lastResult.riskLevel)">
-              风险：{{ riskLabel(lastResult.riskLevel) }}
-            </span>
-          </div>
-          <div class="summary-trace">Trace: {{ lastResult.traceId || '--' }}</div>
-        </div>
+      <section class="sidebar-group sidebar-settings">
+        <p class="sidebar-label">系统设置</p>
+        <button
+          v-for="item in settingItems"
+          :key="item.key"
+          class="sidebar-item"
+          type="button"
+        >
+          <el-icon><component :is="item.icon" /></el-icon>
+          <span>{{ item.label }}</span>
+        </button>
+      </section>
+    </aside>
 
-        <div class="info-card">
-          <div class="info-header">结果摘要</div>
-          <div v-if="lastResult.answer" class="summary-answer">
-            {{ lastResult.answer }}
+    <section class="workspace-main">
+      <div class="workspace-content">
+        <section class="hero-panel">
+          <div class="hero-mark">
+            <div class="hero-mark-inner">✦</div>
           </div>
-          <div v-else class="empty-text">发送请求后会在这里展示本次结果摘要。</div>
-        </div>
+          <h1>有什么我可以帮您分析的？</h1>
+          <p>直接描述您的监管需求，或上传附件交由 Agent 处理</p>
+        </section>
 
-        <div class="info-card">
-          <div class="info-header">执行步骤</div>
-          <div v-if="lastResult.steps?.length" class="steps-list">
-            <div v-for="step in lastResult.steps" :key="step" class="step-item">{{ step }}</div>
-          </div>
-          <div v-else class="empty-text">发送一次请求后会显示执行链路。</div>
-        </div>
+        <section class="intent-box">
+          <textarea
+            v-model="promptText"
+            class="intent-input"
+            placeholder="例如：帮我审查一下本周上传的三个医用耗材标书是否有围标嫌疑..."
+          />
 
-        <div class="info-card">
-          <div class="info-header">证据与说明</div>
-          <div v-if="lastResult.evidenceList?.length" class="evidence-list">
-            <div v-for="(item, idx) in lastResult.evidenceList" :key="idx" class="evidence-item">
-              <div class="evidence-title">{{ item.title }}</div>
-              <div class="evidence-content">{{ item.content }}</div>
-              <div class="evidence-source">{{ item.source }}</div>
+          <div class="intent-toolbar">
+            <div class="toolbar-left">
+              <button class="tool-btn" type="button" aria-label="上传附件">
+                <el-icon><Upload /></el-icon>
+              </button>
+              <button class="tool-btn" type="button" aria-label="知识库引用">
+                <el-icon><Notebook /></el-icon>
+              </button>
             </div>
-          </div>
-          <div v-else class="empty-text">这里会展示工作流返回的证据和说明。</div>
-        </div>
 
-        <div class="tips-card">
-          <div class="tips-title">示例问题</div>
-          <el-button text @click="fillExample('药品经营许可证申请需要满足哪些条件？')">法规问答</el-button>
-          <el-button text @click="fillExample('请帮我审查这份采购材料是否存在合规风险')">合规审查</el-button>
-          <el-button text @click="fillExample('请分析近30天阿莫西林用量是否存在异常')">药品分析</el-button>
-        </div>
-      </aside>
-    </div>
+            <button class="route-btn" type="button">
+              <el-icon><Position /></el-icon>
+              <span>执行路由</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="suggest-section">
+          <h2>常用监管工作流建议</h2>
+
+          <div class="suggest-grid">
+            <article
+              v-for="card in workflowCards"
+              :key="card.title"
+              class="suggest-card"
+            >
+              <div class="suggest-icon" :class="card.theme">
+                <el-icon><component :is="card.icon" /></el-icon>
+              </div>
+              <h3>{{ card.title }}</h3>
+              <p>{{ card.description }}</p>
+            </article>
+          </div>
+        </section>
+
+        <p class="bottom-tip">
+          Agent 会自动将您的指令解析为 `AgentContext`，并在右上角分配后台任务。
+        </p>
+      </div>
+    </section>
   </div>
 </template>
 
 <script setup>
-import { nextTick, reactive, ref } from 'vue'
-import { Loading } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
-import MessageBubble from '@/components/MessageBubble.vue'
-import { streamDrugAgentChat } from '@/api/drug-agent'
+import { computed, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  Document,
+  Files,
+  Notebook,
+  Position,
+  Setting,
+  Upload,
+  Warning,
+  Reading,
+  List,
+  RefreshLeft,
+  QuestionFilled
+} from '@element-plus/icons-vue'
 
-const form = reactive({
-  sessionId: `drug-agent-session-${Date.now()}`,
-  userId: 'demo-user',
-  query: '',
-  sceneHint: '',
-  fileIds: []
+const promptText = ref('')
+const route = useRoute()
+const router = useRouter()
+
+const workspaceItems = [
+  { key: 'hub', label: '工作台 (Agent Hub)', icon: Position, path: '/agent' },
+  { key: 'tasks', label: '任务看板', icon: List, path: '/agent/tasks' },
+  { key: 'knowledge', label: '合规知识库', icon: Reading },
+  { key: 'audit', label: '全局审计日志', icon: RefreshLeft }
+]
+
+const settingItems = [
+  { key: 'prefs', label: '偏好与配置', icon: Setting },
+  { key: 'help', label: '使用帮助', icon: QuestionFilled }
+]
+
+const workflowCards = [
+  {
+    title: '标书审查',
+    description: '帮我对比新上传的这几份标书文件，检查是否有雷同或围标嫌疑。',
+    icon: Document,
+    theme: 'theme-indigo'
+  },
+  {
+    title: '合同预审',
+    description: '审查最新版的采购合同，基于合规知识库提取潜在风险条款。',
+    icon: Files,
+    theme: 'theme-green'
+  },
+  {
+    title: '合规预警',
+    description: '分析近 3 个月的骨科耗材采购数据，生成异常波动预警报告。',
+    icon: Warning,
+    theme: 'theme-amber'
+  }
+]
+
+const activeMenu = computed(() => {
+  if (route.path.startsWith('/agent/tasks')) return 'tasks'
+  return 'hub'
 })
 
-const messages = ref([
-  {
-    role: 'assistant',
-    content: '这里是 Drug Agent 工作台。你可以直接提问，也可以手动指定场景，观察系统如何路由到不同工作流。'
-  }
-])
-const sending = ref(false)
-const lastResult = ref({})
-const messageContainerRef = ref(null)
-
-const sceneLabel = (scene) => {
-  const labels = {
-    GENERAL_QA: '法规问答',
-    COMPLIANCE_REVIEW: '合规审查',
-    DRUG_ANALYSIS: '药品分析',
-    UNKNOWN: '未知场景'
-  }
-  return labels[scene] || scene
-}
-
-const routeReasonLabel = (reason) => {
-  const labels = {
-    sceneHint: '手动指定场景',
-    fileIds: '检测到附件',
-    regulationKeywords: '命中法规关键词',
-    reviewKeywords: '命中审查关键词',
-    analysisKeywords: '命中分析关键词',
-    fallback: '未命中规则，走兜底',
-    unknown: '暂无路由信息'
-  }
-  return labels[reason] || '暂无路由信息'
-}
-
-const riskLabel = (riskLevel) => {
-  const labels = {
-    NONE: '无明显风险',
-    LOW: '低风险',
-    MEDIUM: '中风险',
-    HIGH: '高风险',
-    CRITICAL: '严重风险',
-    PENDING: '待分析',
-    UNKNOWN: '未知'
-  }
-  return labels[riskLevel] || (riskLevel || '未知')
-}
-
-const riskClass = (riskLevel) => {
-  const value = (riskLevel || 'UNKNOWN').toLowerCase()
-  return `risk-${value}`
-}
-
-const scrollToBottom = () => {
-  nextTick(() => {
-    const el = messageContainerRef.value
-    if (el) {
-      el.scrollTop = el.scrollHeight
-    }
-  })
-}
-
-const fillExample = (text) => {
-  form.query = text
-}
-
-const handleSend = async () => {
-  if (!form.query.trim() || sending.value) {
-    return
-  }
-
-  const query = form.query.trim()
-  messages.value.push({ role: 'user', content: query })
-  const assistantMessage = { role: 'assistant', content: '' }
-  messages.value.push(assistantMessage)
-  form.query = ''
-  scrollToBottom()
-
-  sending.value = true
-  try {
-    await streamDrugAgentChat({
-      sessionId: form.sessionId,
-      userId: form.userId,
-      query,
-      sceneHint: form.sceneHint || null,
-      fileIds: form.fileIds
-    }, {
-      onMeta: (meta) => {
-        lastResult.value = {
-          ...lastResult.value,
-          ...meta,
-          answer: ''
-        }
-        assistantMessage.content = `## 路由场景：${sceneLabel(meta.scene)}\n\n**路由原因：** ${routeReasonLabel(meta.routeReason)}\n\n`
-        scrollToBottom()
-      },
-      onDelta: (chunk) => {
-        const text = typeof chunk === 'string' ? chunk : ''
-        assistantMessage.content += text
-        lastResult.value = {
-          ...lastResult.value,
-          answer: (lastResult.value.answer || '') + text
-        }
-        scrollToBottom()
-      },
-      onDone: (payload) => {
-        lastResult.value = {
-          ...lastResult.value,
-          ...payload
-        }
-      },
-      onError: (payload) => {
-        throw new Error(typeof payload === 'string' ? payload : 'Drug Agent 流式调用失败')
-      }
-    })
-  } catch (error) {
-    ElMessage.error('Drug Agent 调用失败，请检查后端接口或代理配置。')
-    assistantMessage.content = 'Drug Agent 当前不可用，请稍后重试。'
-  } finally {
-    sending.value = false
-    scrollToBottom()
+const handleMenuClick = (item) => {
+  if (item.path) {
+    router.push(item.path)
   }
 }
 </script>
 
 <style scoped>
-.drug-agent-page {
-  max-width: 1480px;
-  margin: 0 auto;
-}
-
-.page-hero {
-  margin-bottom: 16px;
-  border-radius: 14px;
-  padding: 18px 20px;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background:
-    radial-gradient(circle at right top, rgba(255, 255, 255, 0.18), transparent 30%),
-    linear-gradient(135deg, #123463, #1d5db3 62%, #4b94ff);
-  box-shadow: 0 16px 30px rgba(20, 76, 151, 0.2);
-}
-
-.page-hero h2 {
-  margin: 0;
-  font-size: 22px;
-}
-
-.page-hero p {
-  margin: 6px 0 0;
-  opacity: 0.9;
-}
-
-.hero-badge {
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.32);
-}
-
-.workbench-grid {
+.workspace-page {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.85fr);
-  gap: 16px;
+  grid-template-columns: 398px minmax(0, 1fr);
+  min-height: calc(100vh - 86px);
+  background: linear-gradient(180deg, #f8fbff 0%, #f5f8fc 100%);
 }
 
-.assistant-panel,
-.summary-card,
-.info-card,
-.tips-card {
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid #dfe8f6;
-  border-radius: 14px;
-  box-shadow: 0 10px 28px rgba(37, 74, 132, 0.08);
-}
-
-.assistant-panel {
-  padding: 18px;
+.workspace-sidebar {
+  background: rgba(255, 255, 255, 0.88);
+  border-right: 1px solid #dfe7f2;
   display: flex;
   flex-direction: column;
-  min-height: 700px;
-}
-
-.panel-head {
-  display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  margin-bottom: 14px;
+  padding: 28px 18px 24px;
 }
 
-.panel-head h3 {
-  margin: 0;
-  color: #183153;
-}
-
-.panel-head p {
-  margin: 6px 0 0;
-  color: #6d7f99;
-}
-
-.scenario-bar {
-  margin-bottom: 14px;
-}
-
-.chat-board {
-  flex: 1;
-  min-height: 420px;
-  max-height: 520px;
-  overflow-y: auto;
-  padding: 6px 2px;
-}
-
-.thinking-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: #f4f8ff;
-  color: #46658f;
-}
-
-.thinking-icon {
-  animation: spin 1.2s linear infinite;
-}
-
-.composer {
-  margin-top: 14px;
-  border-top: 1px solid #ebf1fa;
-  padding-top: 14px;
-}
-
-.composer-actions {
-  margin-top: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.hint-text {
-  color: #7f8fa7;
-  font-size: 13px;
-}
-
-.insight-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.summary-card,
-.info-card,
-.tips-card {
-  padding: 16px;
-}
-
-.summary-title,
-.info-header,
-.tips-title {
-  font-size: 14px;
-  color: #70829d;
-  margin-bottom: 10px;
-}
-
-.summary-scene {
-  font-size: 28px;
-  font-weight: 700;
-  color: #17365d;
-}
-
-.summary-badges {
-  margin-top: 10px;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.route-badge,
-.risk-badge {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 6px 10px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.route-badge {
-  color: #1f4f90;
-  background: #ebf3ff;
-  border: 1px solid #d5e4ff;
-}
-
-.risk-badge {
-  border: 1px solid transparent;
-}
-
-.risk-none,
-.risk-low {
-  color: #23683d;
-  background: #ebf7ef;
-  border-color: #d1ead9;
-}
-
-.risk-medium,
-.risk-pending {
-  color: #9b5b00;
-  background: #fff4df;
-  border-color: #f0ddb6;
-}
-
-.risk-high,
-.risk-critical {
-  color: #a02b2b;
-  background: #fdeaea;
-  border-color: #f2c8c8;
-}
-
-.risk-unknown {
-  color: #516274;
-  background: #eef3f8;
-  border-color: #dbe4ee;
-}
-
-.summary-trace {
-  margin-top: 8px;
-  font-size: 12px;
-  color: #7d8ca1;
-  word-break: break-all;
-}
-
-.steps-list,
-.evidence-list {
+.sidebar-group {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.step-item {
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: linear-gradient(180deg, #f7faff, #f1f6ff);
-  border: 1px solid #e1ebfa;
-  color: #2a4c79;
+.sidebar-settings {
+  padding-top: 36px;
+  border-top: 1px solid #e8eef7;
 }
 
-.evidence-item {
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid #e4ecf8;
-  background: #fbfdff;
-}
-
-.evidence-title {
+.sidebar-label {
+  margin: 0 0 8px 18px;
+  font-size: 13px;
   font-weight: 700;
-  color: #213a61;
+  color: #91a1ba;
 }
 
-.evidence-content {
-  margin-top: 6px;
-  color: #4f627e;
-  line-height: 1.65;
+.sidebar-item {
+  height: 64px;
+  border: 0;
+  border-radius: 24px;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 18px;
+  color: #5c6c85;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
 
-.evidence-source {
-  margin-top: 8px;
-  font-size: 12px;
-  color: #8091aa;
+.sidebar-item:hover {
+  background: #eef4ff;
+  color: #315ddc;
+  transform: translateX(2px);
 }
 
-.empty-text {
-  color: #8a98ae;
-  line-height: 1.7;
+.sidebar-item.active {
+  background: #e7f0ff;
+  color: #315ddc;
 }
 
-.summary-answer {
-  color: #40546f;
-  line-height: 1.8;
-  white-space: pre-wrap;
+.sidebar-item .el-icon {
+  font-size: 22px;
 }
 
-.tips-card :deep(.el-button) {
-  display: block;
+.workspace-main {
+  min-width: 0;
+}
+
+.workspace-content {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 52px 40px 48px;
+}
+
+.hero-panel {
+  text-align: center;
+  padding-top: 86px;
+}
+
+.hero-mark {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 22px;
+}
+
+.hero-mark-inner {
+  width: 88px;
+  height: 88px;
+  border-radius: 24px;
+  display: grid;
+  place-items: center;
+  font-size: 40px;
+  color: #fff;
+  background: linear-gradient(135deg, #4e87ff 0%, #4c5dff 100%);
+  box-shadow: 0 24px 60px rgba(87, 116, 255, 0.28);
+}
+
+.hero-panel h1 {
+  margin: 0;
+  font-size: 42px;
+  line-height: 1.12;
+  color: #24324a;
+  font-weight: 800;
+}
+
+.hero-panel p {
+  margin: 14px 0 0;
+  font-size: 16px;
+  color: #7d8da8;
+  font-weight: 600;
+}
+
+.intent-box {
+  margin: 44px auto 0;
+  max-width: 1380px;
+  min-height: 288px;
+  border-radius: 32px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #dce6f4;
+  box-shadow: 0 18px 46px rgba(70, 95, 140, 0.08);
+  padding: 28px 30px 24px;
+}
+
+.intent-input {
   width: 100%;
-  justify-content: flex-start;
-  margin-left: 0;
+  min-height: 168px;
+  border: 0;
+  resize: none;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1.6;
+  color: #2d3d57;
+  background: transparent;
+  outline: none;
+  font-family: inherit;
 }
 
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
+.intent-input::placeholder {
+  color: #bbc4d3;
+  font-weight: 600;
+}
+
+.intent-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.toolbar-left {
+  display: flex;
+  gap: 18px;
+}
+
+.tool-btn {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  color: #8ea0bd;
+  font-size: 20px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.route-btn {
+  height: 56px;
+  min-width: 186px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 22px;
+  background: #c7d5e8;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.route-btn .el-icon {
+  font-size: 16px;
+}
+
+.suggest-section {
+  margin-top: 54px;
+}
+
+.suggest-section h2 {
+  margin: 0 0 28px 10px;
+  font-size: 16px;
+  color: #8fa0ba;
+  font-weight: 700;
+}
+
+.suggest-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 26px;
+}
+
+.suggest-card {
+  min-height: 210px;
+  border-radius: 24px;
+  padding: 22px 24px 24px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #dce6f4;
+  box-shadow: 0 14px 38px rgba(70, 95, 140, 0.06);
+}
+
+.suggest-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  margin-bottom: 18px;
+}
+
+.theme-indigo {
+  color: #4c5dff;
+  background: #eef0ff;
+}
+
+.theme-green {
+  color: #0eaf7f;
+  background: #e9fbf4;
+}
+
+.theme-amber {
+  color: #db8a13;
+  background: #fff7e4;
+}
+
+.suggest-card h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #24324a;
+}
+
+.suggest-card p {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #6d7f9a;
+  font-weight: 500;
+}
+
+.bottom-tip {
+  margin: 40px 0 0;
+  text-align: center;
+  font-size: 14px;
+  color: #8ea0bd;
+  font-weight: 600;
+}
+
+@media (max-width: 1500px) {
+  .workspace-page {
+    grid-template-columns: 320px minmax(0, 1fr);
   }
-  to {
-    transform: rotate(360deg);
+
+  .hero-panel h1 {
+    font-size: 36px;
+  }
+
+  .hero-panel p,
+  .intent-input {
+    font-size: 17px;
+  }
+
+  .suggest-card h3 {
+    font-size: 17px;
+  }
+
+  .suggest-card p {
+    font-size: 14px;
   }
 }
 
-@media (max-width: 1080px) {
-  .workbench-grid {
+@media (max-width: 1100px) {
+  .workspace-page {
     grid-template-columns: 1fr;
   }
 
-  .assistant-panel {
-    min-height: auto;
+  .workspace-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid #dfe7f2;
+    gap: 24px;
   }
 
-  .chat-board {
-    max-height: 420px;
+  .suggest-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-content {
+    padding: 28px 20px 40px;
+  }
+
+  .hero-panel {
+    padding-top: 18px;
+  }
+}
+
+@media (max-width: 760px) {
+  .sidebar-item {
+    font-size: 18px;
+    height: 56px;
+  }
+
+  .hero-mark-inner {
+    width: 74px;
+    height: 74px;
+    font-size: 34px;
+  }
+
+  .hero-panel h1 {
+    font-size: 28px;
+  }
+
+  .hero-panel p {
+    font-size: 15px;
+  }
+
+  .intent-box {
+    border-radius: 28px;
+    padding: 24px 20px 20px;
+    min-height: 280px;
+  }
+
+  .intent-input {
+    min-height: 160px;
+    font-size: 16px;
+  }
+
+  .intent-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+  }
+
+  .route-btn {
+    width: 100%;
   }
 }
 </style>

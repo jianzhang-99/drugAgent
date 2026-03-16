@@ -11,7 +11,9 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 /**
- * AI 监管助手基础对话服务
+ * 模型基础对话服务
+ *
+ * 用于管理简单模型的通话
  * @author liangjiajian
  */
 @Service

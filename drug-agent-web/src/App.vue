@@ -12,16 +12,22 @@ import NavBar from './components/NavBar.vue'
 </script>
 
 <style>
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
 .app-container {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: radial-gradient(circle at 20% 0%, #f4f8ff, #edf3ff 35%, #f5f7fa 100%);
+  background: #f5f7fb;
 }
 
 .main-content {
   flex: 1;
   overflow-y: auto;
-  padding: 18px 22px 24px;
+  padding: 0;
 }
 </style>
