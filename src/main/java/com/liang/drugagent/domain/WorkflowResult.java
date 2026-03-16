@@ -1,6 +1,6 @@
 package com.liang.drugagent.domain;
 
-import com.liang.drugagent.workflow.SceneType;
+import com.liang.drugagent.enums.SceneEnum;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -19,13 +19,13 @@ import java.util.List;
 @Getter
 public class WorkflowResult {
 
-    private SceneType scene;
+    private SceneEnum scene;
     private String answer;
     private String riskLevel;
     private List<EvidenceItem> evidenceList = new ArrayList<>();
     private List<String> steps = new ArrayList<>();
 
-    public static WorkflowResult of(SceneType scene, String answer) {
+    public static WorkflowResult of(SceneEnum scene, String answer) {
         WorkflowResult result = new WorkflowResult();
         result.setScene(scene);
         result.setAnswer(answer);

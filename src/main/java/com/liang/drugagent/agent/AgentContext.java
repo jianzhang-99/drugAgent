@@ -1,7 +1,7 @@
 package com.liang.drugagent.agent;
 
 import com.liang.drugagent.domain.req.DrugAgentReq;
-import com.liang.drugagent.workflow.SceneType;
+import com.liang.drugagent.enums.SceneEnum;
 
 import java.util.HashMap;
 import java.util.List;
@@ -30,7 +30,7 @@ public class AgentContext {
     private final String userId;
     private final String query;
     private final List<String> fileIds;
-    private SceneType sceneType;
+    private SceneEnum sceneType;
     private final Map<String, Object> attributes = new HashMap<>();
 
     private AgentContext(String traceId, String sessionId, String userId, String query, List<String> fileIds) {
@@ -75,11 +75,11 @@ public class AgentContext {
         return fileIds;
     }
 
-    public SceneType getSceneType() {
+    public SceneEnum getSceneType() {
         return sceneType;
     }
 
-    public void setSceneType(SceneType sceneType) {
+    public void setSceneType(SceneEnum sceneType) {
         this.sceneType = sceneType;
     }
 

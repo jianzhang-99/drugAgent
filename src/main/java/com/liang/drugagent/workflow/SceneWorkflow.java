@@ -2,6 +2,7 @@ package com.liang.drugagent.workflow;
 
 import com.liang.drugagent.agent.AgentContext;
 import com.liang.drugagent.domain.WorkflowResult;
+import com.liang.drugagent.enums.SceneEnum;
 
 /**
  * 场景工作流接口。
@@ -16,7 +17,7 @@ public interface SceneWorkflow {
      *
      * @return 场景类型 Enum
      */
-    SceneType support();
+    SceneEnum support();
 
     /**
      * 执行业务场景逻辑。

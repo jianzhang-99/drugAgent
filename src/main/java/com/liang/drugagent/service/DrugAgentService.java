@@ -5,7 +5,7 @@ import com.liang.drugagent.domain.EvidenceItem;
 import com.liang.drugagent.domain.WorkflowResult;
 import com.liang.drugagent.domain.req.DrugAgentReq;
 import com.liang.drugagent.domain.resp.DrugAgentResp;
-import com.liang.drugagent.workflow.SceneType;
+import com.liang.drugagent.enums.SceneEnum;
 import com.liang.drugagent.workflow.SceneWorkflow;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -41,7 +41,7 @@ public class DrugAgentService {
 
     public DrugAgentResp handle(DrugAgentReq req) {
         AgentContext context = AgentContext.from(req);
-        SceneType sceneType = sceneRouter.route(req, context);
+        SceneEnum sceneType = sceneRouter.route(req, context);
         context.setSceneType(sceneType);
 
         // 每个场景只关心自己的执行细节，统一服务只负责调度，不承载业务判断。
@@ -61,7 +61,7 @@ public class DrugAgentService {
 
     public SseEmitter streamHandle(DrugAgentReq req) {
         AgentContext context = AgentContext.from(req);
-        SceneType sceneType = sceneRouter.route(req, context);
+        SceneEnum sceneType = sceneRouter.route(req, context);
         context.setSceneType(sceneType);
 
         SseEmitter emitter = new SseEmitter(0L);
@@ -76,9 +76,9 @@ public class DrugAgentService {
             return emitter;
         }
 
-        if (sceneType == SceneType.UNKNOWN) {
+        if (sceneType == SceneEnum.UNKNOWN) {
             try {
-                sendEvent(emitter, "delta", "当前请求场景还不够明确。你可以补充是法规问答、合规审查，还是药品数据分析。");
+                sendEvent(emitter, "delta", "当前请求场景还不够明确。你可以补充是标书查重、合同预审，还是药品与耗材风险预警。");
                 sendEvent(emitter, "done", buildDonePayload(sceneType));
                 emitter.complete();
             } catch (IOException e) {
@@ -121,35 +121,35 @@ public class DrugAgentService {
         return emitter;
     }
 
-    private String resolveAgentType(SceneType sceneType) {
-        if (sceneType == SceneType.COMPLIANCE_REVIEW) {
+    private String resolveAgentType(SceneEnum sceneType) {
+        if (sceneType == SceneEnum.CONTRACT_PRECHECK) {
             return "compliance_review";
         }
-        if (sceneType == SceneType.DRUG_ANALYSIS) {
+        if (sceneType == SceneEnum.RISK_ALERT) {
             return "data_analysis";
         }
         return "default";
     }
 
-    private Map<String, Object> buildDonePayload(SceneType sceneType) {
+    private Map<String, Object> buildDonePayload(SceneEnum sceneType) {
         WorkflowResult template = WorkflowResult.of(sceneType, "");
-        if (sceneType == SceneType.GENERAL_QA) {
+        if (sceneType == SceneEnum.TENDER_REVIEW) {
             template.setRiskLevel("NONE");
-            template.setSteps(List.of("场景识别", "法规问答生成"));
+            template.setSteps(List.of("场景识别", "标书查重分析"));
             template.setEvidenceList(List.of(
-                    new EvidenceItem("执行说明", "当前流式版本先复用基础问答能力。", "system")
+                    new EvidenceItem("执行说明", "当前流式版本先复用基础问答能力，后续接入标书比对与语义查重能力。", "system")
             ));
-        } else if (sceneType == SceneType.COMPLIANCE_REVIEW) {
+        } else if (sceneType == SceneEnum.CONTRACT_PRECHECK) {
             template.setRiskLevel("MEDIUM");
-            template.setSteps(List.of("场景识别", "合规审查问答"));
+            template.setSteps(List.of("场景识别", "合同预审问答"));
             template.setEvidenceList(List.of(
-                    new EvidenceItem("执行说明", "当前流式版本尚未接入真实文件解析，先走合规审查对话能力。", "system")
+                    new EvidenceItem("执行说明", "当前流式版本尚未接入真实合同解析，先走合同预审对话能力。", "system")
             ));
-        } else if (sceneType == SceneType.DRUG_ANALYSIS) {
+        } else if (sceneType == SceneEnum.RISK_ALERT) {
             template.setRiskLevel("PENDING");
-            template.setSteps(List.of("场景识别", "药品分析问答"));
+            template.setSteps(List.of("场景识别", "风险预警分析"));
             template.setEvidenceList(List.of(
-                    new EvidenceItem("执行说明", "当前流式版本先复用数据分析人设，后续再接真实统计服务。", "system")
+                    new EvidenceItem("执行说明", "当前流式版本先复用数据分析人设，后续再接真实预警分析服务。", "system")
             ));
         } else {
             template.setRiskLevel("UNKNOWN");

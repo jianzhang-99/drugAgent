@@ -3,6 +3,7 @@ package com.liang.drugagent.workflow;
 import com.liang.drugagent.agent.AgentContext;
 import com.liang.drugagent.domain.EvidenceItem;
 import com.liang.drugagent.domain.WorkflowResult;
+import com.liang.drugagent.enums.SceneEnum;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -22,8 +23,8 @@ public class FallbackWorkflow implements SceneWorkflow {
      * @return 未知场景类型
      */
     @Override
-    public SceneType support() {
-        return SceneType.UNKNOWN;
+    public SceneEnum support() {
+        return SceneEnum.UNKNOWN;
     }
 
     /**
@@ -38,8 +39,8 @@ public class FallbackWorkflow implements SceneWorkflow {
         // 兜底工作流的职责不是“硬答”，而是明确告诉前端或用户：
         // 当前还需要更清晰的业务意图，避免产生误导性输出。
         WorkflowResult result = WorkflowResult.of(
-                SceneType.UNKNOWN,
-                "当前请求场景还不够明确。你可以补充是法规问答、合规审查，还是药品数据分析。"
+                SceneEnum.UNKNOWN,
+                "当前请求场景还不够明确。你可以补充是标书查重、合同预审，还是药品与耗材风险预警。"
         );
         result.setRiskLevel("UNKNOWN");
         result.setSteps(List.of("场景识别", "兜底回复"));
