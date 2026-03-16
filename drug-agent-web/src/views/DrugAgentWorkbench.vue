@@ -27,23 +27,6 @@
           </el-radio-group>
         </div>
 
-        <div class="toolbar-row">
-          <el-upload
-            action="#"
-            :auto-upload="false"
-            :show-file-list="false"
-            :on-change="handleFileUpload"
-          >
-            <el-button plain>
-              {{ currentFile ? '更换文件' : '上传审查文件' }}
-            </el-button>
-          </el-upload>
-          <div v-if="currentFile" class="current-file-chip">
-            <span class="chip-label">已关联文件</span>
-            <span class="chip-name">{{ currentFile.fileName }}</span>
-          </div>
-        </div>
-
         <div class="chat-board" ref="messageContainerRef">
           <MessageBubble v-for="(msg, idx) in messages" :key="idx" :msg="msg" />
           <div v-if="sending" class="thinking-row">
@@ -127,7 +110,6 @@ import { Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import MessageBubble from '@/components/MessageBubble.vue'
 import { streamDrugAgentChat } from '@/api/drug-agent'
-import { uploadFile } from '@/api/compliance'
 
 const form = reactive({
   sessionId: `drug-agent-session-${Date.now()}`,
@@ -146,7 +128,6 @@ const messages = ref([
 const sending = ref(false)
 const lastResult = ref({})
 const messageContainerRef = ref(null)
-const currentFile = ref(null)
 
 const sceneLabel = (scene) => {
   const labels = {
@@ -200,25 +181,6 @@ const scrollToBottom = () => {
 
 const fillExample = (text) => {
   form.query = text
-}
-
-const handleFileUpload = async (uploadFileData) => {
-  if (!uploadFileData?.raw) {
-    return
-  }
-  try {
-    const result = await uploadFile(uploadFileData.raw)
-    currentFile.value = result
-    form.fileIds = result?.id ? [result.id] : []
-    ElMessage.success(`文件 ${result.fileName} 已上传，可用于 Drug Agent 审查`)
-  } catch (error) {
-    currentFile.value = {
-      id: `mock-file-${Date.now()}`,
-      fileName: uploadFileData.raw.name
-    }
-    form.fileIds = [currentFile.value.id]
-    ElMessage.warning('后端文件上传未完成，当前先使用前端占位文件 ID 演示联调')
-  }
 }
 
 const handleSend = async () => {
@@ -360,34 +322,6 @@ const handleSend = async () => {
 
 .scenario-bar {
   margin-bottom: 14px;
-}
-
-.toolbar-row {
-  margin-bottom: 14px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.current-file-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #f7fbff, #edf4ff);
-  border: 1px solid #d8e7ff;
-}
-
-.chip-label {
-  font-size: 12px;
-  color: #6f84a4;
-}
-
-.chip-name {
-  color: #1b4f93;
-  font-weight: 600;
 }
 
 .chat-board {

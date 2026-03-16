@@ -21,21 +21,6 @@
         <el-icon><Connection /></el-icon>
         <span>Drug Agent</span>
       </el-menu-item>
-
-      <el-menu-item index="/drug">
-        <el-icon><DataLine /></el-icon>
-        <span>药品监管</span>
-      </el-menu-item>
-
-      <el-menu-item index="/compliance">
-        <el-icon><ChatDotRound /></el-icon>
-        <span>合规对话</span>
-      </el-menu-item>
-
-      <el-menu-item index="/knowledge">
-        <el-icon><Reading /></el-icon>
-        <span>知识库管理</span>
-      </el-menu-item>
     </el-menu>
   </header>
 </template>
@@ -43,14 +28,11 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { Connection, DataLine, ChatDotRound, Reading } from '@element-plus/icons-vue'
+import { Connection } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const activeIndex = computed(() => {
   if (route.path.startsWith('/agent')) return '/agent'
-  if (route.path.startsWith('/drug')) return '/drug'
-  if (route.path.startsWith('/compliance')) return '/compliance'
-  if (route.path.startsWith('/knowledge')) return '/knowledge'
   return route.path
 })
 </script>
@@ -99,7 +81,7 @@ const activeIndex = computed(() => {
 
 .top-navbar {
   border-bottom: none;
-  min-width: 540px;
+  min-width: 180px;
   justify-content: flex-end;
 }
 
