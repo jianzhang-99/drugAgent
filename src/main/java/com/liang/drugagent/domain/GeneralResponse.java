@@ -1,5 +1,15 @@
 package com.liang.drugagent.domain;
 
+import lombok.Getter;
+import lombok.Setter;
+
+/**
+ * 通用接口返回对象。
+ *
+ * @author liangjiajian
+ */
+@Setter
+@Getter
 public class GeneralResponse<T> {
     private int code;
     private String message;
@@ -21,12 +31,4 @@ public class GeneralResponse<T> {
         return new GeneralResponse<T>(500, message, null);
     }
 
-    public int getCode() { return code; }
-    public void setCode(int code) { this.code = code; }
-
-    public String getMessage() { return message; }
-    public void setMessage(String message) { this.message = message; }
-
-    public T getData() { return data; }
-    public void setData(T data) { this.data = data; }
 }

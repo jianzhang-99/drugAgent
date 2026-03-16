@@ -13,7 +13,7 @@ public enum SceneType {
      * 通用法规问答场景。
      * 适用于法规查询、条款解释、合规依据咨询等轻问答请求。
      */
-    GENERAL_QA,
+    TenderReview,
 
     /**
      * 合规审查场景。

@@ -1,7 +1,7 @@
 package com.liang.drugagent.workflow;
 
 import com.liang.drugagent.agent.AgentContext;
-import com.liang.drugagent.domain.resp.WorkflowResult;
+import com.liang.drugagent.domain.WorkflowResult;
 
 /**
  * 场景工作流接口。

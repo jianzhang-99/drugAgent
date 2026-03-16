@@ -1,10 +1,10 @@
 package com.liang.drugagent.service;
 
 import com.liang.drugagent.agent.*;
-import com.liang.drugagent.domain.resp.EvidenceItem;
+import com.liang.drugagent.domain.EvidenceItem;
+import com.liang.drugagent.domain.WorkflowResult;
 import com.liang.drugagent.domain.req.DrugAgentReq;
 import com.liang.drugagent.domain.resp.DrugAgentResp;
-import com.liang.drugagent.domain.resp.WorkflowResult;
 import com.liang.drugagent.workflow.SceneType;
 import com.liang.drugagent.workflow.SceneWorkflow;
 import org.springframework.stereotype.Service;
@@ -23,6 +23,8 @@ import java.util.Map;
  *     <li>完成场景路由</li>
  *     <li>分发到对应工作流，并将结果包装成统一响应</li>
  * </ul>
+ *
+ * @author liangjiajian
  */
 @Service
 public class DrugAgentService {

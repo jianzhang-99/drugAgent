@@ -17,6 +17,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  *
  * <p>前端或外部系统只需要调用这一个接口，
  * 后端再在内部完成场景识别和流程编排。</p>
+ *
+ * @author liangjiajian
  */
 @RestController
 @RequestMapping("/agent/drug")

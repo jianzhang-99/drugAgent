@@ -20,6 +20,7 @@ import java.util.UUID;
  *
  * <p>MVP 阶段先用一个松散的 attributes 存储中间结果，
  * 后续如果场景稳定，再逐步收敛成强类型对象。</p>
+ *
  * @author liangjiajian
  */
 public class AgentContext {
