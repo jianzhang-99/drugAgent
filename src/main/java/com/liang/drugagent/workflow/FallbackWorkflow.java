@@ -7,14 +7,32 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+/**
+ * 兜底工作流实现类。
+ * 当系统无法识别用户意图或未匹配到特定场景时，由该工作流提供友好的引导回复。
+ *
+ * @author liangjiajian
+ */
 @Component
 public class FallbackWorkflow implements SceneWorkflow {
 
+    /**
+     * 获取当前工作流支持的场景类型。
+     *
+     * @return 未知场景类型
+     */
     @Override
     public SceneType support() {
         return SceneType.UNKNOWN;
     }
 
+    /**
+     * 执行兜底逻辑。
+     * 向用户说明当前无法识别意图，并列出支持的功能场景以进行引导。
+     *
+     * @param context Agent 上下文，包含原始查询内容
+     * @return 包含引导语的统一结果对象
+     */
     @Override
     public WorkflowResult execute(AgentContext context) {
         // 兜底工作流的职责不是“硬答”，而是明确告诉前端或用户：
