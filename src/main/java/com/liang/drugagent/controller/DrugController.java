@@ -2,16 +2,13 @@ package com.liang.drugagent.controller;
 
 import com.liang.drugagent.domain.GeneralResponse;
 import com.liang.drugagent.domain.req.DrugAnalyzeReq;
+import com.liang.drugagent.domain.resp.AnalysisReportResp;
 import com.liang.drugagent.service.AgentChatService;
 import com.liang.drugagent.service.DrugMonitorService;
-import com.liang.drugagent.domain.resp.AnalysisReportResp;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
