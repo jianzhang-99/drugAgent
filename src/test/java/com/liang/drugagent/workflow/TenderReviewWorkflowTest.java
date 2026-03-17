@@ -12,6 +12,7 @@ import com.liang.drugagent.executor.tenderreview.ContactNearbyExecutor;
 import com.liang.drugagent.executor.tenderreview.CoreTeamOverlapExecutor;
 import com.liang.drugagent.executor.tenderreview.QuoteGradientExecutor;
 import com.liang.drugagent.service.AgentChatService;
+import com.liang.drugagent.service.tenderreview.RiskFusionService;
 import com.liang.drugagent.service.tenderreview.TenderReviewDataResolver;
 import org.junit.jupiter.api.Test;
 
@@ -37,6 +38,7 @@ class TenderReviewWorkflowTest {
                         new LowRiskChapterExemptionExecutor(),
                         new ReferenceTemplateExemptionExecutor()
                 )),
+                new RiskFusionService(),
                 new ObjectMapper(),
                 new TenderReviewDataResolver(new ObjectMapper())
         );
@@ -101,7 +103,7 @@ class TenderReviewWorkflowTest {
         WorkflowResult result = workflow.execute(AgentContext.from(req));
 
         assertEquals("HIGH", result.getRiskLevel());
-        assertTrue(result.getAnswer().contains("high-risk rule hits"));
-        assertTrue(result.getEvidenceList().stream().anyMatch(item -> item.getTitle() != null));
+        assertTrue(result.getAnswer().contains("Fusion score="));
+        assertTrue(result.getEvidenceList().stream().anyMatch(item -> "risk_fusion_summary".equals(item.getTitle())));
     }
 }

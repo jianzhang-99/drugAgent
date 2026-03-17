@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -39,7 +38,7 @@ import java.util.stream.Collectors;
  * @author liangjiajian
  */
 @Component
-public class QuoteGradientExecutor implements TenderRuleExecutor {
+public class QuoteGradientExecutor extends AbstractTenderExecutor {
 
     /** 报价项字段类型。 */
     private static final String QUOTE_ITEM_FIELD_TYPE = "quote_item";
@@ -95,11 +94,17 @@ public class QuoteGradientExecutor implements TenderRuleExecutor {
         List<RuleHit> hits = new ArrayList<>();
         List<String> documentIds = scope.getDocumentIds();
         for (int i = 0; i < documentIds.size(); i++) {
+            String leftDocumentId = documentIds.get(i);
+            List<Field> leftFields = quoteFieldsByDocument.getOrDefault(leftDocumentId, List.of());
+            if (leftFields.isEmpty())
+                continue;
+
             for (int j = i + 1; j < documentIds.size(); j++) {
-                String leftDocumentId = documentIds.get(i);
                 String rightDocumentId = documentIds.get(j);
-                List<Field> leftFields = quoteFieldsByDocument.getOrDefault(leftDocumentId, List.of());
                 List<Field> rightFields = quoteFieldsByDocument.getOrDefault(rightDocumentId, List.of());
+                if (rightFields.isEmpty())
+                    continue;
+
                 RuleHit hit = detectBetweenDocuments(scope, leftDocumentId, leftFields, rightDocumentId, rightFields);
                 if (hit != null) {
                     hits.add(hit);
@@ -140,10 +145,8 @@ public class QuoteGradientExecutor implements TenderRuleExecutor {
             return null;
         }
 
-        Map<BigDecimal, List<QuoteDelta>> deltasByValue = new HashMap<>();
-        for (QuoteDelta quoteDelta : deltas) {
-            deltasByValue.computeIfAbsent(quoteDelta.delta(), key -> new ArrayList<>()).add(quoteDelta);
-        }
+        Map<BigDecimal, List<QuoteDelta>> deltasByValue = deltas.stream()
+                .collect(Collectors.groupingBy(QuoteDelta::delta));
 
         Map.Entry<BigDecimal, List<QuoteDelta>> dominantEntry = deltasByValue.entrySet().stream()
                 .max(Comparator.comparingInt(entry -> entry.getValue().size()))
@@ -180,7 +183,7 @@ public class QuoteGradientExecutor implements TenderRuleExecutor {
         }
         try {
             // 增强解析：过滤货币符号、逗号以及空格，确保解析成功率
-            String cleanedValue = value.replaceAll("[￥$元,]", "").trim();
+            String cleanedValue = value.replaceAll("[￥$元,\\s]", "");
             if (cleanedValue.isEmpty()) {
                 return null;
             }
@@ -193,13 +196,8 @@ public class QuoteGradientExecutor implements TenderRuleExecutor {
     private RuleHit buildHit(CompareScope scope, String leftDocumentId, String rightDocumentId,
             BigDecimal dominantDelta,
             List<QuoteDelta> dominantDeltas, int comparableCount) {
-        RuleHit hit = new RuleHit();
-        hit.setHitId(UUID.randomUUID().toString());
-        hit.setRuleCode(RULE_CODE);
-        hit.setRuleName(RULE_NAME);
-        hit.setScopeId(scope.getScopeId());
-        hit.setRiskType(RISK_TYPE);
-        hit.setPriority(PRIORITY);
+
+        RuleHit hit = createBaseHit(RULE_CODE, RULE_NAME, scope.getScopeId(), RISK_TYPE, PRIORITY, VERSION);
         hit.setWeight(95);
         hit.setMatchedValue("dominant_delta:" + dominantDelta.stripTrailingZeros().toPlainString());
         hit.setTriggerSummary(
@@ -213,8 +211,8 @@ public class QuoteGradientExecutor implements TenderRuleExecutor {
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList());
+
         hit.setEvidences(buildEvidences(dominantDeltas, dominantDelta));
-        hit.setVersion(VERSION);
         return hit;
     }
 
@@ -232,21 +230,16 @@ public class QuoteGradientExecutor implements TenderRuleExecutor {
     private List<RuleEvidence> buildEvidences(List<QuoteDelta> dominantDeltas, BigDecimal dominantDelta) {
         List<RuleEvidence> evidences = new ArrayList<>();
         for (QuoteDelta delta : dominantDeltas) {
-            evidences.add(toEvidence(delta.leftField(), dominantDelta, delta.rightField().getNormalizedValue()));
-            evidences.add(toEvidence(delta.rightField(), dominantDelta, delta.leftField().getNormalizedValue()));
+            evidences.add(toCustomEvidence(delta.leftField(), dominantDelta, delta.rightField().getNormalizedValue()));
+            evidences.add(toCustomEvidence(delta.rightField(), dominantDelta, delta.leftField().getNormalizedValue()));
         }
         return evidences;
     }
 
-    private RuleEvidence toEvidence(Field field, BigDecimal dominantDelta, String comparedValue) {
-        RuleEvidence evidence = new RuleEvidence();
-        evidence.setDocumentId(field.getDocumentId());
-        evidence.setFieldId(field.getFieldId());
-        evidence.setBlockId(field.getBlockId());
+    private RuleEvidence toCustomEvidence(Field field, BigDecimal dominantDelta, String comparedValue) {
+        RuleEvidence evidence = toEvidence(field);
         evidence.setMatchedValue(field.getNormalizedValue() + " (对比值 " + comparedValue
                 + ", 固定差额 " + dominantDelta.stripTrailingZeros().toPlainString() + ")");
-        evidence.setChapterPath(field.getChapterPath());
-        evidence.setAnchor(field.getAnchor());
         return evidence;
     }
 

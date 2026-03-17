@@ -2,7 +2,6 @@ package com.liang.drugagent.executor.tenderreview;
 
 import com.liang.drugagent.domain.tenderreview.CompareScope;
 import com.liang.drugagent.domain.tenderreview.Field;
-import com.liang.drugagent.domain.tenderreview.RuleEvidence;
 import com.liang.drugagent.domain.tenderreview.RuleHit;
 import com.liang.drugagent.domain.tenderreview.RuleResult;
 import com.liang.drugagent.domain.tenderreview.TenderReviewData;
@@ -12,7 +11,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -26,7 +24,7 @@ import java.util.stream.Collectors;
  * @author liangjiajian
  */
 @Component
-public class ImplementationMethodExecutor implements TenderRuleExecutor {
+public class ImplementationMethodExecutor extends AbstractTenderExecutor {
 
     /** 实施方法字段类型。 */
     private static final String FIELD_TYPE = "implementation_method";
@@ -41,12 +39,6 @@ public class ImplementationMethodExecutor implements TenderRuleExecutor {
     /** 规则版本。 */
     private static final String VERSION = "v1";
 
-    /**
-     * 执行实施方法相似性检测。
-     *
-     * @param data 标书审查结构化输入数据
-     * @return 包含命中风险的结果集
-     */
     @Override
     public RuleResult execute(TenderReviewData data) {
         RuleResult result = new RuleResult();
@@ -62,9 +54,6 @@ public class ImplementationMethodExecutor implements TenderRuleExecutor {
         return result;
     }
 
-    /**
-     * 在指定比对范围内检测实施方法顺序的一致性。
-     */
     private List<RuleHit> detectInScope(CompareScope scope, List<Field> fields) {
         if (scope == null || scope.getDocumentIds() == null || scope.getDocumentIds().size() < 2) {
             return List.of();
@@ -82,11 +71,16 @@ public class ImplementationMethodExecutor implements TenderRuleExecutor {
 
         // 两两比对文档
         for (int i = 0; i < documentIds.size(); i++) {
+            String leftId = documentIds.get(i);
+            List<Field> leftFields = fieldsByDoc.getOrDefault(leftId, List.of());
+            if (leftFields.isEmpty())
+                continue;
+
             for (int j = i + 1; j < documentIds.size(); j++) {
-                String leftId = documentIds.get(i);
                 String rightId = documentIds.get(j);
-                List<Field> leftFields = fieldsByDoc.getOrDefault(leftId, List.of());
                 List<Field> rightFields = fieldsByDoc.getOrDefault(rightId, List.of());
+                if (rightFields.isEmpty())
+                    continue;
 
                 if (isMethodSequenceIdentical(leftFields, rightFields)) {
                     hits.add(buildHit(scope, leftFields, rightFields));
@@ -96,11 +90,8 @@ public class ImplementationMethodExecutor implements TenderRuleExecutor {
         return hits;
     }
 
-    /**
-     * 判断两个文档的实施阶段及其顺序是否完全一致。
-     */
     private boolean isMethodSequenceIdentical(List<Field> left, List<Field> right) {
-        if (left.isEmpty() || right.isEmpty() || left.size() != right.size()) {
+        if (left.size() != right.size()) {
             return false;
         }
         for (int i = 0; i < left.size(); i++) {
@@ -113,17 +104,8 @@ public class ImplementationMethodExecutor implements TenderRuleExecutor {
         return true;
     }
 
-    /**
-     * 构建抄袭命中项。
-     */
     private RuleHit buildHit(CompareScope scope, List<Field> left, List<Field> right) {
-        RuleHit hit = new RuleHit();
-        hit.setHitId(UUID.randomUUID().toString());
-        hit.setRuleCode(RULE_CODE);
-        hit.setRuleName(RULE_NAME);
-        hit.setScopeId(scope.getScopeId());
-        hit.setRiskType(RISK_TYPE);
-        hit.setPriority(PRIORITY);
+        RuleHit hit = createBaseHit(RULE_CODE, RULE_NAME, scope.getScopeId(), RISK_TYPE, PRIORITY, VERSION);
         hit.setWeight(90);
 
         String sequence = left.stream()
@@ -134,52 +116,17 @@ public class ImplementationMethodExecutor implements TenderRuleExecutor {
         hit.setTriggerSummary(String.format("文档 %s 与 %s 的实施阶段划分（%s）及评审确认环节完全一致，存在高度同源风险。",
                 left.get(0).getDocumentId(), right.get(0).getDocumentId(), sequence));
 
-        hit.setDocumentIds(List.of(left.get(0).getDocumentId(), right.get(0).getDocumentId()));
+        List<String> docIds = List.of(left.get(0).getDocumentId(), right.get(0).getDocumentId());
+        hit.setDocumentIds(docIds);
 
-        List<String> fieldIds = new ArrayList<>();
-        left.forEach(f -> fieldIds.add(f.getFieldId()));
-        right.forEach(f -> fieldIds.add(f.getFieldId()));
-        hit.setFieldIds(fieldIds);
+        List<Field> allMatchedFields = new ArrayList<>(left);
+        allMatchedFields.addAll(right);
 
-        hit.setBlockIds(fieldIds.stream()
-                .map(id -> findBlockId(id, left, right))
-                .filter(Objects::nonNull).distinct().toList());
+        hit.setFieldIds(allMatchedFields.stream().map(Field::getFieldId).collect(Collectors.toList()));
+        hit.setBlockIds(allMatchedFields.stream().map(Field::getBlockId).filter(Objects::nonNull).distinct()
+                .collect(Collectors.toList()));
+        hit.setEvidences(allMatchedFields.stream().map(this::toEvidence).collect(Collectors.toList()));
 
-        List<RuleEvidence> evidences = new ArrayList<>();
-        left.forEach(f -> evidences.add(toEvidence(f)));
-        right.forEach(f -> evidences.add(toEvidence(f)));
-        hit.setEvidences(evidences);
-
-        hit.setVersion(VERSION);
         return hit;
-    }
-
-    /**
-     * 根据字段 ID 查找对应的块 ID。
-     */
-    private String findBlockId(String fieldId, List<Field> left, List<Field> right) {
-        for (Field f : left) {
-            if (f.getFieldId().equals(fieldId))
-                return f.getBlockId();
-        }
-        for (Field f : right) {
-            if (f.getFieldId().equals(fieldId))
-                return f.getBlockId();
-        }
-        return null;
-    }
-
-    /**
-     * 转换证据对象。
-     */
-    private RuleEvidence toEvidence(Field field) {
-        RuleEvidence evidence = new RuleEvidence();
-        evidence.setDocumentId(field.getDocumentId());
-        evidence.setFieldId(field.getFieldId());
-        evidence.setBlockId(field.getBlockId());
-        evidence.setMatchedValue(field.getNormalizedValue());
-        evidence.setChapterPath(field.getChapterPath());
-        evidence.setAnchor(field.getAnchor());
-        return evidence;
     }
 }

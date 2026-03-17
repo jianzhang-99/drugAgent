@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.liang.drugagent.agent.AgentContext;
 import com.liang.drugagent.domain.tenderreview.ExemptionHit;
 import com.liang.drugagent.domain.tenderreview.ExemptionResult;
+import com.liang.drugagent.domain.tenderreview.RiskFusionResult;
 import com.liang.drugagent.domain.tenderreview.RuleHit;
 import com.liang.drugagent.domain.tenderreview.RuleResult;
 import com.liang.drugagent.domain.tenderreview.TenderReviewData;
@@ -13,6 +14,7 @@ import com.liang.drugagent.engine.TenderExemptionEngine;
 import com.liang.drugagent.engine.TenderRuleEngine;
 import com.liang.drugagent.enums.SceneEnum;
 import com.liang.drugagent.service.AgentChatService;
+import com.liang.drugagent.service.tenderreview.RiskFusionService;
 import com.liang.drugagent.service.tenderreview.TenderReviewDataResolver;
 import org.springframework.stereotype.Component;
 
@@ -27,17 +29,20 @@ public class TenderReviewWorkflow implements SceneWorkflow {
     private final AgentChatService agentChatService;
     private final TenderRuleEngine tenderRuleEngine;
     private final TenderExemptionEngine tenderExemptionEngine;
+    private final RiskFusionService riskFusionService;
     private final ObjectMapper objectMapper;
     private final TenderReviewDataResolver tenderReviewDataResolver;
 
     public TenderReviewWorkflow(AgentChatService agentChatService,
                                 TenderRuleEngine tenderRuleEngine,
                                 TenderExemptionEngine tenderExemptionEngine,
+                                RiskFusionService riskFusionService,
                                 ObjectMapper objectMapper,
                                 TenderReviewDataResolver tenderReviewDataResolver) {
         this.agentChatService = agentChatService;
         this.tenderRuleEngine = tenderRuleEngine;
         this.tenderExemptionEngine = tenderExemptionEngine;
+        this.riskFusionService = riskFusionService;
         this.objectMapper = objectMapper;
         this.tenderReviewDataResolver = tenderReviewDataResolver;
     }
@@ -68,14 +73,19 @@ public class TenderReviewWorkflow implements SceneWorkflow {
         RuleResult ruleResult = tenderRuleEngine.execute(tenderReviewData);
         ExemptionResult exemptionResult = tenderExemptionEngine.apply(ruleResult.getHits(), tenderReviewData);
         List<RuleHit> effectiveHits = exemptionResult.getEffectiveHits();
+        RiskFusionResult fusionResult = riskFusionService.fuse(
+                tenderReviewData,
+                effectiveHits,
+                exemptionResult.getExemptionHits()
+        );
 
         WorkflowResult result = WorkflowResult.of(
                 SceneEnum.TENDER_REVIEW,
-                buildAnswer(tenderReviewData, ruleResult.getHits(), effectiveHits, exemptionResult.getExemptionHits())
+                buildAnswer(tenderReviewData, ruleResult.getHits(), effectiveHits, exemptionResult.getExemptionHits(), fusionResult)
         );
-        result.setRiskLevel(resolveRiskLevel(effectiveHits));
-        result.setSteps(List.of("scene_route", "structured_load", "rule_hit", "false_positive_exemption"));
-        result.setEvidenceList(buildEvidenceList(effectiveHits, exemptionResult.getExemptionHits()));
+        result.setRiskLevel(fusionResult.getRiskLevel());
+        result.setSteps(List.of("scene_route", "structured_load", "rule_hit", "false_positive_exemption", "risk_fusion"));
+        result.setEvidenceList(buildEvidenceList(effectiveHits, exemptionResult.getExemptionHits(), fusionResult));
         return result;
     }
 
@@ -98,7 +108,8 @@ public class TenderReviewWorkflow implements SceneWorkflow {
     private String buildAnswer(TenderReviewData data,
                                List<RuleHit> rawHits,
                                List<RuleHit> effectiveHits,
-                               List<ExemptionHit> exemptionHits) {
+                               List<ExemptionHit> exemptionHits,
+                               RiskFusionResult fusionResult) {
         int documentCount = data.getDocuments() == null ? 0 : data.getDocuments().size();
         int rawHitCount = rawHits == null ? 0 : rawHits.size();
         int effectiveHitCount = effectiveHits == null ? 0 : effectiveHits.size();
@@ -107,9 +118,11 @@ public class TenderReviewWorkflow implements SceneWorkflow {
         if (effectiveHitCount == 0) {
             if (rawHitCount > 0 && exemptionCount > 0) {
                 return "Reviewed " + documentCount + " documents, detected " + rawHitCount
-                        + " raw hits, and retained no high-risk hits after exemption.";
+                        + " raw hits, and retained no high-risk hits after exemption. Fusion score="
+                        + fusionResult.getScore() + ".";
             }
-            return "Reviewed " + documentCount + " documents and found no high-confidence collusion hits.";
+            return "Reviewed " + documentCount + " documents and found no high-confidence collusion hits. Fusion score="
+                    + fusionResult.getScore() + ".";
         }
 
         String topRules = effectiveHits.stream()
@@ -119,21 +132,21 @@ public class TenderReviewWorkflow implements SceneWorkflow {
         return "Reviewed " + documentCount + " documents, retained " + effectiveHitCount
                 + " high-risk rule hits"
                 + (exemptionCount > 0 ? ", and downgraded " + exemptionCount + " hits by exemption" : "")
+                + ". Fusion score=" + fusionResult.getScore()
+                + ", level=" + fusionResult.getRiskLevel()
                 + ". Focus: " + topRules + ".";
     }
 
-    private String resolveRiskLevel(List<RuleHit> hits) {
-        if (hits.stream().anyMatch(hit -> "HIGH".equals(hit.getPriority()) && valueAtLeast(effectiveWeight(hit), 85))) {
-            return "HIGH";
-        }
-        if (!hits.isEmpty()) {
-            return "MEDIUM";
-        }
-        return "LOW";
-    }
-
-    private List<EvidenceItem> buildEvidenceList(List<RuleHit> hits, List<ExemptionHit> exemptionHits) {
+    private List<EvidenceItem> buildEvidenceList(List<RuleHit> hits,
+                                                 List<ExemptionHit> exemptionHits,
+                                                 RiskFusionResult fusionResult) {
         List<EvidenceItem> evidenceItems = new ArrayList<>();
+        evidenceItems.add(new EvidenceItem(
+                "risk_fusion_summary",
+                fusionResult.getSummary() + " ReasonCodes=" + String.join(",", fusionResult.getReasonCodes()),
+                "risk-fusion"
+        ));
+
         if (hits.isEmpty()) {
             evidenceItems.add(new EvidenceItem(
                     "rule_scan_result",
@@ -176,9 +189,5 @@ public class TenderReviewWorkflow implements SceneWorkflow {
             return null;
         }
         return hit.getAdjustedWeight() != null ? hit.getAdjustedWeight() : hit.getWeight();
-    }
-
-    private boolean valueAtLeast(Integer value, int threshold) {
-        return value != null && value >= threshold;
     }
 }

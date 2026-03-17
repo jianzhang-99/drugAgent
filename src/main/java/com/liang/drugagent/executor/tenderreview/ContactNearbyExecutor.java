@@ -2,7 +2,6 @@ package com.liang.drugagent.executor.tenderreview;
 
 import com.liang.drugagent.domain.tenderreview.CompareScope;
 import com.liang.drugagent.domain.tenderreview.Field;
-import com.liang.drugagent.domain.tenderreview.RuleEvidence;
 import com.liang.drugagent.domain.tenderreview.RuleHit;
 import com.liang.drugagent.domain.tenderreview.RuleResult;
 import com.liang.drugagent.domain.tenderreview.TenderReviewData;
@@ -12,7 +11,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -26,7 +24,7 @@ import java.util.stream.Collectors;
  * @author liangjiajian
  */
 @Component
-public class ContactNearbyExecutor implements TenderRuleExecutor {
+public class ContactNearbyExecutor extends AbstractTenderExecutor {
 
     /** 联系人姓名。 */
     private static final String CONTACT_PERSON_TYPE = "contact_person";
@@ -72,26 +70,33 @@ public class ContactNearbyExecutor implements TenderRuleExecutor {
             return List.of();
         }
 
-        // 按文档聚合联系相关字段
-        Map<String, List<Field>> contactFieldsByDoc = fields.stream()
+        // 预过滤出属于该 scope 且是联系人/电话的字段，并按文档 ID 和类型聚合
+        // 优化点：一次流遍历完成所有预处理
+        Map<String, Map<String, List<Field>>> docTypeFields = fields.stream()
                 .filter(Objects::nonNull)
+                .filter(field -> scope.getDocumentIds().contains(field.getDocumentId()))
                 .filter(field -> CONTACT_PERSON_TYPE.equals(field.getFieldType())
                         || CONTACT_PHONE_TYPE.equals(field.getFieldType()))
-                .filter(field -> scope.getDocumentIds().contains(field.getDocumentId()))
-                .collect(Collectors.groupingBy(Field::getDocumentId));
+                .collect(Collectors.groupingBy(Field::getDocumentId,
+                        Collectors.groupingBy(Field::getFieldType)));
 
         List<RuleHit> hits = new ArrayList<>();
         List<String> documentIds = scope.getDocumentIds();
 
         // 执行文档间的两两比对
         for (int i = 0; i < documentIds.size(); i++) {
-            for (int j = i + 1; j < documentIds.size(); j++) {
-                String leftDocId = documentIds.get(i);
-                String rightDocId = documentIds.get(j);
-                List<Field> leftFields = contactFieldsByDoc.getOrDefault(leftDocId, List.of());
-                List<Field> rightFields = contactFieldsByDoc.getOrDefault(rightDocId, List.of());
+            String leftDocId = documentIds.get(i);
+            Map<String, List<Field>> leftMap = docTypeFields.getOrDefault(leftDocId, Map.of());
+            if (leftMap.isEmpty())
+                continue;
 
-                RuleHit hit = compareContacts(scope, leftDocId, leftFields, rightDocId, rightFields);
+            for (int j = i + 1; j < documentIds.size(); j++) {
+                String rightDocId = documentIds.get(j);
+                Map<String, List<Field>> rightMap = docTypeFields.getOrDefault(rightDocId, Map.of());
+                if (rightMap.isEmpty())
+                    continue;
+
+                RuleHit hit = compareContacts(scope, leftDocId, leftMap, rightDocId, rightMap);
                 if (hit != null) {
                     hits.add(hit);
                 }
@@ -103,15 +108,17 @@ public class ContactNearbyExecutor implements TenderRuleExecutor {
     /**
      * 对比两份文档中的具体联系姓名和电话项。
      */
-    private RuleHit compareContacts(CompareScope scope, String leftId, List<Field> leftFields, String rightId,
-            List<Field> rightFields) {
-        // 预先分类
-        List<Field> leftNames = leftFields.stream().filter(f -> CONTACT_PERSON_TYPE.equals(f.getFieldType())).toList();
-        List<Field> leftPhones = leftFields.stream().filter(f -> CONTACT_PHONE_TYPE.equals(f.getFieldType())).toList();
-        List<Field> rightNames = rightFields.stream().filter(f -> CONTACT_PERSON_TYPE.equals(f.getFieldType()))
-                .toList();
-        List<Field> rightPhones = rightFields.stream().filter(f -> CONTACT_PHONE_TYPE.equals(f.getFieldType()))
-                .toList();
+    private RuleHit compareContacts(CompareScope scope, String leftId, Map<String, List<Field>> leftMap,
+            String rightId, Map<String, List<Field>> rightMap) {
+
+        List<Field> leftNames = leftMap.getOrDefault(CONTACT_PERSON_TYPE, List.of());
+        List<Field> leftPhones = leftMap.getOrDefault(CONTACT_PHONE_TYPE, List.of());
+        List<Field> rightNames = rightMap.getOrDefault(CONTACT_PERSON_TYPE, List.of());
+        List<Field> rightPhones = rightMap.getOrDefault(CONTACT_PHONE_TYPE, List.of());
+
+        if (leftNames.isEmpty() || rightNames.isEmpty() || leftPhones.isEmpty() || rightPhones.isEmpty()) {
+            return null;
+        }
 
         for (Field leftName : leftNames) {
             for (Field rightName : rightNames) {
@@ -183,13 +190,7 @@ public class ContactNearbyExecutor implements TenderRuleExecutor {
      * 构建命中项风险详情。
      */
     private RuleHit buildHit(CompareScope scope, Field leftName, Field leftPhone, Field rightName, Field rightPhone) {
-        RuleHit hit = new RuleHit();
-        hit.setHitId(UUID.randomUUID().toString());
-        hit.setRuleCode(RULE_CODE);
-        hit.setRuleName(RULE_NAME);
-        hit.setScopeId(scope.getScopeId());
-        hit.setRiskType(RISK_TYPE);
-        hit.setPriority(PRIORITY);
+        RuleHit hit = createBaseHit(RULE_CODE, RULE_NAME, scope.getScopeId(), RISK_TYPE, PRIORITY, VERSION);
         hit.setWeight(98);
 
         hit.setMatchedValue(String.format("person:%s, phone1:%s, phone2:%s",
@@ -206,28 +207,12 @@ public class ContactNearbyExecutor implements TenderRuleExecutor {
                 List.of(leftName.getBlockId(), leftPhone.getBlockId(), rightName.getBlockId(), rightPhone.getBlockId())
                         .stream().filter(Objects::nonNull).distinct().toList());
 
-        List<RuleEvidence> evidences = new ArrayList<>();
-        evidences.add(toEvidence(leftName));
-        evidences.add(toEvidence(leftPhone));
-        evidences.add(toEvidence(rightName));
-        evidences.add(toEvidence(rightPhone));
-        hit.setEvidences(evidences);
+        hit.setEvidences(List.of(
+                toEvidence(leftName),
+                toEvidence(leftPhone),
+                toEvidence(rightName),
+                toEvidence(rightPhone)));
 
-        hit.setVersion(VERSION);
         return hit;
-    }
-
-    /**
-     * 转换证据对象。
-     */
-    private RuleEvidence toEvidence(Field field) {
-        RuleEvidence evidence = new RuleEvidence();
-        evidence.setDocumentId(field.getDocumentId());
-        evidence.setFieldId(field.getFieldId());
-        evidence.setBlockId(field.getBlockId());
-        evidence.setMatchedValue(field.getNormalizedValue());
-        evidence.setChapterPath(field.getChapterPath());
-        evidence.setAnchor(field.getAnchor());
-        return evidence;
     }
 }

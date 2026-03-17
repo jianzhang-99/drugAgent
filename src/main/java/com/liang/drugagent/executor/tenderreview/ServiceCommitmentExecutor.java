@@ -2,7 +2,6 @@ package com.liang.drugagent.executor.tenderreview;
 
 import com.liang.drugagent.domain.tenderreview.CompareScope;
 import com.liang.drugagent.domain.tenderreview.Field;
-import com.liang.drugagent.domain.tenderreview.RuleEvidence;
 import com.liang.drugagent.domain.tenderreview.RuleHit;
 import com.liang.drugagent.domain.tenderreview.RuleResult;
 import com.liang.drugagent.domain.tenderreview.TenderReviewData;
@@ -12,7 +11,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -26,7 +24,7 @@ import java.util.stream.Collectors;
  * @author liangjiajian
  */
 @Component
-public class ServiceCommitmentExecutor implements TenderRuleExecutor {
+public class ServiceCommitmentExecutor extends AbstractTenderExecutor {
 
     /** 服务承诺字段类型。 */
     private static final String FIELD_TYPE = "service_commitment";
@@ -41,12 +39,6 @@ public class ServiceCommitmentExecutor implements TenderRuleExecutor {
     /** 规则版本。 */
     private static final String VERSION = "v1";
 
-    /**
-     * 执行服务承诺相似性检测。
-     *
-     * @param data 标书审查结构化输入数据
-     * @return 包含命中风险的结果集
-     */
     @Override
     public RuleResult execute(TenderReviewData data) {
         RuleResult result = new RuleResult();
@@ -62,9 +54,6 @@ public class ServiceCommitmentExecutor implements TenderRuleExecutor {
         return result;
     }
 
-    /**
-     * 在指定比对范围内检测承诺内容是否完全一致。
-     */
     private List<RuleHit> detectInScope(CompareScope scope, List<Field> fields) {
         if (scope == null || scope.getDocumentIds() == null || scope.getDocumentIds().size() < 2) {
             return List.of();
@@ -82,11 +71,16 @@ public class ServiceCommitmentExecutor implements TenderRuleExecutor {
 
         // 两两比对不同厂商的标书文档
         for (int i = 0; i < documentIds.size(); i++) {
+            String leftId = documentIds.get(i);
+            List<Field> leftFields = fieldsByDoc.getOrDefault(leftId, List.of());
+            if (leftFields.isEmpty())
+                continue;
+
             for (int j = i + 1; j < documentIds.size(); j++) {
-                String leftId = documentIds.get(i);
                 String rightId = documentIds.get(j);
-                List<Field> leftFields = fieldsByDoc.getOrDefault(leftId, List.of());
                 List<Field> rightFields = fieldsByDoc.getOrDefault(rightId, List.of());
+                if (rightFields.isEmpty())
+                    continue;
 
                 hits.addAll(compareCommitments(scope, leftFields, rightFields));
             }
@@ -94,9 +88,6 @@ public class ServiceCommitmentExecutor implements TenderRuleExecutor {
         return hits;
     }
 
-    /**
-     * 对比两份文档中的服务承诺项。
-     */
     private List<RuleHit> compareCommitments(CompareScope scope, List<Field> left, List<Field> right) {
         List<RuleHit> hits = new ArrayList<>();
         for (Field l : left) {
@@ -112,17 +103,8 @@ public class ServiceCommitmentExecutor implements TenderRuleExecutor {
         return hits;
     }
 
-    /**
-     * 构建服务承诺抄袭命中项。
-     */
     private RuleHit buildHit(CompareScope scope, Field left, Field right) {
-        RuleHit hit = new RuleHit();
-        hit.setHitId(UUID.randomUUID().toString());
-        hit.setRuleCode(RULE_CODE);
-        hit.setRuleName(RULE_NAME);
-        hit.setScopeId(scope.getScopeId());
-        hit.setRiskType(RISK_TYPE);
-        hit.setPriority(PRIORITY);
+        RuleHit hit = createBaseHit(RULE_CODE, RULE_NAME, scope.getScopeId(), RISK_TYPE, PRIORITY, VERSION);
         hit.setWeight(88);
 
         hit.setMatchedValue(String.format("%s:%s", left.getNormalizedKey(), left.getNormalizedValue()));
@@ -132,23 +114,8 @@ public class ServiceCommitmentExecutor implements TenderRuleExecutor {
         hit.setDocumentIds(List.of(left.getDocumentId(), right.getDocumentId()));
         hit.setFieldIds(List.of(left.getFieldId(), right.getFieldId()));
         hit.setBlockIds(List.of(left.getBlockId(), right.getBlockId()).stream()
-                .filter(Objects::nonNull).distinct().toList());
+                .filter(Objects::nonNull).distinct().collect(Collectors.toList()));
         hit.setEvidences(List.of(toEvidence(left), toEvidence(right)));
-        hit.setVersion(VERSION);
         return hit;
-    }
-
-    /**
-     * 转换证据对象。
-     */
-    private RuleEvidence toEvidence(Field field) {
-        RuleEvidence evidence = new RuleEvidence();
-        evidence.setDocumentId(field.getDocumentId());
-        evidence.setFieldId(field.getFieldId());
-        evidence.setBlockId(field.getBlockId());
-        evidence.setMatchedValue(field.getNormalizedValue());
-        evidence.setChapterPath(field.getChapterPath());
-        evidence.setAnchor(field.getAnchor());
-        return evidence;
     }
 }

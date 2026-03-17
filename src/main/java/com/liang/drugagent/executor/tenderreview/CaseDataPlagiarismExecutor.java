@@ -2,7 +2,6 @@ package com.liang.drugagent.executor.tenderreview;
 
 import com.liang.drugagent.domain.tenderreview.CompareScope;
 import com.liang.drugagent.domain.tenderreview.Field;
-import com.liang.drugagent.domain.tenderreview.RuleEvidence;
 import com.liang.drugagent.domain.tenderreview.RuleHit;
 import com.liang.drugagent.domain.tenderreview.RuleResult;
 import com.liang.drugagent.domain.tenderreview.TenderReviewData;
@@ -12,7 +11,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 
@@ -27,7 +25,7 @@ import java.util.regex.Pattern;
  * @author liangjiajian
  */
 @Component
-public class CaseDataPlagiarismExecutor implements TenderRuleExecutor {
+public class CaseDataPlagiarismExecutor extends AbstractTenderExecutor {
 
     /** 案例数据字段类型。 */
     private static final String FIELD_TYPE = "case_data";
@@ -86,11 +84,16 @@ public class CaseDataPlagiarismExecutor implements TenderRuleExecutor {
 
         // 执行文档间的交叉比对
         for (int i = 0; i < documentIds.size(); i++) {
+            String leftId = documentIds.get(i);
+            List<Field> leftFields = fieldsByDoc.getOrDefault(leftId, List.of());
+            if (leftFields.isEmpty())
+                continue;
+
             for (int j = i + 1; j < documentIds.size(); j++) {
-                String leftId = documentIds.get(i);
                 String rightId = documentIds.get(j);
-                List<Field> leftFields = fieldsByDoc.getOrDefault(leftId, List.of());
                 List<Field> rightFields = fieldsByDoc.getOrDefault(rightId, List.of());
+                if (rightFields.isEmpty())
+                    continue;
 
                 hits.addAll(compareCaseData(scope, leftFields, rightFields));
             }
@@ -121,39 +124,19 @@ public class CaseDataPlagiarismExecutor implements TenderRuleExecutor {
      * 构建案例数据风险命中详情。
      */
     private RuleHit buildHit(CompareScope scope, Field left, Field right) {
-        RuleHit hit = new RuleHit();
-        hit.setHitId(UUID.randomUUID().toString());
-        hit.setRuleCode(RULE_CODE);
-        hit.setRuleName(RULE_NAME);
-        hit.setScopeId(scope.getScopeId());
-        hit.setRiskType(RISK_TYPE);
-        hit.setPriority(PRIORITY);
+        RuleHit hit = createBaseHit(RULE_CODE, RULE_NAME, scope.getScopeId(), RISK_TYPE, PRIORITY, VERSION);
         hit.setWeight(90);
         hit.setMatchedValue(left.getNormalizedValue());
 
-        hit.setTriggerSummary(String.format("文档 %s 与 %s 均在同类案例中声称具备“%s”的业务规模。特定的颗粒度数据完全一致，存在严重的案例洗稿或包装风险。",
+        hit.setTriggerSummary(String.format("文档 %s 与 %s 均在同类案例中声称具备“%s”的业务规模。特定的颗粒度数据完全一致，存在严重的案例洗洗稿或包装风险。",
                 left.getDocumentId(), right.getDocumentId(), left.getNormalizedValue()));
 
         hit.setDocumentIds(List.of(left.getDocumentId(), right.getDocumentId()));
         hit.setFieldIds(List.of(left.getFieldId(), right.getFieldId()));
         hit.setBlockIds(List.of(left.getBlockId(), right.getBlockId()).stream()
-                .filter(Objects::nonNull).distinct().toList());
-        hit.setEvidences(List.of(toEvidence(left), toEvidence(right)));
-        hit.setVersion(VERSION);
-        return hit;
-    }
+                .filter(Objects::nonNull).distinct().collect(Collectors.toList()));
 
-    /**
-     * 转换证据对象。
-     */
-    private RuleEvidence toEvidence(Field field) {
-        RuleEvidence evidence = new RuleEvidence();
-        evidence.setDocumentId(field.getDocumentId());
-        evidence.setFieldId(field.getFieldId());
-        evidence.setBlockId(field.getBlockId());
-        evidence.setMatchedValue(field.getNormalizedValue());
-        evidence.setChapterPath(field.getChapterPath());
-        evidence.setAnchor(field.getAnchor());
-        return evidence;
+        hit.setEvidences(List.of(toEvidence(left), toEvidence(right)));
+        return hit;
     }
 }

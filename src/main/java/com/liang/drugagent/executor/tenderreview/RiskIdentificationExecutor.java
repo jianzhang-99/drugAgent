@@ -2,7 +2,6 @@ package com.liang.drugagent.executor.tenderreview;
 
 import com.liang.drugagent.domain.tenderreview.CompareScope;
 import com.liang.drugagent.domain.tenderreview.Field;
-import com.liang.drugagent.domain.tenderreview.RuleEvidence;
 import com.liang.drugagent.domain.tenderreview.RuleHit;
 import com.liang.drugagent.domain.tenderreview.RuleResult;
 import com.liang.drugagent.domain.tenderreview.TenderReviewData;
@@ -12,7 +11,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -26,7 +24,7 @@ import java.util.stream.Collectors;
  * @author liangjiajian
  */
 @Component
-public class RiskIdentificationExecutor implements TenderRuleExecutor {
+public class RiskIdentificationExecutor extends AbstractTenderExecutor {
 
     /** 风险识别字段类型。 */
     private static final String FIELD_TYPE = "risk_identification";
@@ -44,12 +42,6 @@ public class RiskIdentificationExecutor implements TenderRuleExecutor {
     /** 判定抄袭的相似度阈值系数。 */
     private static final double SIMILARITY_THRESHOLD = 0.90;
 
-    /**
-     * 执行风险识别项相似性检测。
-     *
-     * @param data 标书审查结构化输入数据
-     * @return 命中风险的结果集
-     */
     @Override
     public RuleResult execute(TenderReviewData data) {
         RuleResult result = new RuleResult();
@@ -65,9 +57,6 @@ public class RiskIdentificationExecutor implements TenderRuleExecutor {
         return result;
     }
 
-    /**
-     * 在指定比对范围内检测文本高度相似的风险项。
-     */
     private List<RuleHit> detectInScope(CompareScope scope, List<Field> fields) {
         if (scope == null || scope.getDocumentIds() == null || scope.getDocumentIds().size() < 2) {
             return List.of();
@@ -85,16 +74,22 @@ public class RiskIdentificationExecutor implements TenderRuleExecutor {
 
         // 两两比对不同厂商的标书文档
         for (int i = 0; i < documentIds.size(); i++) {
+            String leftId = documentIds.get(i);
+            List<Field> leftFields = fieldsByDoc.getOrDefault(leftId, List.of());
+            if (leftFields.isEmpty())
+                continue;
+
             for (int j = i + 1; j < documentIds.size(); j++) {
-                String leftId = documentIds.get(i);
                 String rightId = documentIds.get(j);
-                List<Field> leftFields = fieldsByDoc.getOrDefault(leftId, List.of());
                 List<Field> rightFields = fieldsByDoc.getOrDefault(rightId, List.of());
+                if (rightFields.isEmpty())
+                    continue;
 
                 for (Field l : leftFields) {
                     for (Field r : rightFields) {
-                        if (isHighlySimilar(l, r)) {
-                            hits.add(buildHit(scope, l, r));
+                        double similarity = getSimilarity(l, r);
+                        if (similarity >= SIMILARITY_THRESHOLD) {
+                            hits.add(buildHit(scope, l, r, similarity));
                         }
                     }
                 }
@@ -103,35 +98,20 @@ public class RiskIdentificationExecutor implements TenderRuleExecutor {
         return hits;
     }
 
-    /**
-     * 判断两个风险项描述内容是否高度相似。
-     */
-    private boolean isHighlySimilar(Field f1, Field f2) {
+    private double getSimilarity(Field f1, Field f2) {
         String v1 = f1.getNormalizedValue();
         String v2 = f2.getNormalizedValue();
-        if (v1 == null || v2 == null) {
-            return false;
-        }
-        return calculateSimilarity(v1, v2) >= SIMILARITY_THRESHOLD;
+        if (v1 == null || v2 == null)
+            return 0.0;
+        if (v1.equals(v2))
+            return 1.0;
+
+        int longerLength = Math.max(v1.length(), v2.length());
+        if (longerLength == 0)
+            return 1.0;
+        return (longerLength - editDistance(v1, v2)) / (double) longerLength;
     }
 
-    /**
-     * 计算两个字符串的相似度平衡系数 (基于编辑距离)。
-     */
-    private double calculateSimilarity(String s1, String s2) {
-        if (s1.equals(s2)) {
-            return 1.0;
-        }
-        int longerLength = Math.max(s1.length(), s2.length());
-        if (longerLength == 0) {
-            return 1.0;
-        }
-        return (longerLength - editDistance(s1, s2)) / (double) longerLength;
-    }
-
-    /**
-     * Levenshtein 编辑距离算法实现。
-     */
     private int editDistance(String s1, String s2) {
         int[] costs = new int[s2.length() + 1];
         for (int i = 0; i <= s1.length(); i++) {
@@ -150,27 +130,15 @@ public class RiskIdentificationExecutor implements TenderRuleExecutor {
                     }
                 }
             }
-            if (i > 0) {
+            if (i > 0)
                 costs[s2.length()] = lastValue;
-            }
         }
         return costs[s2.length()];
     }
 
-    /**
-     * 构建风险识别抄袭命中项详情。
-     */
-    private RuleHit buildHit(CompareScope scope, Field left, Field right) {
-        RuleHit hit = new RuleHit();
-        hit.setHitId(UUID.randomUUID().toString());
-        hit.setRuleCode(RULE_CODE);
-        hit.setRuleName(RULE_NAME);
-        hit.setScopeId(scope.getScopeId());
-        hit.setRiskType(RISK_TYPE);
-        hit.setPriority(PRIORITY);
+    private RuleHit buildHit(CompareScope scope, Field left, Field right, double sim) {
+        RuleHit hit = createBaseHit(RULE_CODE, RULE_NAME, scope.getScopeId(), RISK_TYPE, PRIORITY, VERSION);
         hit.setWeight(85);
-
-        double sim = calculateSimilarity(left.getNormalizedValue(), right.getNormalizedValue());
         hit.setMatchedValue("similarity:" + String.format("%.2f", sim));
 
         hit.setTriggerSummary(String.format("文档 %s 与 %s 在风险项“%s”的内容描述、影响及应对措施上极其相似（相似度 %.0f%%）。",
@@ -179,23 +147,9 @@ public class RiskIdentificationExecutor implements TenderRuleExecutor {
         hit.setDocumentIds(List.of(left.getDocumentId(), right.getDocumentId()));
         hit.setFieldIds(List.of(left.getFieldId(), right.getFieldId()));
         hit.setBlockIds(List.of(left.getBlockId(), right.getBlockId()).stream()
-                .filter(Objects::nonNull).distinct().toList());
-        hit.setEvidences(List.of(toEvidence(left), toEvidence(right)));
-        hit.setVersion(VERSION);
-        return hit;
-    }
+                .filter(Objects::nonNull).distinct().collect(Collectors.toList()));
 
-    /**
-     * 转换证据对象。
-     */
-    private RuleEvidence toEvidence(Field field) {
-        RuleEvidence evidence = new RuleEvidence();
-        evidence.setDocumentId(field.getDocumentId());
-        evidence.setFieldId(field.getFieldId());
-        evidence.setBlockId(field.getBlockId());
-        evidence.setMatchedValue(field.getNormalizedValue());
-        evidence.setChapterPath(field.getChapterPath());
-        evidence.setAnchor(field.getAnchor());
-        return evidence;
+        hit.setEvidences(List.of(toEvidence(left), toEvidence(right)));
+        return hit;
     }
 }

@@ -2,7 +2,6 @@ package com.liang.drugagent.executor.tenderreview;
 
 import com.liang.drugagent.domain.tenderreview.CompareScope;
 import com.liang.drugagent.domain.tenderreview.Field;
-import com.liang.drugagent.domain.tenderreview.RuleEvidence;
 import com.liang.drugagent.domain.tenderreview.RuleHit;
 import com.liang.drugagent.domain.tenderreview.RuleResult;
 import com.liang.drugagent.domain.tenderreview.TenderReviewData;
@@ -12,7 +11,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -26,7 +24,7 @@ import java.util.stream.Collectors;
  * @author liangjiajian
  */
 @Component
-public class ProposalPlagiarismExecutor implements TenderRuleExecutor {
+public class ProposalPlagiarismExecutor extends AbstractTenderExecutor {
 
     /** 技术方案字段类型。 */
     private static final String FIELD_TYPE = "proposal_segment";
@@ -58,7 +56,6 @@ public class ProposalPlagiarismExecutor implements TenderRuleExecutor {
         }
 
         List<RuleHit> hits = new ArrayList<>();
-        // 在每个比对范围内循环执行检测
         for (CompareScope scope : data.getCompareScopes()) {
             hits.addAll(detectInScope(scope, data.getFields()));
         }
@@ -68,10 +65,6 @@ public class ProposalPlagiarismExecutor implements TenderRuleExecutor {
 
     /**
      * 在指定比对范围内检测文档。
-     *
-     * @param scope  比对范围
-     * @param fields 所有字段列表
-     * @return 命中项列表
      */
     private List<RuleHit> detectInScope(CompareScope scope, List<Field> fields) {
         if (scope == null || scope.getDocumentIds() == null || scope.getDocumentIds().size() < 2) {
@@ -87,18 +80,25 @@ public class ProposalPlagiarismExecutor implements TenderRuleExecutor {
 
         List<RuleHit> hits = new ArrayList<>();
         List<String> documentIds = scope.getDocumentIds();
+
         // 两两比对不同厂商的标书文档
         for (int i = 0; i < documentIds.size(); i++) {
+            String leftDocId = documentIds.get(i);
+            List<Field> leftFields = proposalFieldsByDoc.getOrDefault(leftDocId, List.of());
+            if (leftFields.isEmpty())
+                continue;
+
             for (int j = i + 1; j < documentIds.size(); j++) {
-                String leftDocId = documentIds.get(i);
                 String rightDocId = documentIds.get(j);
-                List<Field> leftFields = proposalFieldsByDoc.getOrDefault(leftDocId, List.of());
                 List<Field> rightFields = proposalFieldsByDoc.getOrDefault(rightDocId, List.of());
+                if (rightFields.isEmpty())
+                    continue;
 
                 for (Field left : leftFields) {
                     for (Field right : rightFields) {
-                        if (isHighlySimilar(left, right)) {
-                            hits.add(buildHit(scope, left, right));
+                        double similarity = calculateSimilarity(left.getNormalizedValue(), right.getNormalizedValue());
+                        if (isHighlySimilar(left, right, similarity)) {
+                            hits.add(buildHit(scope, left, right, similarity));
                         }
                     }
                 }
@@ -109,22 +109,13 @@ public class ProposalPlagiarismExecutor implements TenderRuleExecutor {
 
     /**
      * 判断两个字段内容是否实质性相似。
-     *
-     * @param f1 字段 A
-     * @param f2 字段 B
-     * @return 是否相似
      */
-    private boolean isHighlySimilar(Field f1, Field f2) {
+    private boolean isHighlySimilar(Field f1, Field f2, double similarity) {
         String v1 = f1.getNormalizedValue();
-        String v2 = f2.getNormalizedValue();
-        if (v1 == null || v2 == null) {
+        if (v1 == null)
             return false;
-        }
 
-        double similarity = calculateSimilarity(v1, v2);
-
-        // 如果包含特定高频业务环节描述关键词，降低误报可能或作为加成判断
-        // (W-P1 典型场景：统一门户、统一流程、统一数据口径)
+        // 特殊业务规则判断
         if (v1.contains("统一门户") && v1.contains("统一流程") && v1.contains("统一数据口径")) {
             return similarity >= SIMILARITY_THRESHOLD;
         }
@@ -133,25 +124,23 @@ public class ProposalPlagiarismExecutor implements TenderRuleExecutor {
     }
 
     /**
-     * 计算两个字符串的相似度（Levenshtein 算法基础上的标准化相似度）。
-     *
-     * @param s1 字符串 1
-     * @param s2 字符串 2
-     * @return 相似度 (0.0 to 1.0)
+     * 计算两个字符串的相似度。
      */
     private double calculateSimilarity(String s1, String s2) {
-        if (s1.equals(s2)) {
+        if (s1 == null || s2 == null)
+            return 0.0;
+        if (s1.equals(s2))
             return 1.0;
-        }
+
         int longerLength = Math.max(s1.length(), s2.length());
-        if (longerLength == 0) {
+        if (longerLength == 0)
             return 1.0;
-        }
+
         return (longerLength - editDistance(s1, s2)) / (double) longerLength;
     }
 
     /**
-     * 计算两个字符串之间的编辑距离。
+     * 使用编辑距离算法。
      */
     private int editDistance(String s1, String s2) {
         int[] costs = new int[s2.length() + 1];
@@ -171,27 +160,18 @@ public class ProposalPlagiarismExecutor implements TenderRuleExecutor {
                     }
                 }
             }
-            if (i > 0) {
+            if (i > 0)
                 costs[s2.length()] = lastValue;
-            }
         }
         return costs[s2.length()];
     }
 
     /**
-     * 构建命中风险详情。
+     * 构建命中汇总。
      */
-    private RuleHit buildHit(CompareScope scope, Field left, Field right) {
-        RuleHit hit = new RuleHit();
-        hit.setHitId(UUID.randomUUID().toString());
-        hit.setRuleCode(RULE_CODE);
-        hit.setRuleName(RULE_NAME);
-        hit.setScopeId(scope.getScopeId());
-        hit.setRiskType(RISK_TYPE);
-        hit.setPriority(PRIORITY);
+    private RuleHit buildHit(CompareScope scope, Field left, Field right, double sim) {
+        RuleHit hit = createBaseHit(RULE_CODE, RULE_NAME, scope.getScopeId(), RISK_TYPE, PRIORITY, VERSION);
         hit.setWeight(85);
-
-        double sim = calculateSimilarity(left.getNormalizedValue(), right.getNormalizedValue());
         hit.setMatchedValue("similarity:" + String.format("%.2f", sim));
 
         hit.setTriggerSummary(String.format("文档 %s 与 %s 在技术方案中关于“%s”的描述实质性相似（相似度 %.0f%%）。",
@@ -200,23 +180,9 @@ public class ProposalPlagiarismExecutor implements TenderRuleExecutor {
         hit.setDocumentIds(List.of(left.getDocumentId(), right.getDocumentId()));
         hit.setFieldIds(List.of(left.getFieldId(), right.getFieldId()));
         hit.setBlockIds(List.of(left.getBlockId(), right.getBlockId()).stream()
-                .filter(Objects::nonNull).distinct().toList());
-        hit.setEvidences(List.of(toEvidence(left), toEvidence(right)));
-        hit.setVersion(VERSION);
-        return hit;
-    }
+                .filter(Objects::nonNull).distinct().collect(Collectors.toList()));
 
-    /**
-     * 转换证据对象。
-     */
-    private RuleEvidence toEvidence(Field field) {
-        RuleEvidence evidence = new RuleEvidence();
-        evidence.setDocumentId(field.getDocumentId());
-        evidence.setFieldId(field.getFieldId());
-        evidence.setBlockId(field.getBlockId());
-        evidence.setMatchedValue(field.getNormalizedValue());
-        evidence.setChapterPath(field.getChapterPath());
-        evidence.setAnchor(field.getAnchor());
-        return evidence;
+        hit.setEvidences(List.of(toEvidence(left), toEvidence(right)));
+        return hit;
     }
 }
