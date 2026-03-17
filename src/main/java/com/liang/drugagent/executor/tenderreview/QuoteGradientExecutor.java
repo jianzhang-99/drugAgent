@@ -24,13 +24,17 @@ import java.util.stream.Collectors;
 /**
  * 报价梯度异常规则执行器。
  *
- * <p>当前版本聚焦 W-M1：
+ * <p>
+ * 当前版本聚焦 W-M1：
  * 在同一比对范围内，如果两份投标文件的多个相同报价项存在稳定的固定价差，
- * 则判定为“报价梯度异常”。</p>
+ * 则判定为“报价梯度异常”。
+ * </p>
  *
- * <p>当前约定上游将报价明细抽取为 `fieldType=quote_item` 的字段：
+ * <p>
+ * 当前约定上游将报价明细抽取为 `fieldType=quote_item` 的字段：
  * `normalizedKey` 标识报价项，
- * `normalizedValue` 存放可解析的数值金额。</p>
+ * `normalizedValue` 存放可解析的数值金额。
+ * </p>
  *
  * @author liangjiajian
  */
@@ -106,7 +110,7 @@ public class QuoteGradientExecutor implements TenderRuleExecutor {
     }
 
     private RuleHit detectBetweenDocuments(CompareScope scope, String leftDocumentId, List<Field> leftFields,
-                                           String rightDocumentId, List<Field> rightFields) {
+            String rightDocumentId, List<Field> rightFields) {
         Map<String, Field> leftByKey = toQuoteMap(leftFields);
         Map<String, Field> rightByKey = toQuoteMap(rightFields);
 
@@ -155,7 +159,8 @@ public class QuoteGradientExecutor implements TenderRuleExecutor {
             return null;
         }
 
-        return buildHit(scope, leftDocumentId, rightDocumentId, dominantEntry.getKey(), dominantEntry.getValue(), deltas.size());
+        return buildHit(scope, leftDocumentId, rightDocumentId, dominantEntry.getKey(), dominantEntry.getValue(),
+                deltas.size());
     }
 
     private Map<String, Field> toQuoteMap(List<Field> quoteFields) {
@@ -174,14 +179,20 @@ public class QuoteGradientExecutor implements TenderRuleExecutor {
             return null;
         }
         try {
-            return new BigDecimal(value.replace(",", "").trim());
+            // 增强解析：过滤货币符号、逗号以及空格，确保解析成功率
+            String cleanedValue = value.replaceAll("[￥$元,]", "").trim();
+            if (cleanedValue.isEmpty()) {
+                return null;
+            }
+            return new BigDecimal(cleanedValue);
         } catch (NumberFormatException exception) {
             return null;
         }
     }
 
-    private RuleHit buildHit(CompareScope scope, String leftDocumentId, String rightDocumentId, BigDecimal dominantDelta,
-                             List<QuoteDelta> dominantDeltas, int comparableCount) {
+    private RuleHit buildHit(CompareScope scope, String leftDocumentId, String rightDocumentId,
+            BigDecimal dominantDelta,
+            List<QuoteDelta> dominantDeltas, int comparableCount) {
         RuleHit hit = new RuleHit();
         hit.setHitId(UUID.randomUUID().toString());
         hit.setRuleCode(RULE_CODE);
@@ -191,7 +202,8 @@ public class QuoteGradientExecutor implements TenderRuleExecutor {
         hit.setPriority(PRIORITY);
         hit.setWeight(95);
         hit.setMatchedValue("dominant_delta:" + dominantDelta.stripTrailingZeros().toPlainString());
-        hit.setTriggerSummary(buildTriggerSummary(leftDocumentId, rightDocumentId, dominantDelta, dominantDeltas, comparableCount));
+        hit.setTriggerSummary(
+                buildTriggerSummary(leftDocumentId, rightDocumentId, dominantDelta, dominantDeltas, comparableCount));
         hit.setDocumentIds(List.of(leftDocumentId, rightDocumentId));
         hit.setFieldIds(dominantDeltas.stream()
                 .flatMap(delta -> List.of(delta.leftField().getFieldId(), delta.rightField().getFieldId()).stream())
@@ -207,7 +219,7 @@ public class QuoteGradientExecutor implements TenderRuleExecutor {
     }
 
     private String buildTriggerSummary(String leftDocumentId, String rightDocumentId, BigDecimal dominantDelta,
-                                       List<QuoteDelta> dominantDeltas, int comparableCount) {
+            List<QuoteDelta> dominantDeltas, int comparableCount) {
         String items = dominantDeltas.stream()
                 .map(delta -> readableQuoteItem(delta.itemKey()))
                 .collect(Collectors.joining("、"));
@@ -246,9 +258,9 @@ public class QuoteGradientExecutor implements TenderRuleExecutor {
     /**
      * 报价项差额明细。
      *
-     * @param itemKey 报价项键
-     * @param delta 差额
-     * @param leftField 左文档报价字段
+     * @param itemKey    报价项键
+     * @param delta      差额
+     * @param leftField  左文档报价字段
      * @param rightField 右文档报价字段
      */
     private record QuoteDelta(String itemKey, BigDecimal delta, Field leftField, Field rightField) {

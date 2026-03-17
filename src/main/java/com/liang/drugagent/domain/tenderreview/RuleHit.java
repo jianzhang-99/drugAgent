@@ -43,4 +43,8 @@ public class RuleHit {
     private List<RuleEvidence> evidences = new ArrayList<>();
     /** 规则版本号。 */
     private String version;
+    private Integer originalWeight;
+    private Integer adjustedWeight;
+    private Boolean exempted;
+    private String exemptionReason;
 }
