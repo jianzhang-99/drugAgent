@@ -1,7 +1,7 @@
 package com.liang.drugagent.controller;
 
 import com.liang.drugagent.service.DrugAgentService;
-import com.liang.drugagent.domain.GeneralResponse;
+import com.liang.drugagent.domain.Result;
 import com.liang.drugagent.domain.req.DrugAgentReq;
 import com.liang.drugagent.domain.resp.DrugAgentResp;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,11 +32,11 @@ public class DrugAgentController {
 
     @Operation(summary = "Drug Agent 对话入口")
     @PostMapping("/chat")
-    public GeneralResponse<DrugAgentResp> chat(@RequestBody DrugAgentReq req) {
+    public Result<DrugAgentResp> chat(@RequestBody DrugAgentReq req) {
         if (req == null || req.getQuery() == null || req.getQuery().isBlank()) {
-            return GeneralResponse.error("query 不能为空");
+            return Result.error("query 不能为空");
         }
-        return GeneralResponse.success(drugAgentService.handle(req));
+        return Result.success(drugAgentService.handle(req));
     }
 
     @Operation(summary = "Drug Agent 流式对话入口")

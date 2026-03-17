@@ -1,4 +1,4 @@
-package com.liang.drugagent.domain;
+package com.liang.drugagent.domain.workflow;
 
 import com.liang.drugagent.enums.SceneEnum;
 import lombok.Getter;

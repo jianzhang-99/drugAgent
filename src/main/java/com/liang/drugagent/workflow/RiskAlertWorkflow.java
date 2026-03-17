@@ -1,8 +1,8 @@
 package com.liang.drugagent.workflow;
 
 import com.liang.drugagent.agent.AgentContext;
-import com.liang.drugagent.domain.EvidenceItem;
-import com.liang.drugagent.domain.WorkflowResult;
+import com.liang.drugagent.domain.workflow.EvidenceItem;
+import com.liang.drugagent.domain.workflow.WorkflowResult;
 import com.liang.drugagent.enums.SceneEnum;
 import com.liang.drugagent.service.AgentChatService;
 import org.springframework.stereotype.Component;

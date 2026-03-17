@@ -1,6 +1,6 @@
 package com.liang.drugagent.domain.resp;
 
-import com.liang.drugagent.domain.EvidenceItem;
+import com.liang.drugagent.domain.workflow.EvidenceItem;
 import lombok.Getter;
 import lombok.Setter;
 

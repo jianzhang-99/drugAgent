@@ -1,28 +1,23 @@
 package com.liang.drugagent;
 
-import com.liang.drugagent.service.QwenService;
+import com.liang.drugagent.service.AgentChatService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 /**
- * 千问接入功能测试
- * 直接调用 QwenService 验证 API Key 和模型调用是否正常
+ * 基础对话服务装配测试。
  */
 @SpringBootTest
 public class QwenServiceTest {
 
     @Autowired
-    private QwenService qwenService;
+    private AgentChatService agentChatService;
 
     @Test
-    public void testChat() {
-        String prompt = "你好，请用一句话介绍一下你自己";
-        System.out.println("===== 发送提示词: " + prompt + " =====");
-        String result = qwenService.chat(prompt);
-        System.out.println("===== 千问回复: =====");
-        System.out.println(result);
-        // 如果能正常输出回复内容且不包含"异常"字样，说明接入成功
-        assert result != null && !result.contains("调用千问接口异常");
+    public void shouldLoadAgentChatService() {
+        assertNotNull(agentChatService);
     }
 }

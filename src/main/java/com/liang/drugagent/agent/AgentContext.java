@@ -26,16 +26,19 @@ public class AgentContext {
     private final String userId;
     private final String query;
     private final List<String> fileIds;
+    private final Map<String, Object> metadata;
     @Setter
     private SceneEnum sceneType;
     private final Map<String, Object> attributes = new HashMap<>();
 
-    private AgentContext(String traceId, String sessionId, String userId, String query, List<String> fileIds) {
+    private AgentContext(String traceId, String sessionId, String userId, String query, List<String> fileIds,
+                         Map<String, Object> metadata) {
         this.traceId = traceId;
         this.sessionId = sessionId;
         this.userId = userId;
         this.query = query;
         this.fileIds = fileIds;
+        this.metadata = metadata == null ? Map.of() : metadata;
     }
 
     public static AgentContext from(DrugAgentReq req) {
@@ -48,7 +51,8 @@ public class AgentContext {
                 sessionId,
                 req.getUserId(),
                 req.getQuery(),
-                req.getFileIds()
+                req.getFileIds(),
+                req.getMetadata()
         );
     }
 

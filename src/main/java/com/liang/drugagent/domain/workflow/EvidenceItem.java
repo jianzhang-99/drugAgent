@@ -1,4 +1,4 @@
-package com.liang.drugagent.domain;
+package com.liang.drugagent.domain.workflow;
 
 import lombok.Getter;
 import lombok.Setter;

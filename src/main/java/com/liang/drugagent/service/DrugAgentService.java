@@ -1,8 +1,8 @@
 package com.liang.drugagent.service;
 
 import com.liang.drugagent.agent.*;
-import com.liang.drugagent.domain.EvidenceItem;
-import com.liang.drugagent.domain.WorkflowResult;
+import com.liang.drugagent.domain.workflow.EvidenceItem;
+import com.liang.drugagent.domain.workflow.WorkflowResult;
 import com.liang.drugagent.domain.req.DrugAgentReq;
 import com.liang.drugagent.domain.resp.DrugAgentResp;
 import com.liang.drugagent.enums.SceneEnum;
