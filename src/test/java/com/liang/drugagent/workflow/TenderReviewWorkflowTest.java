@@ -12,6 +12,7 @@ import com.liang.drugagent.executor.tenderreview.ContactNearbyExecutor;
 import com.liang.drugagent.executor.tenderreview.CoreTeamOverlapExecutor;
 import com.liang.drugagent.executor.tenderreview.QuoteGradientExecutor;
 import com.liang.drugagent.service.AgentChatService;
+import com.liang.drugagent.service.tenderreview.EvidenceAssemblerService;
 import com.liang.drugagent.service.tenderreview.RiskFusionService;
 import com.liang.drugagent.service.tenderreview.TenderReviewDataResolver;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
@@ -39,6 +41,7 @@ class TenderReviewWorkflowTest {
                         new ReferenceTemplateExemptionExecutor()
                 )),
                 new RiskFusionService(),
+                new EvidenceAssemblerService(),
                 new ObjectMapper(),
                 new TenderReviewDataResolver(new ObjectMapper())
         );
@@ -104,6 +107,7 @@ class TenderReviewWorkflowTest {
 
         assertEquals("HIGH", result.getRiskLevel());
         assertTrue(result.getAnswer().contains("Fusion score="));
-        assertTrue(result.getEvidenceList().stream().anyMatch(item -> "risk_fusion_summary".equals(item.getTitle())));
+        assertFalse(result.getEvidenceGroups().isEmpty());
+        assertTrue(result.getEvidenceGroups().stream().anyMatch(group -> "risk_fusion".equals(group.getGroupKey())));
     }
 }

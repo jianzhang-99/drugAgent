@@ -8,17 +8,18 @@ import com.liang.drugagent.domain.tenderreview.RiskFusionResult;
 import com.liang.drugagent.domain.tenderreview.RuleHit;
 import com.liang.drugagent.domain.tenderreview.RuleResult;
 import com.liang.drugagent.domain.tenderreview.TenderReviewData;
+import com.liang.drugagent.domain.workflow.EvidenceAssemblyResult;
 import com.liang.drugagent.domain.workflow.EvidenceItem;
 import com.liang.drugagent.domain.workflow.WorkflowResult;
 import com.liang.drugagent.engine.TenderExemptionEngine;
 import com.liang.drugagent.engine.TenderRuleEngine;
 import com.liang.drugagent.enums.SceneEnum;
 import com.liang.drugagent.service.AgentChatService;
+import com.liang.drugagent.service.tenderreview.EvidenceAssemblerService;
 import com.liang.drugagent.service.tenderreview.RiskFusionService;
 import com.liang.drugagent.service.tenderreview.TenderReviewDataResolver;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -30,6 +31,7 @@ public class TenderReviewWorkflow implements SceneWorkflow {
     private final TenderRuleEngine tenderRuleEngine;
     private final TenderExemptionEngine tenderExemptionEngine;
     private final RiskFusionService riskFusionService;
+    private final EvidenceAssemblerService evidenceAssemblerService;
     private final ObjectMapper objectMapper;
     private final TenderReviewDataResolver tenderReviewDataResolver;
 
@@ -37,12 +39,14 @@ public class TenderReviewWorkflow implements SceneWorkflow {
                                 TenderRuleEngine tenderRuleEngine,
                                 TenderExemptionEngine tenderExemptionEngine,
                                 RiskFusionService riskFusionService,
+                                EvidenceAssemblerService evidenceAssemblerService,
                                 ObjectMapper objectMapper,
                                 TenderReviewDataResolver tenderReviewDataResolver) {
         this.agentChatService = agentChatService;
         this.tenderRuleEngine = tenderRuleEngine;
         this.tenderExemptionEngine = tenderExemptionEngine;
         this.riskFusionService = riskFusionService;
+        this.evidenceAssemblerService = evidenceAssemblerService;
         this.objectMapper = objectMapper;
         this.tenderReviewDataResolver = tenderReviewDataResolver;
     }
@@ -78,14 +82,20 @@ public class TenderReviewWorkflow implements SceneWorkflow {
                 effectiveHits,
                 exemptionResult.getExemptionHits()
         );
+        EvidenceAssemblyResult evidenceAssemblyResult = evidenceAssemblerService.assemble(
+                effectiveHits,
+                exemptionResult.getExemptionHits(),
+                fusionResult
+        );
 
         WorkflowResult result = WorkflowResult.of(
                 SceneEnum.TENDER_REVIEW,
                 buildAnswer(tenderReviewData, ruleResult.getHits(), effectiveHits, exemptionResult.getExemptionHits(), fusionResult)
         );
         result.setRiskLevel(fusionResult.getRiskLevel());
-        result.setSteps(List.of("scene_route", "structured_load", "rule_hit", "false_positive_exemption", "risk_fusion"));
-        result.setEvidenceList(buildEvidenceList(effectiveHits, exemptionResult.getExemptionHits(), fusionResult));
+        result.setSteps(List.of("scene_route", "structured_load", "rule_hit", "false_positive_exemption", "risk_fusion", "evidence_assembly"));
+        result.setEvidenceList(evidenceAssemblyResult.getFlatItems());
+        result.setEvidenceGroups(evidenceAssemblyResult.getGroups());
         return result;
     }
 
@@ -135,53 +145,6 @@ public class TenderReviewWorkflow implements SceneWorkflow {
                 + ". Fusion score=" + fusionResult.getScore()
                 + ", level=" + fusionResult.getRiskLevel()
                 + ". Focus: " + topRules + ".";
-    }
-
-    private List<EvidenceItem> buildEvidenceList(List<RuleHit> hits,
-                                                 List<ExemptionHit> exemptionHits,
-                                                 RiskFusionResult fusionResult) {
-        List<EvidenceItem> evidenceItems = new ArrayList<>();
-        evidenceItems.add(new EvidenceItem(
-                "risk_fusion_summary",
-                fusionResult.getSummary() + " ReasonCodes=" + String.join(",", fusionResult.getReasonCodes()),
-                "risk-fusion"
-        ));
-
-        if (hits.isEmpty()) {
-            evidenceItems.add(new EvidenceItem(
-                    "rule_scan_result",
-                    "No contact reuse, team overlap, abnormal pricing, or other high-risk hits were retained.",
-                    "rule-engine"
-            ));
-            appendExemptionSummary(evidenceItems, exemptionHits);
-            return evidenceItems;
-        }
-
-        for (RuleHit hit : hits.stream().limit(5).toList()) {
-            String content = hit.getTriggerSummary();
-            if (Boolean.TRUE.equals(hit.getExempted()) && hit.getExemptionReason() != null && !hit.getExemptionReason().isBlank()) {
-                content = content + " Exemption applied: " + hit.getExemptionReason();
-            }
-            evidenceItems.add(new EvidenceItem(hit.getRuleName(), content, "rule-engine"));
-        }
-        appendExemptionSummary(evidenceItems, exemptionHits);
-        return evidenceItems;
-    }
-
-    private void appendExemptionSummary(List<EvidenceItem> evidenceItems, List<ExemptionHit> exemptionHits) {
-        if (exemptionHits == null || exemptionHits.isEmpty()) {
-            return;
-        }
-        String summary = exemptionHits.stream()
-                .limit(3)
-                .map(hit -> hit.getRuleName() + ": " + hit.getReason())
-                .collect(Collectors.joining("; "));
-        evidenceItems.add(new EvidenceItem(
-                "exemption_summary",
-                "Processed " + exemptionHits.size() + " exemption hits."
-                        + (summary.isBlank() ? "" : " Typical reasons: " + summary),
-                "exemption-engine"
-        ));
     }
 
     private Integer effectiveWeight(RuleHit hit) {

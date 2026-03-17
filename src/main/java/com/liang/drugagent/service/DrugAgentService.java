@@ -50,6 +50,7 @@ public class DrugAgentService {
         resp.setAnswer(workflowResult.getAnswer());
         resp.setRiskLevel(workflowResult.getRiskLevel());
         resp.setEvidenceList(workflowResult.getEvidenceList());
+        resp.setEvidenceGroups(workflowResult.getEvidenceGroups());
         resp.setSteps(workflowResult.getSteps());
         return resp;
     }
