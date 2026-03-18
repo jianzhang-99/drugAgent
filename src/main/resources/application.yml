@@ -28,7 +28,7 @@ springdoc:
   group-configs:
     - group: 'default'
       paths-to-match: '/**'
-      packages-to-scan: com.liang.drugagent.controller
+      packages-to-scan: com.liang.drugagent
 
 knife4j:
   enable: true
