@@ -1,5 +1,5 @@
 <template>
-  <article class="suggest-card">
+  <article class="suggest-card" @click="$emit('click')">
     <div class="suggest-icon" :class="theme">
       <el-icon><component :is="icon" /></el-icon>
     </div>
@@ -15,6 +15,8 @@ defineProps({
   icon: [Object, String],
   theme: String
 })
+
+defineEmits(['click'])
 </script>
 
 <style scoped>

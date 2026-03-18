@@ -4,6 +4,7 @@ import com.liang.drugagent.domain.tenderreview.TenderCase;
 import com.liang.drugagent.domain.tenderreview.TenderDocument;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -24,6 +25,10 @@ public class InMemoryTenderCaseStore {
         return Optional.ofNullable(cases.get(caseId));
     }
 
+    public List<TenderCase> findAllCases() {
+        return cases.values().stream().toList();
+    }
+
     // ---- CaseDocument ----
 
     public void saveDocument(TenderDocument doc) {
@@ -32,6 +37,12 @@ public class InMemoryTenderCaseStore {
 
     public Optional<TenderDocument> findDocument(String docId) {
         return Optional.ofNullable(documents.get(docId));
+    }
+
+    public List<TenderDocument> findDocumentsByCaseId(String caseId) {
+        return documents.values().stream()
+                .filter(document -> caseId.equals(document.getCaseId()))
+                .toList();
     }
 
     // ---- File Bytes ----

@@ -29,7 +29,7 @@ class TenderDocxParserTest {
 
     @BeforeEach
     void setUp() {
-        parser = new TenderDocxParser();
+        parser = new TenderDocxParser(new TenderTextStructureSupport());
     }
 
     // ---- normalizeText ----

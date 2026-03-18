@@ -46,7 +46,8 @@
           v-for="task in filteredTasks" 
           :key="task.id" 
           class="glass-task-card"
-          :class="{ 'highlight': task.isUrgent }"
+          :class="{ 'highlight': task.isUrgent || task.isRecent }"
+          @click="handleTaskAction(task)"
         >
           <div class="card-top">
             <div class="type-badge" :style="{ '--badge-color': task.color }">
@@ -79,7 +80,7 @@
               <el-icon><Clock /></el-icon>
               <span>{{ task.time }}</span>
             </div>
-            <button class="prime-action" :class="{ 'gold': task.isUrgent }">
+            <button class="prime-action" :class="{ 'gold': task.isUrgent }" @click.stop="handleTaskAction(task)">
               {{ task.action }}
             </button>
           </footer>
@@ -90,17 +91,18 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Clock, Document, Files, Filter, RefreshLeft, Monitor, Warning } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import WorkspaceLayout from '../components/layout/WorkspaceLayout.vue'
+import { listTenderReviewCases } from '../api/drug-agent'
+import { appendAuditLog, getRecentTenderTask, getTenderTasks, upsertTenderTask } from '../utils/local-state'
 
+const route = useRoute()
+const router = useRouter()
 const activeCategory = ref('all')
-
-const summaryStats = [
-  { label: '执行中', value: '01', icon: RefreshLeft, theme: 'theme-blue', accent: 'acc-blue' },
-  { label: '待复核', value: '01', icon: Monitor, theme: 'theme-gold', accent: 'acc-gold' },
-  { label: '检出风险', value: '01', icon: Warning, theme: 'theme-red', accent: 'acc-red' }
-]
+const tenderTasks = ref([])
 
 const categories = [
   { id: 'all', label: '全场景' },
@@ -109,7 +111,7 @@ const categories = [
   { id: 'risk', label: '合规预警' }
 ]
 
-const tasks = [
+const mockTasks = [
   {
     id: 'T-8821',
     scene: 'tender',
@@ -171,11 +173,147 @@ const tasks = [
   }
 ]
 
+const recentTask = (() => {
+  const parsed = getRecentTenderTask()
+  if (!parsed?.caseId) return null
+  return {
+    id: parsed.caseId,
+    scene: parsed.scene || 'tender',
+    type: '标书审查',
+    icon: Document,
+    color: '#4f46e5',
+    title: parsed.filenames?.length
+      ? `新建标书审查任务（${parsed.filenames.length} 份文件）`
+      : '新建标书审查任务',
+    riskLabel: parsed.status === 'PENDING' ? '待解析' : parsed.status || '已创建',
+    riskMsg: parsed.documentIds?.length
+      ? `已创建任务，待处理文档 ${parsed.documentIds.length} 份`
+      : '任务已创建，等待后续处理',
+    riskLevel: 'risk-info',
+    time: route.query.caseId === parsed.caseId ? '刚刚创建' : '最近创建',
+    action: '查看报告',
+    isUrgent: false,
+    isRecent: true,
+    tag: route.query.caseId === parsed.caseId ? '当前任务' : '最近任务',
+    tagClass: 'pill-gold'
+  }
+})()
+
+const formatRelativeTime = (createdAt) => {
+  if (!createdAt) return '未知时间'
+  const createdTime = new Date(createdAt).getTime()
+  if (Number.isNaN(createdTime)) return '未知时间'
+
+  const diffMs = Date.now() - createdTime
+  const diffMinutes = Math.max(1, Math.floor(diffMs / 60000))
+
+  if (diffMinutes < 60) return `${diffMinutes}分钟前`
+
+  const diffHours = Math.floor(diffMinutes / 60)
+  if (diffHours < 24) return `${diffHours}小时前`
+
+  const diffDays = Math.floor(diffHours / 24)
+  return `${diffDays}天前`
+}
+
+const toTenderTaskCard = (task) => ({
+  id: task.caseId,
+  scene: 'tender',
+  type: '标书审查',
+  icon: Document,
+  color: '#4f46e5',
+  title: `标书审查任务（${task.documentIds?.length || 0} 份文件）`,
+  riskLabel: task.status === 'PENDING' ? '待解析' : task.status,
+  riskMsg: `提交人：${task.submittedBy || 'anonymous'}，待处理文档 ${task.documentIds?.length || 0} 份`,
+  riskLevel: task.status === 'FAILED' ? 'risk-high' : 'risk-info',
+  time: route.query.caseId === task.caseId ? '刚刚创建' : formatRelativeTime(task.createdAt),
+  action: '查看报告',
+  isUrgent: false,
+  isRecent: route.query.caseId === task.caseId,
+  tag: route.query.caseId === task.caseId ? '当前任务' : undefined,
+  tagClass: route.query.caseId === task.caseId ? 'pill-gold' : undefined
+})
+
+const allTasks = computed(() => {
+  const mergedTenderTasks = [...tenderTasks.value]
+
+  if (recentTask && !mergedTenderTasks.some((task) => task.id === recentTask.id)) {
+    mergedTenderTasks.unshift(recentTask)
+  }
+
+  return [...mergedTenderTasks, ...mockTasks.filter((task) => task.scene !== 'tender')]
+})
+
 const filteredTasks = computed(() => {
   return activeCategory.value === 'all' 
-    ? tasks 
-    : tasks.filter(t => t.scene === activeCategory.value)
+    ? allTasks.value 
+    : allTasks.value.filter(t => t.scene === activeCategory.value)
 })
+
+const summaryStats = computed(() => {
+  const taskList = allTasks.value
+  return [
+    {
+      label: '执行中',
+      value: String(taskList.filter((task) => ['risk', 'tender'].includes(task.scene) && ['risk-info'].includes(task.riskLevel)).length).padStart(2, '0'),
+      icon: RefreshLeft,
+      theme: 'theme-blue',
+      accent: 'acc-blue'
+    },
+    {
+      label: '待复核',
+      value: String(taskList.filter((task) => task.riskLevel === 'risk-wait').length).padStart(2, '0'),
+      icon: Monitor,
+      theme: 'theme-gold',
+      accent: 'acc-gold'
+    },
+    {
+      label: '检出风险',
+      value: String(taskList.filter((task) => task.riskLevel === 'risk-high').length).padStart(2, '0'),
+      icon: Warning,
+      theme: 'theme-red',
+      accent: 'acc-red'
+    }
+  ]
+})
+
+const loadTenderTasks = async () => {
+  try {
+    const response = await listTenderReviewCases()
+    const serverTasks = Array.isArray(response) ? response : []
+    serverTasks.forEach(upsertTenderTask)
+    const localTasks = getTenderTasks()
+    const merged = [...serverTasks]
+    localTasks.forEach((task) => {
+      if (!merged.some((item) => item.caseId === task.caseId)) {
+        merged.push(task)
+      }
+    })
+    tenderTasks.value = merged.map(toTenderTaskCard)
+  } catch (error) {
+    console.error('Load tender tasks failed:', error)
+    ElMessage.warning('标书审查任务加载失败，当前展示部分演示数据')
+  }
+}
+
+onMounted(() => {
+  loadTenderTasks()
+})
+
+const handleTaskAction = (task) => {
+  if (task.scene === 'tender') {
+    appendAuditLog({
+      id: `audit-${Date.now()}`,
+      type: 'TASK_VIEWED',
+      title: '查看任务详情',
+      detail: `查看任务 ${task.id}`,
+      createdAt: new Date().toISOString()
+    })
+    router.push(`/agent/tasks/${task.id}`)
+    return
+  }
+  ElMessage.info('该场景详情页将在后续版本接入，当前先展示看板信息')
+}
 </script>
 
 <style scoped>

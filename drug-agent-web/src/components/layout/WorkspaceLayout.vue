@@ -58,17 +58,20 @@ const workspaceItems = [
   { key: 'hub', label: '工作台 (Agent Hub)', icon: Position, path: '/agent' },
   { key: 'tasks', label: '任务看板', icon: List, path: '/agent/tasks' },
   { key: 'knowledge', label: '合规知识库', icon: Reading, path: '/agent/knowledge' },
-  { key: 'audit', label: '全局审计日志', icon: RefreshLeft }
+  { key: 'audit', label: '全局审计日志', icon: RefreshLeft, path: '/agent/audit' }
 ]
 
 const settingItems = [
-  { key: 'prefs', label: '偏好与配置', icon: Setting },
-  { key: 'help', label: '使用帮助', icon: QuestionFilled }
+  { key: 'prefs', label: '偏好与配置', icon: Setting, path: '/agent/settings' },
+  { key: 'help', label: '使用帮助', icon: QuestionFilled, path: '/agent/help' }
 ]
 
 const activeMenu = computed(() => {
   if (route.path.startsWith('/agent/tasks')) return 'tasks'
   if (route.path.startsWith('/agent/knowledge')) return 'knowledge'
+  if (route.path.startsWith('/agent/audit')) return 'audit'
+  if (route.path.startsWith('/agent/settings')) return 'prefs'
+  if (route.path.startsWith('/agent/help')) return 'help'
   return 'hub'
 })
 
@@ -134,3 +137,4 @@ const handleMenuClick = (item) => {
   }
 }
 </style>
+```

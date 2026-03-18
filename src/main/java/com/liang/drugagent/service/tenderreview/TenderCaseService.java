@@ -9,7 +9,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -42,7 +44,7 @@ public class TenderCaseService {
             document.setCaseId(caseId);
             document.setFilename(filename);
             document.setDocumentName(filename);
-            document.setFileType("docx");
+            document.setFileType(resolveFileType(filename));
             document.setStatus(TenderCaseStatus.PENDING.name());
             docs.add(document);
         }
@@ -80,6 +82,20 @@ public class TenderCaseService {
         return store.findFileBytes(docId);
     }
 
+    public Optional<TenderDocument> getDocument(String docId) {
+        return store.findDocument(docId);
+    }
+
+    /**
+     * 查询所有任务，按创建时间倒序返回。
+     */
+    public List<TenderCase> listCases() {
+        return store.findAllCases().stream()
+                .sorted(Comparator.comparing(TenderCase::getCreatedAt,
+                        Comparator.nullsLast(Comparator.naturalOrder())).reversed())
+                .toList();
+    }
+
     // ---- internal ----
 
     private void validateRequest(TenderCaseCreateReq req) {
@@ -90,9 +106,18 @@ public class TenderCaseService {
             if (name == null || name.isBlank()) {
                 throw new IllegalArgumentException("文件名不能为空");
             }
-            if (!name.toLowerCase().endsWith(".docx")) {
-                throw new IllegalArgumentException("仅支持 docx 格式文件");
+            String lowerName = name.toLowerCase(Locale.ROOT);
+            if (!(lowerName.endsWith(".docx") || lowerName.endsWith(".doc") || lowerName.endsWith(".md"))) {
+                throw new IllegalArgumentException("仅支持 doc、docx、md 格式文件");
             }
         }
+    }
+
+    private String resolveFileType(String filename) {
+        String lowerName = filename == null ? "" : filename.toLowerCase(Locale.ROOT);
+        if (lowerName.endsWith(".docx")) return "docx";
+        if (lowerName.endsWith(".doc")) return "doc";
+        if (lowerName.endsWith(".md")) return "md";
+        return "unknown";
     }
 }

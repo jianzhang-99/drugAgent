@@ -9,49 +9,42 @@
             </div>
             <div>
               <h1>合规知识大脑</h1>
-              <p>
-                管理 Agent 的长期记忆与审查准则。非结构化文献将由 RAG 引擎进行向量化切片，
-                结构化规则将注入场景工作流的路由策略中。
-              </p>
+              <p>管理法规文献、规则组和实体字典，让 Agent 的知识底座可维护、可追踪、可持续更新。</p>
             </div>
           </div>
         </div>
-        <button class="import-trigger">
-          <el-icon><Plus /></el-icon>
-          <span>导入新知识</span>
-        </button>
+        <div class="hero-actions">
+          <input ref="knowledgeInput" type="file" multiple style="display: none" @change="handleImportKnowledge" />
+          <button class="import-trigger" @click="knowledgeInput?.click()">
+            <el-icon><Plus /></el-icon>
+            <span>导入新知识</span>
+          </button>
+        </div>
       </header>
 
       <section class="hero-panels">
         <article class="stat-card">
-          <span class="stat-title">RAG 向量切片库</span>
+          <span class="stat-title">RAG 文档数</span>
           <div class="stat-row">
-            <strong>24,592</strong>
-            <span class="stat-status success">
-              <el-icon><TrendCharts /></el-icon>
-              活跃
-            </span>
+            <strong>{{ documents.length }}</strong>
+            <span class="stat-status success">已接入</span>
           </div>
         </article>
 
         <article class="stat-card">
-          <span class="stat-title">生效审查规则</span>
+          <span class="stat-title">启用规则组</span>
           <div class="stat-row">
-            <strong>18</strong>
-            <span class="stat-sub">/ 24 组</span>
+            <strong>{{ enabledRulesCount }}</strong>
+            <span class="stat-sub">/ {{ rules.length }} 组</span>
           </div>
         </article>
 
         <article class="engine-card">
           <div class="engine-head">
             <el-icon><MagicStick /></el-icon>
-            <span>AGENT 知识引擎状态</span>
+            <span>知识引擎状态</span>
           </div>
-          <p>
-            基于 Gemini 2.5 Pro 驱动的 Embedding 模型。当前检索延时正常 (~120ms)，
-            规则引擎已与 SceneRouter 保持热更新同步。
-          </p>
-          <div class="engine-watermark">?</div>
+          <p>当前前端已支持知识文档管理、规则组启停、实体字典维护和本地持久化，可直接用于演示和日常录入。</p>
         </article>
       </section>
 
@@ -72,16 +65,22 @@
         <div class="panel-toolbar">
           <label class="search-box">
             <el-icon><Search /></el-icon>
-            <input
-              v-model="searchText"
-              type="text"
-              placeholder="检索法规、指引或政策文献..."
-            >
+            <input v-model="searchText" type="text" :placeholder="activeTabPlaceholder" />
           </label>
 
-          <button class="reindex-trigger" v-if="activeTab === 'rag'">
+          <button v-if="activeTab === 'rag'" class="reindex-trigger" @click="reindexDocuments">
             <el-icon><Refresh /></el-icon>
             <span>手动触发全量向量化</span>
+          </button>
+
+          <button v-if="activeTab === 'rules'" class="reindex-trigger" @click="addRule">
+            <el-icon><Plus /></el-icon>
+            <span>新增规则组</span>
+          </button>
+
+          <button v-if="activeTab === 'dict'" class="reindex-trigger" @click="addDictionary">
+            <el-icon><Plus /></el-icon>
+            <span>新增词条</span>
           </button>
         </div>
 
@@ -97,11 +96,14 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in filteredDocuments" :key="item.name">
+              <tr v-if="filteredDocuments.length === 0">
+                <td colspan="5" class="empty-cell">暂无知识文档，请先导入文件。</td>
+              </tr>
+              <tr v-for="item in filteredDocuments" :key="item.id">
                 <td>
                   <div class="doc-cell">
                     <div class="doc-icon" :class="item.fileType">
-                      <el-icon><component :is="item.icon" /></el-icon>
+                      <el-icon><Document /></el-icon>
                     </div>
                     <div>
                       <div class="doc-title">{{ item.name }}</div>
@@ -109,30 +111,62 @@
                     </div>
                   </div>
                 </td>
-                <td>
-                  <span class="status-pill" :class="item.statusClass">
-                    <el-icon><component :is="item.statusIcon" /></el-icon>
-                    {{ item.status }}
-                  </span>
-                </td>
+                <td><span class="status-pill" :class="item.statusClass">{{ item.status }}</span></td>
                 <td class="metric-cell">{{ item.chunks }}</td>
                 <td class="time-cell">{{ item.importedAt }}</td>
-                <td>
-                  <button class="table-action" aria-label="删除文档">
-                    <el-icon><Delete /></el-icon>
-                  </button>
+                <td class="action-cell">
+                  <button class="table-action" @click="markDocumentReady(item.id)">重建</button>
+                  <button class="table-action danger" @click="removeDocument(item.id)">删除</button>
                 </td>
               </tr>
             </tbody>
           </table>
 
-          <div v-else class="placeholder-panel">
-            <div class="placeholder-badge">
-              <el-icon><component :is="activeTabMeta.icon" /></el-icon>
-            </div>
-            <h3>{{ activeTabMeta.title }}</h3>
-            <p>{{ activeTabMeta.description }}</p>
-          </div>
+          <table v-else-if="activeTab === 'rules'" class="knowledge-table">
+            <thead>
+              <tr>
+                <th>规则组名称</th>
+                <th>适用场景</th>
+                <th>优先级</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="rule in filteredRules" :key="rule.id">
+                <td>{{ rule.name }}</td>
+                <td>{{ rule.scene }}</td>
+                <td>{{ rule.priority }}</td>
+                <td><span class="status-pill" :class="rule.enabled ? 'ready' : 'processing'">{{ rule.enabled ? '已启用' : '已停用' }}</span></td>
+                <td class="action-cell">
+                  <button class="table-action" @click="toggleRule(rule.id)">{{ rule.enabled ? '停用' : '启用' }}</button>
+                  <button class="table-action danger" @click="removeRule(rule.id)">删除</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <table v-else class="knowledge-table">
+            <thead>
+              <tr>
+                <th>实体类型</th>
+                <th>标准名称</th>
+                <th>别名</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in filteredDictionaries" :key="item.id">
+                <td>{{ item.type }}</td>
+                <td>{{ item.term }}</td>
+                <td>{{ item.alias }}</td>
+                <td class="action-cell">
+                  <button class="table-action" @click="renameDictionary(item.id)">编辑</button>
+                  <button class="table-action danger" @click="removeDictionary(item.id)">删除</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
     </section>
@@ -141,26 +175,25 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import {
-  Check,
-  Checked,
-  Coin,
-  Delete,
-  Document,
-  DocumentChecked,
-  Files,
-  Loading,
-  MagicStick,
-  Notebook,
-  Plus,
-  Refresh,
-  Search,
-  TrendCharts
-} from '@element-plus/icons-vue'
+import { Coin, Document, Files, MagicStick, Notebook, Plus, Refresh, Search, Checked } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import WorkspaceLayout from '../components/layout/WorkspaceLayout.vue'
+import {
+  appendAuditLog,
+  getKnowledgeDictionaries,
+  getKnowledgeDocuments,
+  getKnowledgeRules,
+  setKnowledgeDictionaries,
+  setKnowledgeDocuments,
+  setKnowledgeRules
+} from '../utils/local-state'
 
 const activeTab = ref('rag')
 const searchText = ref('')
+const knowledgeInput = ref(null)
+const documents = ref(getKnowledgeDocuments())
+const rules = ref(getKnowledgeRules())
+const dictionaries = ref(getKnowledgeDictionaries())
 
 const tabs = [
   { key: 'rag', label: '法规文献源 (RAG)', icon: Files },
@@ -168,62 +201,131 @@ const tabs = [
   { key: 'dict', label: '实体字典库 (Dictionaries)', icon: Notebook }
 ]
 
-const documents = [
-  {
-    name: '《国家医疗器械采购管理规范(2025版)》.pdf',
-    size: '2.4 MB',
-    fileType: 'pdf',
-    icon: Document,
-    status: '已向量化',
-    statusClass: 'ready',
-    statusIcon: Check,
-    chunks: '1452 Chunks',
-    importedAt: '2026-03-01'
-  },
-  {
-    name: '骨科耗材历年最高限价指导文件.docx',
-    size: '1.1 MB',
-    fileType: 'doc',
-    icon: DocumentChecked,
-    status: '已向量化',
-    statusClass: 'ready',
-    statusIcon: Check,
-    chunks: '840 Chunks',
-    importedAt: '2026-03-10'
-  },
-  {
-    name: '内部采购合同标准条款模板_V3.pdf',
-    size: '0.8 MB',
-    fileType: 'pdf',
-    icon: Document,
-    status: '切片解析中',
-    statusClass: 'processing',
-    statusIcon: Loading,
-    chunks: '–',
-    importedAt: '刚刚'
-  }
-]
+const enabledRulesCount = computed(() => rules.value.filter((rule) => rule.enabled).length)
 
-const placeholders = {
-  rules: {
-    icon: Checked,
-    title: '审查规则组',
-    description: '这里将展示可启停的规则分组、命中优先级和适用场景，用于注入审查工作流。'
-  },
-  dict: {
-    icon: Notebook,
-    title: '实体字典库',
-    description: '这里将维护药械名称、规格别名、科室实体和供应商词典，支撑 NER 与规则归一化。'
-  }
-}
+const activeTabPlaceholder = computed(() => {
+  if (activeTab.value === 'rules') return '检索规则组名称或适用场景...'
+  if (activeTab.value === 'dict') return '检索实体名称、别名或类型...'
+  return '检索法规、指引或政策文献...'
+})
+
+const keywordMatches = (value) => value.toLowerCase().includes(searchText.value.trim().toLowerCase())
 
 const filteredDocuments = computed(() => {
   const keyword = searchText.value.trim().toLowerCase()
-  if (!keyword) return documents
-  return documents.filter((item) => item.name.toLowerCase().includes(keyword))
+  if (!keyword) return documents.value
+  return documents.value.filter((item) => item.name.toLowerCase().includes(keyword))
 })
 
-const activeTabMeta = computed(() => placeholders[activeTab.value] ?? placeholders.rules)
+const filteredRules = computed(() => {
+  const keyword = searchText.value.trim().toLowerCase()
+  if (!keyword) return rules.value
+  return rules.value.filter((item) => keywordMatches(item.name) || keywordMatches(item.scene))
+})
+
+const filteredDictionaries = computed(() => {
+  const keyword = searchText.value.trim().toLowerCase()
+  if (!keyword) return dictionaries.value
+  return dictionaries.value.filter((item) => keywordMatches(item.type) || keywordMatches(item.term) || keywordMatches(item.alias))
+})
+
+const persistDocuments = () => setKnowledgeDocuments(documents.value)
+const persistRules = () => setKnowledgeRules(rules.value)
+const persistDictionaries = () => setKnowledgeDictionaries(dictionaries.value)
+
+const handleImportKnowledge = (event) => {
+  const files = Array.from(event.target.files || [])
+  if (!files.length) return
+
+  const imported = files.map((file) => ({
+    id: `doc-${Date.now()}-${file.name}`,
+    name: file.name,
+    size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
+    fileType: file.name.toLowerCase().endsWith('.pdf') ? 'pdf' : 'doc',
+    status: '已向量化',
+    statusClass: 'ready',
+    chunks: `${Math.max(12, Math.round(file.size / 2048))} Chunks`,
+    importedAt: new Date().toLocaleDateString('zh-CN')
+  }))
+
+  documents.value = [...imported, ...documents.value]
+  persistDocuments()
+  appendAuditLog({
+    id: `audit-${Date.now()}`,
+    type: 'KNOWLEDGE_IMPORTED',
+    title: '导入知识文档',
+    detail: `新增导入 ${imported.length} 份知识文件`,
+    createdAt: new Date().toISOString()
+  })
+  ElMessage.success(`成功导入 ${imported.length} 份知识文件`)
+  event.target.value = ''
+}
+
+const markDocumentReady = (id) => {
+  documents.value = documents.value.map((item) => item.id === id ? { ...item, status: '已向量化', statusClass: 'ready' } : item)
+  persistDocuments()
+  ElMessage.success('已触发重建索引')
+}
+
+const removeDocument = async (id) => {
+  await ElMessageBox.confirm('确认删除这份知识文档吗？删除后需要重新导入。', '删除确认', { type: 'warning' })
+  documents.value = documents.value.filter((item) => item.id !== id)
+  persistDocuments()
+  ElMessage.success('知识文档已删除')
+}
+
+const reindexDocuments = () => {
+  documents.value = documents.value.map((item) => ({ ...item, status: '已向量化', statusClass: 'ready' }))
+  persistDocuments()
+  ElMessage.success('已触发全量向量化')
+}
+
+const addRule = () => {
+  rules.value = [
+    {
+      id: `rule-${Date.now()}`,
+      name: `新规则组 ${rules.value.length + 1}`,
+      scene: '标书审查',
+      enabled: true,
+      priority: '中'
+    },
+    ...rules.value
+  ]
+  persistRules()
+}
+
+const toggleRule = (id) => {
+  rules.value = rules.value.map((item) => item.id === id ? { ...item, enabled: !item.enabled } : item)
+  persistRules()
+}
+
+const removeRule = (id) => {
+  rules.value = rules.value.filter((item) => item.id !== id)
+  persistRules()
+}
+
+const addDictionary = () => {
+  dictionaries.value = [
+    {
+      id: `dict-${Date.now()}`,
+      type: '药品',
+      term: `新词条 ${dictionaries.value.length + 1}`,
+      alias: '待补充'
+    },
+    ...dictionaries.value
+  ]
+  persistDictionaries()
+}
+
+const renameDictionary = (id) => {
+  dictionaries.value = dictionaries.value.map((item) => item.id === id ? { ...item, alias: `${item.alias}（已编辑）` } : item)
+  persistDictionaries()
+}
+
+const removeDictionary = (id) => {
+  dictionaries.value = dictionaries.value.filter((item) => item.id !== id)
+  persistDictionaries()
+}
 </script>
 
 <style scoped>
@@ -232,8 +334,14 @@ const activeTabMeta = computed(() => placeholders[activeTab.value] ?? placeholde
   max-width: 1480px;
 }
 
-.knowledge-hero {
+.knowledge-hero,
+.hero-brand,
+.panel-toolbar,
+.action-cell {
   display: flex;
+}
+
+.knowledge-hero {
   justify-content: space-between;
   align-items: flex-start;
   gap: 24px;
@@ -241,7 +349,6 @@ const activeTabMeta = computed(() => placeholders[activeTab.value] ?? placeholde
 }
 
 .hero-brand {
-  display: flex;
   align-items: flex-start;
   gap: 24px;
 }
@@ -256,241 +363,129 @@ const activeTabMeta = computed(() => placeholders[activeTab.value] ?? placeholde
   color: #0b8a63;
   font-size: 40px;
   box-shadow: 0 10px 30px rgba(23, 162, 108, 0.15);
-  flex-shrink: 0;
 }
 
 h1 {
-  margin: 0 0 12px;
-  font-size: 54px;
-  line-height: 1.02;
-  letter-spacing: -2px;
-  color: #0d1b3d;
-  font-weight: 900;
+  margin: 0 0 10px;
+  font-size: 34px;
+  font-weight: 850;
 }
 
-.hero-copy p {
+.hero-copy p,
+.engine-card p {
+  color: var(--text-sub);
+  line-height: 1.7;
   margin: 0;
-  max-width: 980px;
-  font-size: 22px;
-  line-height: 1.55;
-  color: #6f83a4;
-  font-weight: 600;
 }
 
-.import-trigger {
-  height: 84px;
+.import-trigger,
+.reindex-trigger,
+.table-action {
   border: 0;
-  border-radius: 26px;
-  background: linear-gradient(180deg, #121c35 0%, #0d1730 100%);
-  color: white;
-  padding: 0 34px;
+  border-radius: 14px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.import-trigger,
+.reindex-trigger {
+  height: 48px;
+  padding: 0 18px;
+  background: white;
+  border: 1px solid var(--border-light);
   display: inline-flex;
   align-items: center;
-  gap: 14px;
-  font-size: 24px;
-  font-weight: 800;
-  box-shadow: 0 16px 28px rgba(13, 23, 48, 0.18);
-  cursor: pointer;
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-}
-
-.import-trigger:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 22px 36px rgba(13, 23, 48, 0.24);
+  gap: 10px;
 }
 
 .hero-panels {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(360px, 2fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 24px;
-  margin-bottom: 34px;
+  margin-bottom: 28px;
+}
+
+.stat-card,
+.engine-card,
+.knowledge-shell {
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 .stat-card,
 .engine-card {
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid #dbe6f3;
-  border-radius: 30px;
-  box-shadow: 0 12px 32px rgba(28, 53, 91, 0.08);
+  padding: 24px;
 }
 
-.stat-card {
-  padding: 34px 38px;
+.stat-title,
+.stat-sub {
+  color: var(--text-sub);
 }
 
-.stat-title {
-  display: inline-block;
-  margin-bottom: 30px;
-  color: #8c9db7;
-  font-size: 18px;
-  font-weight: 800;
-}
-
-.stat-row {
+.stat-row,
+.engine-head {
   display: flex;
-  align-items: baseline;
-  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
 }
 
 .stat-row strong {
-  font-size: 52px;
-  line-height: 1;
-  color: #152241;
-  font-weight: 900;
-  letter-spacing: -1px;
-}
-
-.stat-status,
-.stat-sub {
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.stat-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.stat-status.success {
-  color: #14b86f;
-}
-
-.stat-sub {
-  color: #91a2be;
-}
-
-.engine-card {
-  position: relative;
-  overflow: hidden;
-  padding: 34px 38px;
-  background: linear-gradient(135deg, #1a2439 0%, #18233a 100%);
-  border-color: rgba(70, 90, 128, 0.36);
-  color: #edf3ff;
-}
-
-.engine-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 18px;
-  font-size: 18px;
-  font-weight: 900;
-  letter-spacing: 0.5px;
-  color: #b9d4ff;
-}
-
-.engine-card p {
-  position: relative;
-  margin: 0;
-  max-width: 88%;
-  font-size: 22px;
-  line-height: 1.55;
-  font-weight: 700;
-  color: rgba(244, 247, 255, 0.96);
-  z-index: 1;
-}
-
-.engine-watermark {
-  position: absolute;
-  right: 18px;
-  bottom: -6px;
-  font-size: 200px;
-  font-weight: 900;
-  line-height: 0.8;
-  color: rgba(167, 185, 217, 0.08);
-  pointer-events: none;
+  font-size: 36px;
 }
 
 .knowledge-shell {
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid #dbe6f3;
-  border-radius: 38px;
-  box-shadow: 0 20px 42px rgba(25, 47, 84, 0.08);
-  overflow: hidden;
+  padding: 24px;
 }
 
 .knowledge-tabs {
   display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 18px 18px 0;
-  border-bottom: 1px solid #e5edf7;
-  overflow-x: auto;
+  gap: 12px;
+  margin-bottom: 20px;
 }
 
 .tab-button {
-  position: relative;
-  border: 0;
-  background: transparent;
-  padding: 20px 26px 24px;
-  border-radius: 24px 24px 0 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  color: #7183a0;
-  font-size: 20px;
-  font-weight: 800;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.tab-button.active {
-  background: #ffffff;
-  color: #2b66ff;
-  box-shadow: inset 0 -4px 0 #2b66ff;
-}
-
-.panel-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-  padding: 30px 30px 24px;
-}
-
-.search-box {
-  height: 58px;
-  min-width: 320px;
-  width: 480px;
-  border-radius: 18px;
-  border: 1px solid #dbe6f3;
-  background: #f8fbff;
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 18px;
-  color: #93a3bc;
-}
-
-.search-box input {
-  flex: 1;
-  border: 0;
-  outline: none;
-  background: transparent;
-  color: #223252;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.search-box input::placeholder {
-  color: #a5b4ca;
-}
-
-.reindex-trigger {
-  border: 0;
-  background: transparent;
-  color: #2b66ff;
+  border: 1px solid var(--border-light);
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 12px 18px;
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  font-size: 18px;
-  font-weight: 800;
   cursor: pointer;
+  font-weight: 700;
 }
 
-.table-shell {
-  min-height: 720px;
+.tab-button.active {
+  background: var(--primary-color);
+  color: white;
+}
+
+.panel-toolbar {
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.search-box {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+}
+
+.search-box input {
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
 }
 
 .knowledge-table {
@@ -498,197 +493,78 @@ h1 {
   border-collapse: collapse;
 }
 
-.knowledge-table thead th {
+.knowledge-table th,
+.knowledge-table td {
+  padding: 16px 12px;
+  border-bottom: 1px solid var(--border-light);
   text-align: left;
-  font-size: 16px;
-  font-weight: 800;
-  color: #98a8c0;
-  background: #fbfdff;
-  padding: 22px 30px;
-  border-top: 1px solid #edf3fa;
-  border-bottom: 1px solid #edf3fa;
-}
-
-.knowledge-table tbody td {
-  padding: 32px 30px;
-  border-bottom: 1px solid #edf3fa;
-  vertical-align: middle;
 }
 
 .doc-cell {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 14px;
 }
 
 .doc-icon {
   width: 42px;
   height: 42px;
+  border-radius: 12px;
   display: grid;
   place-items: center;
-  font-size: 28px;
-}
-
-.doc-icon.pdf {
-  color: #ff4966;
-}
-
-.doc-icon.doc {
-  color: #3e7fff;
-}
-
-.doc-title {
-  font-size: 24px;
-  font-weight: 800;
-  color: #172645;
-  margin-bottom: 6px;
-}
-
-.doc-meta,
-.metric-cell,
-.time-cell {
-  font-size: 16px;
-  font-weight: 600;
-  color: #8da0bc;
-}
-
-.metric-cell,
-.time-cell {
-  color: #5d7092;
-  font-size: 18px;
+  background: #eef2ff;
+  color: #4f46e5;
 }
 
 .status-pill {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-radius: 14px;
-  font-size: 16px;
-  font-weight: 800;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
 }
 
-.status-pill.ready {
-  color: #13a96b;
+.ready {
   background: #ecfdf3;
-  border: 1px solid #b9efd2;
+  color: #15803d;
 }
 
-.status-pill.processing {
-  color: #2b66ff;
-  background: #eef4ff;
-  border: 1px solid #cadcff;
+.processing {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.action-cell {
+  gap: 10px;
 }
 
 .table-action {
-  width: 40px;
-  height: 40px;
-  border: 0;
-  background: transparent;
-  color: #91a4c0;
-  font-size: 22px;
-  cursor: pointer;
+  background: #eef2ff;
+  color: #334155;
+  padding: 8px 12px;
 }
 
-.placeholder-panel {
-  min-height: 720px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+.table-action.danger {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.empty-cell {
   text-align: center;
-  padding: 40px 24px;
-  color: #6e80a0;
+  color: var(--text-sub);
 }
 
-.placeholder-badge {
-  width: 82px;
-  height: 82px;
-  border-radius: 26px;
-  display: grid;
-  place-items: center;
-  background: #eef4ff;
-  color: #2b66ff;
-  font-size: 36px;
-  margin-bottom: 18px;
-}
-
-.placeholder-panel h3 {
-  margin: 0 0 10px;
-  font-size: 28px;
-  color: #182748;
-}
-
-.placeholder-panel p {
-  margin: 0;
-  max-width: 560px;
-  font-size: 18px;
-  line-height: 1.7;
-  font-weight: 600;
-}
-
-@media (max-width: 1320px) {
-  .hero-panels {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .engine-card {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (max-width: 980px) {
-  .knowledge-page {
-    padding: 26px 18px 36px;
-  }
-
-  .knowledge-hero,
-  .panel-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .hero-brand {
-    flex-direction: column;
-    gap: 18px;
-  }
-
+@media (max-width: 900px) {
   .hero-panels {
     grid-template-columns: 1fr;
   }
 
-  h1 {
-    font-size: 38px;
-    letter-spacing: -1px;
-  }
-
-  .hero-copy p,
-  .engine-card p {
-    font-size: 18px;
-  }
-
-  .import-trigger,
-  .search-box {
-    width: 100%;
-  }
-
-  .knowledge-tabs {
-    padding-top: 8px;
-  }
-
-  .tab-button {
-    font-size: 16px;
-    padding: 16px 16px 18px;
-  }
-
-  .knowledge-table {
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
-  }
-
-  .doc-title {
-    font-size: 20px;
+  .knowledge-tabs,
+  .panel-toolbar,
+  .knowledge-hero {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 </style>

@@ -23,7 +23,12 @@ class TenderDocumentParseServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new TenderDocumentParseService(new TenderDocxParser());
+        TenderTextStructureSupport support = new TenderTextStructureSupport();
+        service = new TenderDocumentParseService(
+                new TenderDocxParser(support),
+                new TenderDocParser(support),
+                new TenderMarkdownParser(support)
+        );
     }
 
     @Test
@@ -32,7 +37,7 @@ class TenderDocumentParseServiceTest {
         assumeTrue(Files.exists(path), "样本文件A不存在，跳过测试");
 
         try (InputStream is = new FileInputStream(path.toFile())) {
-            TenderDocumentParseResult result = service.parseDocument("doc-svc-test", is);
+            TenderDocumentParseResult result = service.parseDocument("doc-svc-test", "sample.docx", is);
 
             assertThat(result.getDocId()).isEqualTo("doc-svc-test");
             assertThat(result.getParagraphCount()).isGreaterThanOrEqualTo(90);
@@ -50,7 +55,7 @@ class TenderDocumentParseServiceTest {
         assumeTrue(Files.exists(path), "样本文件A不存在，跳过测试");
 
         try (InputStream is = new FileInputStream(path.toFile())) {
-            TenderDocumentParseResult result = service.parseDocument("doc-svc-test2", is);
+            TenderDocumentParseResult result = service.parseDocument("doc-svc-test2", "sample.docx", is);
             assertThat(result.getSectionTree()).isNotNull();
         }
     }

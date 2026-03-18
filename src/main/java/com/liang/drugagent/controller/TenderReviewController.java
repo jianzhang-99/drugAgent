@@ -2,6 +2,7 @@ package com.liang.drugagent.controller;
 
 import com.liang.drugagent.domain.req.TenderCaseCreateReq;
 import com.liang.drugagent.domain.resp.TenderCaseCreateResp;
+import com.liang.drugagent.domain.tenderreview.TenderCase;
 import com.liang.drugagent.domain.tenderreview.TenderDocumentParseResult;
 import com.liang.drugagent.service.tenderreview.TenderCaseService;
 import com.liang.drugagent.service.tenderreview.TenderDocumentParseService;
@@ -17,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -39,7 +41,7 @@ public class TenderReviewController {
     @Schema(name = "CreateCaseForm", description = "创建审查任务 - 上传表单")
     static class CreateCaseForm {
         @ArraySchema(
-                arraySchema = @Schema(description = "标书文件，至少 2 份，仅支持 .docx",
+                arraySchema = @Schema(description = "标书文件，至少 2 份，支持 .doc / .docx / .md",
                         requiredMode = Schema.RequiredMode.REQUIRED),
                 schema = @Schema(type = "string", format = "binary"))
         public List<MultipartFile> files;
@@ -57,12 +59,19 @@ public class TenderReviewController {
         this.documentParseService = documentParseService;
     }
 
+    @Operation(summary = "查询标书审查任务列表",
+            description = "返回当前已创建的标书审查任务，按创建时间倒序排列。")
+    @GetMapping("/cases")
+    public List<TenderCase> listCases() {
+        return caseService.listCases();
+    }
+
     /**
      * POST /api/tender-review/cases
      * 上传标书文件，创建审查任务。
      */
     @Operation(summary = "【7.1】上传标书文件，创建审查任务",
-            description = "至少上传 2 份 .docx 格式标书文件。返回 caseId 及各文档的 docId，用于后续解析。")
+            description = "至少上传 2 份 .doc / .docx / .md 格式标书文件。返回 caseId 及各文档的 docId，用于后续解析。")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "任务创建成功",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
@@ -141,12 +150,32 @@ public class TenderReviewController {
                     .body(Map.of("error", "未找到文件内容, docId=" + docId));
         }
 
-        try (ByteArrayInputStream stream = new ByteArrayInputStream(bytesOpt.get())) {
-            TenderDocumentParseResult result = documentParseService.parseDocument(docId, stream);
+        byte[] fileBytes = bytesOpt.get();
+        if (fileBytes.length == 0) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "文档解析失败: 文件内容为空，请确认上传文件不是空文件"));
+        }
+        Optional<com.liang.drugagent.domain.tenderreview.TenderDocument> documentOpt = caseService.getDocument(docId);
+        if (documentOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "未找到文档元数据, docId=" + docId));
+        }
+
+        String filename = documentOpt.get().getFilename();
+        try (ByteArrayInputStream stream = new ByteArrayInputStream(fileBytes)) {
+            TenderDocumentParseResult result = documentParseService.parseDocument(docId, filename, stream);
             return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(Map.of("error", e.getMessage()));
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "文档解析失败: " + e.getMessage()));
+                    .body(Map.of("error", "文档解析失败（IO异常）: " + e.getMessage()));
+        } catch (Exception e) {
+            // Apache POI 在处理损坏文件（如非DOCX格式、截断文件）时
+            // 会抛出 OLE2NotOfficeXmlFileException / POIXMLException 等非 IOException
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(Map.of("error", "文档解析失败（文件格式异常）: " + e.getClass().getSimpleName() + " - " + e.getMessage()));
         }
     }
 }

@@ -78,7 +78,7 @@ class TenderCaseServiceTest {
     }
 
     @Test
-    void rejectsNonDocxFile() {
+    void rejectsUnsupportedFile() {
         TenderCaseCreateReq req = TenderCaseCreateReq.builder()
                 .filenames(List.of("a.docx", "b.pdf"))
                 .submittedBy("user")
@@ -86,7 +86,7 @@ class TenderCaseServiceTest {
 
         assertThatThrownBy(() -> caseService.createCase(req))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("仅支持 docx 格式文件");
+                .hasMessageContaining("仅支持 doc、docx、md 格式文件");
     }
 
     @Test
@@ -115,6 +115,17 @@ class TenderCaseServiceTest {
     void filenameIsCaseInsensitiveDocxCheck() {
         TenderCaseCreateReq req = TenderCaseCreateReq.builder()
                 .filenames(List.of("A.DOCX", "B.Docx"))
+                .submittedBy("user")
+                .build();
+
+        TenderCaseCreateResp resp = caseService.createCase(req);
+        assertThat(resp.getDocumentIds()).hasSize(2);
+    }
+
+    @Test
+    void supportsDocAndMdFiles() {
+        TenderCaseCreateReq req = TenderCaseCreateReq.builder()
+                .filenames(List.of("A.DOC", "readme.md"))
                 .submittedBy("user")
                 .build();
 

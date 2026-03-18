@@ -70,3 +70,30 @@ export const streamDrugAgentChat = async (data, handlers = {}) => {
     processEventBlock(buffer)
   }
 }
+
+// 标书审查：上传文件并创建任务
+export const createTenderReviewCase = (files, submittedBy = 'anonymous') => {
+  const formData = new FormData()
+  if (Array.isArray(files)) {
+    files.forEach(file => formData.append('files', file))
+  } else {
+    formData.append('files', files)
+  }
+  formData.append('submittedBy', submittedBy)
+
+  return request.post('/tender-review/cases', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}
+
+// 标书审查：查询任务列表
+export const listTenderReviewCases = () => {
+  return request.get('/tender-review/cases')
+}
+
+// 标书审查：解析文档
+export const parseTenderDocument = (caseId, docId) => {
+  return request.post(`/tender-review/cases/${caseId}/parse/${docId}`)
+}

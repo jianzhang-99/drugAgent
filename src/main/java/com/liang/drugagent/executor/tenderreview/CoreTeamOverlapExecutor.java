@@ -40,8 +40,12 @@ public class CoreTeamOverlapExecutor extends AbstractTenderExecutor {
     /** 规则版本。 */
     private static final String VERSION = "v1";
 
-    /** 判定简历实质重合的相似度阈值系数。 */
-    private static final double SIMILARITY_THRESHOLD = 0.95;
+    /** 简历高度相似时的权重（95）；低于此则降权至 80。 */
+    private static final double RESUME_HIGH_SIMILARITY_THRESHOLD = 0.60;
+    /** 姓名完全相同即判定为命中（命中核心条件）。 */
+    private static final int WEIGHT_NAME_MATCH_ONLY = 80;
+    /** 姓名相同 + 简历高度相似时的权重（围标嫌疑更高）。 */
+    private static final int WEIGHT_NAME_AND_RESUME_MATCH = 95;
 
     @Override
     public RuleResult execute(TenderReviewData data) {
@@ -95,8 +99,9 @@ public class CoreTeamOverlapExecutor extends AbstractTenderExecutor {
                 List<Field[]> matches = new ArrayList<>();
                 for (Field left : leftFields) {
                     for (Field right : rightFields) {
-                        double similarity = getSimilarity(left, right);
-                        if (similarity >= SIMILARITY_THRESHOLD) {
+                        // 只要成员姓名完全相同，即判定为命中。
+                        // 简历可被故意改写，但人名难以替换，因此姓名相同是核心信号。
+                        if (nameMatches(left, right)) {
                             matches.add(new Field[]{left, right});
                         }
                     }
@@ -111,11 +116,28 @@ public class CoreTeamOverlapExecutor extends AbstractTenderExecutor {
     }
 
     /**
+     * 检查两个字段的成员姓名是否完全匹配（忽略首尾空格）。
+     */
+    private boolean nameMatches(Field f1, Field f2) {
+        String name1 = f1.getNormalizedKey();
+        String name2 = f2.getNormalizedKey();
+        return name1 != null && name2 != null && !name1.isBlank() && name1.trim().equals(name2.trim());
+    }
+
+    /**
      * 构建聚合的命中记录对象。
+     * 当简历相似度 >= RESUME_HIGH_SIMILARITY_THRESHOLD 时权重为 95，否则为 80。
      */
     private RuleHit buildAggregatedHit(CompareScope scope, String leftDocId, String rightDocId, List<Field[]> matches) {
         RuleHit hit = createBaseHit(RULE_CODE, RULE_NAME, scope.getScopeId(), RISK_TYPE, PRIORITY, VERSION);
-        hit.setWeight(95);
+        // 计算所有匹配对中简历相似度的平均值，决定权重
+        double avgSimilarity = matches.stream()
+                .mapToDouble(m -> getResumeSimilarity(m[0], m[1]))
+                .average()
+                .orElse(0.0);
+        int weight = avgSimilarity >= RESUME_HIGH_SIMILARITY_THRESHOLD
+                ? WEIGHT_NAME_AND_RESUME_MATCH : WEIGHT_NAME_MATCH_ONLY;
+        hit.setWeight(weight);
 
         List<String> names = matches.stream()
                 .map(m -> m[0].getNormalizedKey())
@@ -124,7 +146,7 @@ public class CoreTeamOverlapExecutor extends AbstractTenderExecutor {
         hit.setMatchedValue("overlapping_members:" + String.join(",", names));
 
         String namesSummary = String.join("、", names);
-        hit.setTriggerSummary(String.format("文档 %s 与 %s 的核心团队成员存在严重重叠（涉及 %d 人：%s）。两投主体的简历描述高度匹配，存在串通投标风险。",
+        hit.setTriggerSummary(String.format("文档 %s 与 %s 的核心团队成员姓名重叠（涉及 %d 人：%s）。不同投标主体出现同名成员，存在借用资质或串通投标风险。",
                 leftDocId, rightDocId, names.size(), namesSummary));
 
         hit.setDocumentIds(List.of(leftDocId, rightDocId));
@@ -149,20 +171,14 @@ public class CoreTeamOverlapExecutor extends AbstractTenderExecutor {
     }
 
     /**
-     * 计算两个字段（成员信息）之间的相似度。
-     * 首先匹配成员姓名（NormalizedKey），如果姓名一致，则计算简历（NormalizedValue）的文本相似度。
+     * 仅计算两个字段简历（NormalizedValue）之间的文本相似度，不校验姓名。
+     * 调用前应已确认姓名匹配。
      *
      * @param f1 成员字段1
      * @param f2 成员字段2
-     * @return 相似度得分 (0.0 - 1.0)
+     * @return 简历相似度得分 (0.0 - 1.0)
      */
-    private double getSimilarity(Field f1, Field f2) {
-        String name1 = f1.getNormalizedKey();
-        String name2 = f2.getNormalizedKey();
-        if (name1 == null || name2 == null || !name1.trim().equals(name2.trim())) {
-            return 0.0;
-        }
-
+    private double getResumeSimilarity(Field f1, Field f2) {
         String resume1 = f1.getNormalizedValue();
         String resume2 = f2.getNormalizedValue();
         if (resume1 == null || resume2 == null)

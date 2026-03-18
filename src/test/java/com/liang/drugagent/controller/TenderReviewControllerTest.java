@@ -1,6 +1,7 @@
 package com.liang.drugagent.controller;
 
 import com.liang.drugagent.domain.resp.TenderCaseCreateResp;
+import com.liang.drugagent.domain.tenderreview.TenderDocument;
 import com.liang.drugagent.domain.tenderreview.TenderDocumentParseResult;
 import com.liang.drugagent.enums.TenderCaseStatus;
 import com.liang.drugagent.service.tenderreview.TenderCaseService;
@@ -89,7 +90,11 @@ class TenderReviewControllerTest {
                 .build();
         when(caseService.getFileContent(eq("doc-1")))
                 .thenReturn(Optional.of("fake docx bytes".getBytes()));
-        when(documentParseService.parseDocument(eq("doc-1"), any(InputStream.class)))
+        TenderDocument document = new TenderDocument();
+        document.setDocumentId("doc-1");
+        document.setFilename("a.docx");
+        when(caseService.getDocument(eq("doc-1"))).thenReturn(Optional.of(document));
+        when(documentParseService.parseDocument(eq("case-001"), eq("doc-1"), any(InputStream.class)))
                 .thenReturn(parseResult);
 
         mockMvc.perform(post("/tender-review/cases/case-001/parse/doc-1"))
