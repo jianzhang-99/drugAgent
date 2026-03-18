@@ -1,9 +1,5 @@
-package com.liang.drugagent.tenderreview.parser;
+package com.liang.drugagent.domain.tenderreview;
 
-import com.liang.drugagent.tenderreview.domain.Block;
-import com.liang.drugagent.tenderreview.domain.ExtractionMeta;
-import com.liang.drugagent.tenderreview.domain.ExtractedField;
-import com.liang.drugagent.tenderreview.domain.SectionNode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,13 +13,13 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class DocumentParseResult {
+public class TenderDocumentParseResult {
 
     /** 对应的文档 ID */
     private String docId;
 
     /** 章节树（顶层节点列表） */
-    private List<SectionNode> sectionTree;
+    private List<TenderSectionNode> sectionTree;
 
     /** 段落块列表（blockType = PARAGRAPH） */
     private List<Block> paragraphBlocks;
@@ -32,7 +28,7 @@ public class DocumentParseResult {
     private List<Block> tableBlocks;
 
     /** 结构化字段列表（从段落/表格中提取） */
-    private List<ExtractedField> fields;
+    private List<Field> fields;
 
     /** 解析元信息 */
     private ExtractionMeta extractionMeta;
@@ -49,4 +45,3 @@ public class DocumentParseResult {
         return fields == null ? 0 : fields.size();
     }
 }
-

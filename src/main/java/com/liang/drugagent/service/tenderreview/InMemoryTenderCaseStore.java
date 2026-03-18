@@ -1,36 +1,36 @@
-package com.liang.drugagent.tenderreview.storage;
+package com.liang.drugagent.service.tenderreview;
 
-import com.liang.drugagent.tenderreview.domain.Case;
-import com.liang.drugagent.tenderreview.domain.CaseDocument;
+import com.liang.drugagent.domain.tenderreview.TenderCase;
+import com.liang.drugagent.domain.tenderreview.TenderDocument;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
-public class InMemoryCaseStore {
+public class InMemoryTenderCaseStore {
 
-    private final ConcurrentHashMap<String, Case> cases = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, CaseDocument> documents = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, TenderCase> cases = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, TenderDocument> documents = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, byte[]> fileBytes = new ConcurrentHashMap<>();
 
     // ---- Case ----
 
-    public void saveCase(Case c) {
+    public void saveCase(TenderCase c) {
         cases.put(c.getCaseId(), c);
     }
 
-    public Optional<Case> findCase(String caseId) {
+    public Optional<TenderCase> findCase(String caseId) {
         return Optional.ofNullable(cases.get(caseId));
     }
 
     // ---- CaseDocument ----
 
-    public void saveDocument(CaseDocument doc) {
-        documents.put(doc.getDocId(), doc);
+    public void saveDocument(TenderDocument doc) {
+        documents.put(doc.getDocumentId(), doc);
     }
 
-    public Optional<CaseDocument> findDocument(String docId) {
+    public Optional<TenderDocument> findDocument(String docId) {
         return Optional.ofNullable(documents.get(docId));
     }
 

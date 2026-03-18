@@ -1,8 +1,9 @@
-package com.liang.drugagent.tenderreview.parser;
+package com.liang.drugagent.service.tenderreview;
 
-import com.liang.drugagent.tenderreview.domain.Block;
-import com.liang.drugagent.tenderreview.domain.ExtractedField;
-import com.liang.drugagent.tenderreview.domain.SectionNode;
+import com.liang.drugagent.domain.tenderreview.Block;
+import com.liang.drugagent.domain.tenderreview.Field;
+import com.liang.drugagent.domain.tenderreview.TenderDocumentParseResult;
+import com.liang.drugagent.domain.tenderreview.TenderSectionNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -17,18 +18,18 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-class DocxParserTest {
+class TenderDocxParserTest {
 
     private static final String SAMPLE_A =
             "D:/Program/tools/drugAgent/doc/场景一 标书审查/02_原始样本素材/测试样本A_疑似围标投标文件.docx";
     private static final String SAMPLE_B =
             "D:/Program/tools/drugAgent/doc/场景一 标书审查/02_原始样本素材/测试样本B_疑似围标投标文件.docx";
 
-    private DocxParser parser;
+    private TenderDocxParser parser;
 
     @BeforeEach
     void setUp() {
-        parser = new DocxParser();
+        parser = new TenderDocxParser();
     }
 
     // ---- normalizeText ----
@@ -126,7 +127,7 @@ class DocxParserTest {
         assumeTrue(Files.exists(path), "样本文件A不存在，跳过测试");
 
         try (InputStream is = new FileInputStream(path.toFile())) {
-            DocumentParseResult result = parser.parse(is, "test-doc-a");
+            TenderDocumentParseResult result = parser.parse(is, "test-doc-a");
             assertThat(result.getParagraphCount()).isGreaterThanOrEqualTo(90);
         }
     }
@@ -137,7 +138,7 @@ class DocxParserTest {
         assumeTrue(Files.exists(path), "样本文件A不存在，跳过测试");
 
         try (InputStream is = new FileInputStream(path.toFile())) {
-            DocumentParseResult result = parser.parse(is, "test-doc-a");
+            TenderDocumentParseResult result = parser.parse(is, "test-doc-a");
             assertThat(result.getTableCount()).isEqualTo(5);
         }
     }
@@ -148,8 +149,8 @@ class DocxParserTest {
         assumeTrue(Files.exists(path), "样本文件A不存在，跳过测试");
 
         try (InputStream is = new FileInputStream(path.toFile())) {
-            DocumentParseResult result = parser.parse(is, "test-doc-a");
-            List<SectionNode> tree = result.getSectionTree();
+            TenderDocumentParseResult result = parser.parse(is, "test-doc-a");
+            List<TenderSectionNode> tree = result.getSectionTree();
             assertThat(tree).hasSizeGreaterThanOrEqualTo(5);
         }
     }
@@ -160,7 +161,7 @@ class DocxParserTest {
         assumeTrue(Files.exists(path), "样本文件A不存在，跳过测试");
 
         try (InputStream is = new FileInputStream(path.toFile())) {
-            DocumentParseResult result = parser.parse(is, "test-doc-a");
+            TenderDocumentParseResult result = parser.parse(is, "test-doc-a");
             List<Block> blocks = result.getParagraphBlocks();
             for (int i = 0; i < blocks.size(); i++) {
                 assertThat(blocks.get(i).getAnchor().getParagraphIndex()).isEqualTo(i);
@@ -174,7 +175,7 @@ class DocxParserTest {
         assumeTrue(Files.exists(path), "样本文件A不存在，跳过测试");
 
         try (InputStream is = new FileInputStream(path.toFile())) {
-            DocumentParseResult result = parser.parse(is, "test-doc-a");
+            TenderDocumentParseResult result = parser.parse(is, "test-doc-a");
             List<Block> tableBlocks = result.getTableBlocks();
             assertThat(tableBlocks).hasSize(5);
             for (int i = 0; i < tableBlocks.size(); i++) {
@@ -189,7 +190,7 @@ class DocxParserTest {
         assumeTrue(Files.exists(path), "样本文件A不存在，跳过测试");
 
         try (InputStream is = new FileInputStream(path.toFile())) {
-            DocumentParseResult result = parser.parse(is, "test-doc-a");
+            TenderDocumentParseResult result = parser.parse(is, "test-doc-a");
             result.getParagraphBlocks().forEach(b ->
                     assertThat(b.getAnchor().getTableIndex()).isEqualTo(-1));
         }
@@ -201,7 +202,7 @@ class DocxParserTest {
         assumeTrue(Files.exists(path), "样本文件B不存在，跳过测试");
 
         try (InputStream is = new FileInputStream(path.toFile())) {
-            DocumentParseResult result = parser.parse(is, "test-doc-b");
+            TenderDocumentParseResult result = parser.parse(is, "test-doc-b");
             assertThat(result.getParagraphCount()).isGreaterThanOrEqualTo(90);
         }
     }
@@ -212,7 +213,7 @@ class DocxParserTest {
         assumeTrue(Files.exists(path), "样本文件B不存在，跳过测试");
 
         try (InputStream is = new FileInputStream(path.toFile())) {
-            DocumentParseResult result = parser.parse(is, "test-doc-b");
+            TenderDocumentParseResult result = parser.parse(is, "test-doc-b");
             assertThat(result.getTableCount()).isEqualTo(5);
         }
     }
@@ -223,7 +224,7 @@ class DocxParserTest {
         assumeTrue(Files.exists(path), "样本文件A不存在，跳过测试");
 
         try (InputStream is = new FileInputStream(path.toFile())) {
-            DocumentParseResult result = parser.parse(is, "custom-doc-id");
+            TenderDocumentParseResult result = parser.parse(is, "custom-doc-id");
             assertThat(result.getDocId()).isEqualTo("custom-doc-id");
         }
     }
@@ -236,13 +237,13 @@ class DocxParserTest {
         assumeTrue(Files.exists(path), "样本文件A不存在，跳过测试");
 
         try (InputStream is = new FileInputStream(path.toFile())) {
-            DocumentParseResult result = parser.parse(is, "doc-meta");
+            TenderDocumentParseResult result = parser.parse(is, "doc-meta");
             assertThat(result.getExtractionMeta()).isNotNull();
-            assertThat(result.getExtractionMeta().isParseSuccess()).isTrue();
+            assertThat(result.getExtractionMeta().getParseSuccess()).isTrue();
             assertThat(result.getExtractionMeta().getSchemaVersion())
-                    .isEqualTo(DocxParser.SCHEMA_VERSION);
+                    .isEqualTo(TenderDocxParser.SCHEMA_VERSION);
             assertThat(result.getExtractionMeta().getParserVersion())
-                    .isEqualTo(DocxParser.PARSER_VERSION);
+                    .isEqualTo(TenderDocxParser.PARSER_VERSION);
         }
     }
 
@@ -251,7 +252,7 @@ class DocxParserTest {
     @Test
     void extractFieldsPhoneFromBlock() {
         Block block = buildBlock("联系电话：13812345678");
-        List<ExtractedField> fields = parser.extractFieldsFromBlock(block);
+        List<Field> fields = parser.extractFieldsFromBlock(block);
         assertThat(fields).anyMatch(f ->
                 f.getFieldType().equals("contact_phone") &&
                 f.getFieldValue().equals("13812345678") &&
@@ -261,7 +262,7 @@ class DocxParserTest {
     @Test
     void extractFieldsEmailFromBlock() {
         Block block = buildBlock("邮箱：test@example.com");
-        List<ExtractedField> fields = parser.extractFieldsFromBlock(block);
+        List<Field> fields = parser.extractFieldsFromBlock(block);
         assertThat(fields).anyMatch(f ->
                 f.getFieldType().equals("contact_email") &&
                 f.getNormalizedKey().equals("email:test@example.com"));
@@ -270,7 +271,7 @@ class DocxParserTest {
     @Test
     void extractFieldsPriceFromBlock() {
         Block block = buildBlock("投标总价：1250000元");
-        List<ExtractedField> fields = parser.extractFieldsFromBlock(block);
+        List<Field> fields = parser.extractFieldsFromBlock(block);
         assertThat(fields).anyMatch(f ->
                 f.getFieldType().equals("bid_price") &&
                 f.getNormalizedKey().startsWith("quote_total:"));
@@ -279,7 +280,7 @@ class DocxParserTest {
     @Test
     void extractFieldsTeamMemberFromBlock() {
         Block block = buildBlock("项目经理：张三，负责项目整体管理");
-        List<ExtractedField> fields = parser.extractFieldsFromBlock(block);
+        List<Field> fields = parser.extractFieldsFromBlock(block);
         assertThat(fields).anyMatch(f ->
                 f.getFieldType().equals("team_member") &&
                 f.getFieldValue().equals("张三") &&
@@ -289,14 +290,14 @@ class DocxParserTest {
     @Test
     void extractFieldsReturnsEmptyForPlainText() {
         Block block = buildBlock("本项目为普通采购项目，无特殊要求。");
-        List<ExtractedField> fields = parser.extractFieldsFromBlock(block);
+        List<Field> fields = parser.extractFieldsFromBlock(block);
         assertThat(fields).isEmpty();
     }
 
     @Test
     void extractedFieldHasBlockIdAndDocumentId() {
         Block block = buildBlock("联系方式：13900001234");
-        List<ExtractedField> fields = parser.extractFieldsFromBlock(block);
+        List<Field> fields = parser.extractFieldsFromBlock(block);
         assertThat(fields).isNotEmpty();
         assertThat(fields.get(0).getBlockId()).isEqualTo(block.getBlockId());
         assertThat(fields.get(0).getDocumentId()).isEqualTo(block.getDocumentId());
@@ -310,7 +311,7 @@ class DocxParserTest {
         assumeTrue(Files.exists(path), "样本文件A不存在，跳过测试");
 
         try (InputStream is = new FileInputStream(path.toFile())) {
-            DocumentParseResult result = parser.parse(is, "doc-anchor");
+            TenderDocumentParseResult result = parser.parse(is, "doc-anchor");
             List<Block> blocks = result.getParagraphBlocks();
             // paragraphNo = paragraphIndex + 1
             assertThat(blocks.get(0).getAnchor().getParagraphNo()).isEqualTo(1);
@@ -324,7 +325,7 @@ class DocxParserTest {
         assumeTrue(Files.exists(path), "样本文件A不存在，跳过测试");
 
         try (InputStream is = new FileInputStream(path.toFile())) {
-            DocumentParseResult result = parser.parse(is, "doc-anchor-tbl");
+            TenderDocumentParseResult result = parser.parse(is, "doc-anchor-tbl");
             List<Block> tables = result.getTableBlocks();
             for (int i = 0; i < tables.size(); i++) {
                 assertThat(tables.get(i).getAnchor().getTableNo()).isEqualTo(i + 1);
@@ -340,7 +341,7 @@ class DocxParserTest {
         assumeTrue(Files.exists(path), "样本文件A不存在，跳过测试");
 
         try (InputStream is = new FileInputStream(path.toFile())) {
-            DocumentParseResult result = parser.parse(is, "doc-fields");
+            TenderDocumentParseResult result = parser.parse(is, "doc-fields");
             assertThat(result.getFields()).isNotNull();
             assertThat(result.getFieldCount()).isGreaterThan(0);
         }
@@ -352,7 +353,7 @@ class DocxParserTest {
         assumeTrue(Files.exists(path), "样本文件A不存在，跳过测试");
 
         try (InputStream is = new FileInputStream(path.toFile())) {
-            DocumentParseResult result = parser.parse(is, "doc-fields-attr");
+            TenderDocumentParseResult result = parser.parse(is, "doc-fields-attr");
             result.getFields().forEach(f -> {
                 assertThat(f.getFieldId()).isNotBlank();
                 assertThat(f.getDocumentId()).isEqualTo("doc-fields-attr");
@@ -370,11 +371,11 @@ class DocxParserTest {
         return Block.builder()
                 .blockId(java.util.UUID.randomUUID().toString())
                 .documentId("test-doc")
-                .blockType(com.liang.drugagent.tenderreview.domain.enums.BlockType.PARAGRAPH)
+                .blockType("PARAGRAPH")
                 .chapterPath("一")
                 .content(content)
                 .rawContent(content)
-                .anchor(com.liang.drugagent.tenderreview.domain.Anchor.builder()
+                .anchor(com.liang.drugagent.domain.tenderreview.Anchor.builder()
                         .chapterPath("一").paragraphIndex(0).paragraphNo(1).tableIndex(-1).build())
                 .featureTags(new java.util.ArrayList<>())
                 .build();

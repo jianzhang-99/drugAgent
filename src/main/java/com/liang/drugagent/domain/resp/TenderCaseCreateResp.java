@@ -1,6 +1,6 @@
-package com.liang.drugagent.tenderreview.domain;
+package com.liang.drugagent.domain.resp;
 
-import com.liang.drugagent.tenderreview.domain.enums.CaseStatus;
+import com.liang.drugagent.enums.TenderCaseStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,13 +14,13 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CaseCreateResponse {
+public class TenderCaseCreateResp {
 
     /** 创建的任务 ID */
     private String caseId;
 
     /** 任务状态 */
-    private CaseStatus status;
+    private TenderCaseStatus status;
 
     /** 文档 ID 列表（与上传文件顺序对应） */
     private List<String> documentIds;

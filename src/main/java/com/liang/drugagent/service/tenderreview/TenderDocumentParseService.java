@@ -1,18 +1,17 @@
-package com.liang.drugagent.tenderreview.service;
+package com.liang.drugagent.service.tenderreview;
 
-import com.liang.drugagent.tenderreview.parser.DocxParser;
-import com.liang.drugagent.tenderreview.parser.DocumentParseResult;
+import com.liang.drugagent.domain.tenderreview.TenderDocumentParseResult;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.InputStream;
 
 @Service
-public class DocumentParseService {
+public class TenderDocumentParseService {
 
-    private final DocxParser docxParser;
+    private final TenderDocxParser docxParser;
 
-    public DocumentParseService(DocxParser docxParser) {
+    public TenderDocumentParseService(TenderDocxParser docxParser) {
         this.docxParser = docxParser;
     }
 
@@ -24,7 +23,7 @@ public class DocumentParseService {
      * @return 解析结果
      * @throws IOException 文件读取失败时抛出
      */
-    public DocumentParseResult parseDocument(String docId, InputStream inputStream) throws IOException {
+    public TenderDocumentParseResult parseDocument(String docId, InputStream inputStream) throws IOException {
         return docxParser.parse(inputStream, docId);
     }
 }

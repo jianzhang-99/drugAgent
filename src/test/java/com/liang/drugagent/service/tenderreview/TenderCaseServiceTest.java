@@ -1,9 +1,8 @@
-package com.liang.drugagent.tenderreview.service;
+package com.liang.drugagent.service.tenderreview;
 
-import com.liang.drugagent.tenderreview.domain.CaseCreateRequest;
-import com.liang.drugagent.tenderreview.domain.CaseCreateResponse;
-import com.liang.drugagent.tenderreview.domain.enums.CaseStatus;
-import com.liang.drugagent.tenderreview.storage.InMemoryCaseStore;
+import com.liang.drugagent.domain.req.TenderCaseCreateReq;
+import com.liang.drugagent.domain.resp.TenderCaseCreateResp;
+import com.liang.drugagent.enums.TenderCaseStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -14,28 +13,28 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class CaseServiceTest {
+class TenderCaseServiceTest {
 
-    private CaseService caseService;
-    private InMemoryCaseStore store;
+    private TenderCaseService caseService;
+    private InMemoryTenderCaseStore store;
 
     @BeforeEach
     void setUp() {
-        store = new InMemoryCaseStore();
-        caseService = new CaseService(store);
+        store = new InMemoryTenderCaseStore();
+        caseService = new TenderCaseService(store);
     }
 
     @Test
     void createCaseSuccess() {
-        CaseCreateRequest req = CaseCreateRequest.builder()
+        TenderCaseCreateReq req = TenderCaseCreateReq.builder()
                 .filenames(List.of("a.docx", "b.docx"))
                 .submittedBy("tester")
                 .build();
 
-        CaseCreateResponse resp = caseService.createCase(req);
+        TenderCaseCreateResp resp = caseService.createCase(req);
 
         assertThat(resp.getCaseId()).isNotBlank();
-        assertThat(resp.getStatus()).isEqualTo(CaseStatus.PENDING);
+        assertThat(resp.getStatus()).isEqualTo(TenderCaseStatus.PENDING);
         assertThat(resp.getDocumentIds()).hasSize(2);
         assertThat(resp.getMessage()).contains("2");
         assertThat(store.caseCount()).isEqualTo(1);
@@ -44,19 +43,19 @@ class CaseServiceTest {
 
     @Test
     void createCaseWithThreeFiles() {
-        CaseCreateRequest req = CaseCreateRequest.builder()
+        TenderCaseCreateReq req = TenderCaseCreateReq.builder()
                 .filenames(List.of("a.docx", "b.docx", "c.docx"))
                 .submittedBy("user")
                 .build();
 
-        CaseCreateResponse resp = caseService.createCase(req);
+        TenderCaseCreateResp resp = caseService.createCase(req);
         assertThat(resp.getDocumentIds()).hasSize(3);
         assertThat(store.documentCount()).isEqualTo(3);
     }
 
     @Test
     void rejectsNullFilenames() {
-        CaseCreateRequest req = CaseCreateRequest.builder()
+        TenderCaseCreateReq req = TenderCaseCreateReq.builder()
                 .filenames(null)
                 .submittedBy("user")
                 .build();
@@ -68,7 +67,7 @@ class CaseServiceTest {
 
     @Test
     void rejectsOneFile() {
-        CaseCreateRequest req = CaseCreateRequest.builder()
+        TenderCaseCreateReq req = TenderCaseCreateReq.builder()
                 .filenames(List.of("only.docx"))
                 .submittedBy("user")
                 .build();
@@ -80,7 +79,7 @@ class CaseServiceTest {
 
     @Test
     void rejectsNonDocxFile() {
-        CaseCreateRequest req = CaseCreateRequest.builder()
+        TenderCaseCreateReq req = TenderCaseCreateReq.builder()
                 .filenames(List.of("a.docx", "b.pdf"))
                 .submittedBy("user")
                 .build();
@@ -92,7 +91,7 @@ class CaseServiceTest {
 
     @Test
     void rejectsBlankFilename() {
-        CaseCreateRequest req = CaseCreateRequest.builder()
+        TenderCaseCreateReq req = TenderCaseCreateReq.builder()
                 .filenames(List.of("a.docx", "   "))
                 .submittedBy("user")
                 .build();
@@ -103,7 +102,7 @@ class CaseServiceTest {
 
     @Test
     void rejectsNullFilename() {
-        CaseCreateRequest req = CaseCreateRequest.builder()
+        TenderCaseCreateReq req = TenderCaseCreateReq.builder()
                 .filenames(Arrays.asList("a.docx", null))
                 .submittedBy("user")
                 .build();
@@ -114,12 +113,12 @@ class CaseServiceTest {
 
     @Test
     void filenameIsCaseInsensitiveDocxCheck() {
-        CaseCreateRequest req = CaseCreateRequest.builder()
+        TenderCaseCreateReq req = TenderCaseCreateReq.builder()
                 .filenames(List.of("A.DOCX", "B.Docx"))
                 .submittedBy("user")
                 .build();
 
-        CaseCreateResponse resp = caseService.createCase(req);
+        TenderCaseCreateResp resp = caseService.createCase(req);
         assertThat(resp.getDocumentIds()).hasSize(2);
     }
 
@@ -141,11 +140,11 @@ class CaseServiceTest {
 
     @Test
     void documentIdsAreUnique() {
-        CaseCreateRequest req = CaseCreateRequest.builder()
+        TenderCaseCreateReq req = TenderCaseCreateReq.builder()
                 .filenames(List.of("a.docx", "b.docx"))
                 .submittedBy("user")
                 .build();
-        CaseCreateResponse resp = caseService.createCase(req);
+        TenderCaseCreateResp resp = caseService.createCase(req);
 
         assertThat(resp.getDocumentIds().get(0))
                 .isNotEqualTo(resp.getDocumentIds().get(1));

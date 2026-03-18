@@ -1,10 +1,10 @@
-package com.liang.drugagent.tenderreview.controller;
+package com.liang.drugagent.controller;
 
-import com.liang.drugagent.tenderreview.domain.CaseCreateRequest;
-import com.liang.drugagent.tenderreview.domain.CaseCreateResponse;
-import com.liang.drugagent.tenderreview.parser.DocumentParseResult;
-import com.liang.drugagent.tenderreview.service.CaseService;
-import com.liang.drugagent.tenderreview.service.DocumentParseService;
+import com.liang.drugagent.domain.req.TenderCaseCreateReq;
+import com.liang.drugagent.domain.resp.TenderCaseCreateResp;
+import com.liang.drugagent.domain.tenderreview.TenderDocumentParseResult;
+import com.liang.drugagent.service.tenderreview.TenderCaseService;
+import com.liang.drugagent.service.tenderreview.TenderDocumentParseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -48,11 +48,11 @@ public class TenderReviewController {
         public String submittedBy;
     }
 
-    private final CaseService caseService;
-    private final DocumentParseService documentParseService;
+    private final TenderCaseService caseService;
+    private final TenderDocumentParseService documentParseService;
 
-    public TenderReviewController(CaseService caseService,
-                                  DocumentParseService documentParseService) {
+    public TenderReviewController(TenderCaseService caseService,
+                                  TenderDocumentParseService documentParseService) {
         this.caseService = caseService;
         this.documentParseService = documentParseService;
     }
@@ -66,7 +66,7 @@ public class TenderReviewController {
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "任务创建成功",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = CaseCreateResponse.class))),
+                            schema = @Schema(implementation = TenderCaseCreateResp.class))),
             @ApiResponse(responseCode = "400", description = "文件数量不足或格式不支持",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(example = "{\"error\":\"至少需要 2 份标书文件进行比对审查\"}")))
@@ -86,12 +86,12 @@ public class TenderReviewController {
             filenames.add(f.getOriginalFilename());
         }
 
-        CaseCreateRequest req = CaseCreateRequest.builder()
+        TenderCaseCreateReq req = TenderCaseCreateReq.builder()
                 .filenames(filenames)
                 .submittedBy(submittedBy)
                 .build();
 
-        CaseCreateResponse response;
+        TenderCaseCreateResp response;
         try {
             response = caseService.createCase(req);
         } catch (IllegalArgumentException e) {
@@ -122,7 +122,7 @@ public class TenderReviewController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "解析成功",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = DocumentParseResult.class))),
+                            schema = @Schema(implementation = TenderDocumentParseResult.class))),
             @ApiResponse(responseCode = "404", description = "docId 不存在",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(example = "{\"error\":\"未找到文件内容, docId=xxx\"}"))),
@@ -142,7 +142,7 @@ public class TenderReviewController {
         }
 
         try (ByteArrayInputStream stream = new ByteArrayInputStream(bytesOpt.get())) {
-            DocumentParseResult result = documentParseService.parseDocument(docId, stream);
+            TenderDocumentParseResult result = documentParseService.parseDocument(docId, stream);
             return ResponseEntity.ok(result);
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

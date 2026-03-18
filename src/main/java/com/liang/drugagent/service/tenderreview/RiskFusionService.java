@@ -35,6 +35,7 @@ public class RiskFusionService {
 
         List<RuleHit> hits = effectiveHits == null ? List.of() : effectiveHits;
         List<ExemptionHit> exemptions = exemptionHits == null ? List.of() : exemptionHits;
+        // 1. 处理无命中项或全部免责的情况
         if (hits.isEmpty()) {
             result.setRiskLevel("LOW");
             result.setScore(exemptions.isEmpty() ? 0 : 20);
@@ -47,6 +48,7 @@ public class RiskFusionService {
             return result;
         }
 
+        // 2. 取所有命中项中最高的权重作为基础分
         int maxWeight = hits.stream()
                 .map(this::effectiveWeight)
                 .filter(weight -> weight != null)
@@ -54,6 +56,7 @@ public class RiskFusionService {
                 .orElse(0);
         int score = maxWeight;
 
+        // 3. 统计特征：规则覆盖度、文档覆盖度、高优硬规则、证据丰富度
         Set<String> ruleCodes = new LinkedHashSet<>();
         Set<String> documentIds = new LinkedHashSet<>();
         boolean hasHighPriorityHardRule = false;
@@ -65,6 +68,7 @@ public class RiskFusionService {
             if (hit.getDocumentIds() != null) {
                 documentIds.addAll(hit.getDocumentIds());
             }
+            // 硬规则判定逻辑：高优先级且权重 >= 85
             if ("HIGH".equals(hit.getPriority()) && effectiveWeight(hit) != null && effectiveWeight(hit) >= 85) {
                 hasHighPriorityHardRule = true;
             }
@@ -73,32 +77,40 @@ public class RiskFusionService {
             }
         }
 
+        // 4. 多维风险累加计算
         List<String> reasonCodes = new ArrayList<>();
+        // 高优规则加分
         if (hasHighPriorityHardRule) {
             score += 8;
             reasonCodes.add("HIGH_PRIORITY_RULE");
         }
+        // 多规则命中加分
         if (ruleCodes.size() >= 2) {
             score += 7;
             reasonCodes.add("MULTI_RULE_CO_OCCURRENCE");
         }
+        // 命中次数累积加分
         if (hits.size() >= 3) {
             score += 5;
             reasonCodes.add("MULTI_HIT_ACCUMULATION");
         }
+        // 跨文档证据加分
         if (documentIds.size() >= 2) {
             score += 5;
             reasonCodes.add("CROSS_DOCUMENT_EVIDENCE");
         }
+        // 证据越充分则风险确定性越高
         if (evidenceCount >= 4) {
             score += 5;
             reasonCodes.add("EVIDENCE_SUFFICIENT");
         }
+        // 5. 免责项负向削减权重
         if (!exemptions.isEmpty()) {
             score -= Math.min(exemptions.size() * 3, 12);
             reasonCodes.add("EXEMPTION_DOWNGRADE");
         }
 
+        // 6. 归一化评分 (0-100)
         score = Math.max(0, Math.min(score, 100));
         result.setScore(score);
         result.setRiskLevel(resolveRiskLevel(score, hasHighPriorityHardRule));
@@ -107,6 +119,13 @@ public class RiskFusionService {
         return result;
     }
 
+    /**
+     * 根据评分和是否存在硬规则判定风险等级。
+     *
+     * @param score 综合风险分
+     * @param hasHighPriorityHardRule 是否命中高优硬规则
+     * @return 风险等级 (HIGH, MEDIUM, LOW)
+     */
     private String resolveRiskLevel(int score, boolean hasHighPriorityHardRule) {
         if (hasHighPriorityHardRule && score >= 85) {
             return "HIGH";
@@ -120,6 +139,9 @@ public class RiskFusionService {
         return "LOW";
     }
 
+    /**
+     * 构建风险简报。
+     */
     private String buildSummary(int score, int hitCount, int exemptionCount, Set<String> ruleCodes) {
         return "Risk fusion score=" + score
                 + ", retainedHits=" + hitCount
@@ -127,6 +149,10 @@ public class RiskFusionService {
                 + (exemptionCount > 0 ? ", exemptions=" + exemptionCount : "");
     }
 
+    /**
+     * 获取 RuleHit 的生效权重。
+     * 优先取调整后的权重，否则取原始权重。
+     */
     private Integer effectiveWeight(RuleHit hit) {
         if (hit == null) {
             return null;

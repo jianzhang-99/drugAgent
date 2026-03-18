@@ -1,4 +1,4 @@
-package com.liang.drugagent.tenderreview.domain;
+package com.liang.drugagent.domain.req;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,7 +13,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CaseCreateRequest {
+public class TenderCaseCreateReq {
 
     /** 上传文件的文件名列表 */
     private List<String> filenames;

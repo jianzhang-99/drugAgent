@@ -1,10 +1,10 @@
-package com.liang.drugagent.tenderreview.controller;
+package com.liang.drugagent.controller;
 
-import com.liang.drugagent.tenderreview.domain.CaseCreateResponse;
-import com.liang.drugagent.tenderreview.domain.enums.CaseStatus;
-import com.liang.drugagent.tenderreview.parser.DocumentParseResult;
-import com.liang.drugagent.tenderreview.service.CaseService;
-import com.liang.drugagent.tenderreview.service.DocumentParseService;
+import com.liang.drugagent.domain.resp.TenderCaseCreateResp;
+import com.liang.drugagent.domain.tenderreview.TenderDocumentParseResult;
+import com.liang.drugagent.enums.TenderCaseStatus;
+import com.liang.drugagent.service.tenderreview.TenderCaseService;
+import com.liang.drugagent.service.tenderreview.TenderDocumentParseService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -33,16 +33,16 @@ class TenderReviewControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private CaseService caseService;
+    private TenderCaseService caseService;
 
     @MockBean
-    private DocumentParseService documentParseService;
+    private TenderDocumentParseService documentParseService;
 
     @Test
     void createCaseReturns201WithTwoFiles() throws Exception {
-        CaseCreateResponse resp = CaseCreateResponse.builder()
+        TenderCaseCreateResp resp = TenderCaseCreateResp.builder()
                 .caseId("case-001")
-                .status(CaseStatus.PENDING)
+                .status(TenderCaseStatus.PENDING)
                 .documentIds(List.of("doc-1", "doc-2"))
                 .message("任务创建成功，待解析文档数：2")
                 .build();
@@ -81,7 +81,7 @@ class TenderReviewControllerTest {
 
     @Test
     void parseDocumentReturns200() throws Exception {
-        DocumentParseResult parseResult = DocumentParseResult.builder()
+        TenderDocumentParseResult parseResult = TenderDocumentParseResult.builder()
                 .docId("doc-1")
                 .sectionTree(List.of())
                 .paragraphBlocks(List.of())

@@ -1,6 +1,9 @@
 package com.liang.drugagent.domain.tenderreview;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
@@ -10,7 +13,17 @@ import lombok.Setter;
  */
 @Getter
 @Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Anchor {
+
+    /** 当前段落/表格所属的章节路径。 */
+    private String chapterPath;
+    /** 段落在文档中的顺序索引，表格块为 -1。 */
+    private Integer paragraphIndex;
+    /** 表格在文档中的顺序索引，段落块为 -1。 */
+    private Integer tableIndex;
 
     /** 页码。 */
     private Integer pageNo;

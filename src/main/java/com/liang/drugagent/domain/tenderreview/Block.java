@@ -1,7 +1,12 @@
 package com.liang.drugagent.domain.tenderreview;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.util.List;
 
 /**
  * 原文内容块。
@@ -10,6 +15,9 @@ import lombok.Setter;
  */
 @Getter
 @Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Block {
 
     /** 内容块唯一 ID。 */
@@ -26,4 +34,6 @@ public class Block {
     private String rawContent;
     /** 原文定位锚点。 */
     private Anchor anchor;
+    /** 规则与解析使用的特征标签。 */
+    private List<String> featureTags;
 }

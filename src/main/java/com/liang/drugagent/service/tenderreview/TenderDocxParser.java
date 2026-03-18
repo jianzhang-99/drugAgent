@@ -1,11 +1,11 @@
-package com.liang.drugagent.tenderreview.parser;
+package com.liang.drugagent.service.tenderreview;
 
-import com.liang.drugagent.tenderreview.domain.Anchor;
-import com.liang.drugagent.tenderreview.domain.Block;
-import com.liang.drugagent.tenderreview.domain.ExtractionMeta;
-import com.liang.drugagent.tenderreview.domain.ExtractedField;
-import com.liang.drugagent.tenderreview.domain.SectionNode;
-import com.liang.drugagent.tenderreview.domain.enums.BlockType;
+import com.liang.drugagent.domain.tenderreview.Anchor;
+import com.liang.drugagent.domain.tenderreview.Block;
+import com.liang.drugagent.domain.tenderreview.ExtractionMeta;
+import com.liang.drugagent.domain.tenderreview.Field;
+import com.liang.drugagent.domain.tenderreview.TenderDocumentParseResult;
+import com.liang.drugagent.domain.tenderreview.TenderSectionNode;
 import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
@@ -24,7 +24,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Component
-public class DocxParser {
+public class TenderDocxParser {
 
     private static final Set<Character> CHINESE_NUMERALS = Set.of(
             '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'
@@ -58,12 +58,12 @@ public class DocxParser {
      * @return 解析结果
      * @throws IOException 读取失败时抛出
      */
-    public DocumentParseResult parse(InputStream inputStream, String docId) throws IOException {
+    public TenderDocumentParseResult parse(InputStream inputStream, String docId) throws IOException {
         boolean parseSuccess = false;
         List<Block> paragraphBlocks = new ArrayList<>();
         List<Block> tableBlocks = new ArrayList<>();
-        List<SectionNode> sectionTree = new ArrayList<>();
-        List<ExtractedField> fields = new ArrayList<>();
+        List<TenderSectionNode> sectionTree = new ArrayList<>();
+        List<Field> fields = new ArrayList<>();
 
         try (XWPFDocument doc = new XWPFDocument(inputStream)) {
             String[] currentChapter = {""};
@@ -81,7 +81,7 @@ public class DocxParser {
                     Block tableBlock = Block.builder()
                             .blockId(UUID.randomUUID().toString())
                             .documentId(docId)
-                            .blockType(BlockType.TABLE)
+                            .blockType("TABLE")
                             .chapterPath(currentChapter[0])
                             .content(tableContent)
                             .rawContent(tableContent)
@@ -117,7 +117,7 @@ public class DocxParser {
                 .parseSuccess(parseSuccess)
                 .build();
 
-        return DocumentParseResult.builder()
+        return TenderDocumentParseResult.builder()
                 .docId(docId)
                 .sectionTree(sectionTree)
                 .paragraphBlocks(paragraphBlocks)
@@ -129,13 +129,13 @@ public class DocxParser {
 
     private Block processParagraph(XWPFParagraph p, String docId,
                                     String[] currentChapter, int[] paragraphIndex,
-                                    List<SectionNode> sectionTree) {
+                                    List<TenderSectionNode> sectionTree) {
         String raw = p.getText();
         String content = normalizeText(raw);
 
         if (isSectionHeader(content)) {
             currentChapter[0] = String.valueOf(content.charAt(0));
-            sectionTree.add(SectionNode.builder()
+            sectionTree.add(TenderSectionNode.builder()
                     .title(content)
                     .level(1)
                     .children(new ArrayList<>())
@@ -146,7 +146,7 @@ public class DocxParser {
         Block block = Block.builder()
                 .blockId(UUID.randomUUID().toString())
                 .documentId(docId)
-                .blockType(BlockType.PARAGRAPH)
+                .blockType("PARAGRAPH")
                 .chapterPath(currentChapter[0])
                 .content(content)
                 .rawContent(raw)
@@ -166,8 +166,8 @@ public class DocxParser {
     /**
      * 从一个内容块中提取结构化字段。
      */
-    List<ExtractedField> extractFieldsFromBlock(Block block) {
-        List<ExtractedField> result = new ArrayList<>();
+    List<Field> extractFieldsFromBlock(Block block) {
+        List<Field> result = new ArrayList<>();
         String content = block.getContent();
         if (content == null || content.isBlank()) return result;
 
@@ -214,10 +214,10 @@ public class DocxParser {
         return result;
     }
 
-    private ExtractedField buildField(Block block, String fieldType, String fieldName,
-                                       String fieldValue, String normalizedValue,
-                                       String normalizedKey, double confidence) {
-        return ExtractedField.builder()
+    private Field buildField(Block block, String fieldType, String fieldName,
+                             String fieldValue, String normalizedValue,
+                             String normalizedKey, double confidence) {
+        return Field.builder()
                 .fieldId(UUID.randomUUID().toString())
                 .documentId(block.getDocumentId())
                 .blockId(block.getBlockId())

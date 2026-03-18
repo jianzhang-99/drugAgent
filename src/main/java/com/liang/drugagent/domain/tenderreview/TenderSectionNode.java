@@ -1,4 +1,4 @@
-package com.liang.drugagent.tenderreview.domain;
+package com.liang.drugagent.domain.tenderreview;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,7 +14,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class SectionNode {
+public class TenderSectionNode {
 
     /** 章节标题文本 */
     private String title;
@@ -24,5 +24,5 @@ public class SectionNode {
 
     /** 子章节列表 */
     @Builder.Default
-    private List<SectionNode> children = new ArrayList<>();
+    private List<TenderSectionNode> children = new ArrayList<>();
 }
