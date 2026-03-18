@@ -116,7 +116,7 @@ class TenderReviewDataResolverTest {
         TenderReviewData data = resolver.resolve(AgentContext.from(req));
 
         assertNotNull(data);
-        assertEquals("CASE-001", data.getCase().getCaseId());
+        assertEquals("CASE-001", data.getACase().getCaseId());
         assertEquals(2, data.getDocuments().size());
         assertEquals(1, data.getCompareScopes().size());
         assertFalse(data.getBlocks().isEmpty());

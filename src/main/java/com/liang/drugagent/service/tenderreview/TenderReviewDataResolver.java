@@ -100,7 +100,7 @@ public class TenderReviewDataResolver {
                                                 Map<String, Object> metadata,
                                                 String traceId) {
         TenderReviewData data = new TenderReviewData();
-        data.setCase(buildCase(metadata, traceId));
+        data.setACase(buildCase(metadata, traceId));
 
         List<TenderDocument> documents = new ArrayList<>();
         List<Block> blocks = new ArrayList<>();

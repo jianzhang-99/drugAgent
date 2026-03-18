@@ -49,6 +49,7 @@ public class DrugAgentService {
         resp.setRouteReason(String.valueOf(context.getAttributes().getOrDefault("routeReason", "unknown")));
         resp.setAnswer(workflowResult.getAnswer());
         resp.setRiskLevel(workflowResult.getRiskLevel());
+        resp.setReport(workflowResult.getReport());
         resp.setEvidenceList(workflowResult.getEvidenceList());
         resp.setEvidenceGroups(workflowResult.getEvidenceGroups());
         resp.setSteps(workflowResult.getSteps());

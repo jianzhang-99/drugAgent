@@ -5,8 +5,8 @@ import com.liang.drugagent.domain.tenderreview.ExemptionResult;
 import com.liang.drugagent.domain.tenderreview.RuleEvidence;
 import com.liang.drugagent.domain.tenderreview.RuleHit;
 import com.liang.drugagent.domain.tenderreview.TenderReviewData;
-import com.liang.drugagent.exemption.LowRiskChapterExemptionExecutor;
-import com.liang.drugagent.exemption.ReferenceTemplateExemptionExecutor;
+import com.liang.drugagent.executor.tenderreview.exemption.LowRiskChapterExemptionExecutor;
+import com.liang.drugagent.executor.tenderreview.exemption.ReferenceTemplateExemptionExecutor;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

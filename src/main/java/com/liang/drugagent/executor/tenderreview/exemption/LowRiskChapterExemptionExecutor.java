@@ -1,4 +1,4 @@
-package com.liang.drugagent.exemption;
+package com.liang.drugagent.executor.tenderreview.exemption;
 
 import com.liang.drugagent.domain.tenderreview.ExemptionHit;
 import com.liang.drugagent.domain.tenderreview.RuleEvidence;

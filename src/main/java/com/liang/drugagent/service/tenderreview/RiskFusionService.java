@@ -12,9 +12,24 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * 风险融合服务。
+ * 负责依据各项规则的命中权重、命中丰富度、多源证据关联性进行加权计算。
+ * 该服务将离散的规则命中碎片融合成单一的、可解释的综合风险评分及分级。
+ *
+ * @author liangjiajian
+ */
 @Service
 public class RiskFusionService {
 
+    /**
+     * 融合多项风险证据。
+     *
+     * @param data 原始输入数据（用于获取文档上下文）
+     * @param effectiveHits 最终生效（未被彻底免责）的风险命中项
+     * @param exemptionHits 已发生的免责过程（用于负向反馈调权重）
+     * @return 包含融合评分、风险等级、摘要理由的结果对象
+     */
     public RiskFusionResult fuse(TenderReviewData data, List<RuleHit> effectiveHits, List<ExemptionHit> exemptionHits) {
         RiskFusionResult result = new RiskFusionResult();
 

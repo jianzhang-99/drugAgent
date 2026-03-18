@@ -6,13 +6,14 @@ import com.liang.drugagent.domain.req.DrugAgentReq;
 import com.liang.drugagent.domain.workflow.WorkflowResult;
 import com.liang.drugagent.engine.TenderExemptionEngine;
 import com.liang.drugagent.engine.TenderRuleEngine;
-import com.liang.drugagent.exemption.LowRiskChapterExemptionExecutor;
-import com.liang.drugagent.exemption.ReferenceTemplateExemptionExecutor;
+import com.liang.drugagent.executor.tenderreview.exemption.LowRiskChapterExemptionExecutor;
+import com.liang.drugagent.executor.tenderreview.exemption.ReferenceTemplateExemptionExecutor;
 import com.liang.drugagent.executor.tenderreview.ContactNearbyExecutor;
 import com.liang.drugagent.executor.tenderreview.CoreTeamOverlapExecutor;
 import com.liang.drugagent.executor.tenderreview.QuoteGradientExecutor;
 import com.liang.drugagent.service.AgentChatService;
 import com.liang.drugagent.service.tenderreview.EvidenceAssemblerService;
+import com.liang.drugagent.service.tenderreview.ReportGenerationService;
 import com.liang.drugagent.service.tenderreview.RiskFusionService;
 import com.liang.drugagent.service.tenderreview.TenderReviewDataResolver;
 import org.junit.jupiter.api.Test;
@@ -42,6 +43,7 @@ class TenderReviewWorkflowTest {
                 )),
                 new RiskFusionService(),
                 new EvidenceAssemblerService(),
+                new ReportGenerationService(),
                 new ObjectMapper(),
                 new TenderReviewDataResolver(new ObjectMapper())
         );
@@ -106,8 +108,12 @@ class TenderReviewWorkflowTest {
         WorkflowResult result = workflow.execute(AgentContext.from(req));
 
         assertEquals("HIGH", result.getRiskLevel());
-        assertTrue(result.getAnswer().contains("Fusion score="));
+        assertTrue(result.getAnswer().contains("Overall risk=HIGH"));
         assertFalse(result.getEvidenceGroups().isEmpty());
         assertTrue(result.getEvidenceGroups().stream().anyMatch(group -> "risk_fusion".equals(group.getGroupKey())));
+        assertTrue(result.getSteps().contains("report_generation"));
+        assertTrue(result.getReport() != null);
+        assertEquals(2, result.getReport().getOverview().getDocumentCount());
+        assertFalse(result.getReport().getRiskItems().isEmpty());
     }
 }

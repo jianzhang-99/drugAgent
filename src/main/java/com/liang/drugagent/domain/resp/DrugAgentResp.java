@@ -2,6 +2,7 @@ package com.liang.drugagent.domain.resp;
 
 import com.liang.drugagent.domain.workflow.EvidenceItem;
 import com.liang.drugagent.domain.workflow.EvidenceGroup;
+import com.liang.drugagent.domain.workflow.ReviewReport;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -22,6 +23,7 @@ public class DrugAgentResp {
     private String routeReason;
     private String answer;
     private String riskLevel;
+    private ReviewReport report;
     private List<EvidenceItem> evidenceList = new ArrayList<>();
     private List<EvidenceGroup> evidenceGroups = new ArrayList<>();
     private List<String> steps = new ArrayList<>();

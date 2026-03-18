@@ -15,9 +15,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * 证据组装服务。
+ * 负责将规则命中项、免责记录及风险评分聚合转换为可供前端直接渲染的“证据树”结构。
+ *
+ * @author liangjiajian
+ */
 @Service
 public class EvidenceAssemblerService {
 
+    /**
+     * 将散落的执行记录组装为结构化的证据链。
+     *
+     * @param hits 风险命中项列表
+     * @param exemptionHits 已免责记录（若有）
+     * @param fusionResult 风险融合汇总
+     * @return 包含证据分组（Group）和扁平列表（Flat）的结果集
+     */
     public EvidenceAssemblyResult assemble(List<RuleHit> hits,
                                            List<ExemptionHit> exemptionHits,
                                            RiskFusionResult fusionResult) {
