@@ -14,34 +14,40 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
- * 核心团队重叠执行器 (W-M3)。
+ * 技术方案抄袭执行器 (W-P1)。
  *
  * <p>
- * 识别不同投标主体的核心团队人员（如项目经理、架构师等）姓名及其简历描述是否实质性重合。
- * 旨在通过人员信息的特征匹配来识别潜在的关联围标或陪标行为。
+ * 识别不同投标文件的技术方案段落中是否存在高度相似的内容，
+ * 重点检测核心业务描述的特征点是否重合。
  * </p>
  *
  * @author liangjiajian
  */
 @Component
-public class CoreTeamOverlapExecutor extends AbstractTenderExecutor {
+public class ProposalPlagiarismExecutor extends AbstractTenderExecutor {
 
-    /** 团队成员字段类型。 */
-    private static final String TEAM_MEMBER_FIELD_TYPE = "team_member";
+    /** 技术方案字段类型。 */
+    private static final String FIELD_TYPE = "proposal_segment";
     /** 规则编码。 */
-    private static final String RULE_CODE = "W-M3";
+    private static final String RULE_CODE = "W-P1";
     /** 规则名称。 */
-    private static final String RULE_NAME = "核心团队重叠";
+    private static final String RULE_NAME = "技术方案抄袭";
     /** 风险类型。 */
-    private static final String RISK_TYPE = "collusion";
+    private static final String RISK_TYPE = "plagiarism";
     /** 规则优先级。 */
-    private static final String PRIORITY = "HIGH";
+    private static final String PRIORITY = "MEDIUM_HIGH";
     /** 规则版本。 */
     private static final String VERSION = "v1";
 
-    /** 判定简历实质重合的相似度阈值系数。 */
-    private static final double SIMILARITY_THRESHOLD = 0.95;
+    /** 判定抄袭的相似度阈值。 */
+    private static final double SIMILARITY_THRESHOLD = 0.90;
 
+    /**
+     * 执行技术方案相似性检测。
+     *
+     * @param data 标书审查结构化输入数据
+     * @return 包含所有命中抄袭风险的结果集
+     */
     @Override
     public RuleResult execute(TenderReviewData data) {
         RuleResult result = new RuleResult();
@@ -57,36 +63,41 @@ public class CoreTeamOverlapExecutor extends AbstractTenderExecutor {
         return result;
     }
 
+    /**
+     * 在指定比对范围内检测文档。
+     */
     private List<RuleHit> detectInScope(CompareScope scope, List<Field> fields) {
         if (scope == null || scope.getDocumentIds() == null || scope.getDocumentIds().size() < 2) {
             return List.of();
         }
 
-        Map<String, List<Field>> teamFieldsByDoc = fields.stream()
+        // 按文档归集技术方案类型的字段
+        Map<String, List<Field>> proposalFieldsByDoc = fields.stream()
                 .filter(Objects::nonNull)
-                .filter(field -> TEAM_MEMBER_FIELD_TYPE.equals(field.getFieldType()))
+                .filter(field -> FIELD_TYPE.equals(field.getFieldType()))
                 .filter(field -> scope.getDocumentIds().contains(field.getDocumentId()))
                 .collect(Collectors.groupingBy(Field::getDocumentId));
 
         List<RuleHit> hits = new ArrayList<>();
         List<String> documentIds = scope.getDocumentIds();
 
+        // 两两比对不同厂商的标书文档
         for (int i = 0; i < documentIds.size(); i++) {
             String leftDocId = documentIds.get(i);
-            List<Field> leftFields = teamFieldsByDoc.getOrDefault(leftDocId, List.of());
+            List<Field> leftFields = proposalFieldsByDoc.getOrDefault(leftDocId, List.of());
             if (leftFields.isEmpty())
                 continue;
 
             for (int j = i + 1; j < documentIds.size(); j++) {
                 String rightDocId = documentIds.get(j);
-                List<Field> rightFields = teamFieldsByDoc.getOrDefault(rightDocId, List.of());
+                List<Field> rightFields = proposalFieldsByDoc.getOrDefault(rightDocId, List.of());
                 if (rightFields.isEmpty())
                     continue;
 
                 for (Field left : leftFields) {
                     for (Field right : rightFields) {
-                        double similarity = getSimilarity(left, right);
-                        if (similarity >= SIMILARITY_THRESHOLD) {
+                        double similarity = calculateSimilarity(left.getNormalizedValue(), right.getNormalizedValue());
+                        if (isHighlySimilar(left, right, similarity)) {
                             hits.add(buildHit(scope, left, right, similarity));
                         }
                     }
@@ -96,26 +107,41 @@ public class CoreTeamOverlapExecutor extends AbstractTenderExecutor {
         return hits;
     }
 
-    private double getSimilarity(Field f1, Field f2) {
-        String name1 = f1.getNormalizedKey();
-        String name2 = f2.getNormalizedKey();
-        if (name1 == null || name2 == null || !name1.trim().equals(name2.trim())) {
-            return 0.0;
+    /**
+     * 判断两个字段内容是否实质性相似。
+     */
+    private boolean isHighlySimilar(Field f1, Field f2, double similarity) {
+        String v1 = f1.getNormalizedValue();
+        if (v1 == null)
+            return false;
+
+        // 特殊业务规则判断
+        if (v1.contains("统一门户") && v1.contains("统一流程") && v1.contains("统一数据口径")) {
+            return similarity >= SIMILARITY_THRESHOLD;
         }
 
-        String resume1 = f1.getNormalizedValue();
-        String resume2 = f2.getNormalizedValue();
-        if (resume1 == null || resume2 == null)
-            return 0.0;
-        if (resume1.equals(resume2))
-            return 1.0;
-
-        int longerLength = Math.max(resume1.length(), resume2.length());
-        if (longerLength == 0)
-            return 1.0;
-        return (longerLength - editDistance(resume1, resume2)) / (double) longerLength;
+        return similarity >= SIMILARITY_THRESHOLD;
     }
 
+    /**
+     * 计算两个字符串的相似度。
+     */
+    private double calculateSimilarity(String s1, String s2) {
+        if (s1 == null || s2 == null)
+            return 0.0;
+        if (s1.equals(s2))
+            return 1.0;
+
+        int longerLength = Math.max(s1.length(), s2.length());
+        if (longerLength == 0)
+            return 1.0;
+
+        return (longerLength - editDistance(s1, s2)) / (double) longerLength;
+    }
+
+    /**
+     * 使用编辑距离算法。
+     */
     private int editDistance(String s1, String s2) {
         int[] costs = new int[s2.length() + 1];
         for (int i = 0; i <= s1.length(); i++) {
@@ -140,13 +166,16 @@ public class CoreTeamOverlapExecutor extends AbstractTenderExecutor {
         return costs[s2.length()];
     }
 
+    /**
+     * 构建命中汇总。
+     */
     private RuleHit buildHit(CompareScope scope, Field left, Field right, double sim) {
         RuleHit hit = createBaseHit(RULE_CODE, RULE_NAME, scope.getScopeId(), RISK_TYPE, PRIORITY, VERSION);
-        hit.setWeight(95);
-        hit.setMatchedValue("member_name:" + left.getNormalizedKey());
+        hit.setWeight(85);
+        hit.setMatchedValue("similarity:" + String.format("%.2f", sim));
 
-        hit.setTriggerSummary(String.format("文档 %s 与 %s 的核心团队成员“%s”完全重叠。两份简历描述的高度匹配（相似度 %.0f%%），存在串通投标风险。",
-                left.getDocumentId(), right.getDocumentId(), left.getNormalizedKey(), sim * 100));
+        hit.setTriggerSummary(String.format("文档 %s 与 %s 在技术方案中关于“%s”的描述实质性相似（相似度 %.0f%%）。",
+                left.getDocumentId(), right.getDocumentId(), left.getFieldName(), sim * 100));
 
         hit.setDocumentIds(List.of(left.getDocumentId(), right.getDocumentId()));
         hit.setFieldIds(List.of(left.getFieldId(), right.getFieldId()));

@@ -23,6 +23,7 @@ public class WorkflowResult {
     private String answer;
     private String riskLevel;
     private List<EvidenceItem> evidenceList = new ArrayList<>();
+    private List<EvidenceGroup> evidenceGroups = new ArrayList<>();
     private List<String> steps = new ArrayList<>();
 
     public static WorkflowResult of(SceneEnum scene, String answer) {
