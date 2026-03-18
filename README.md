@@ -8,7 +8,7 @@ AI 药品监管智能体后端服务。基于 Spring Boot + Spring AI Alibaba（
 
 | 组件 | 版本 |
 |---|---|
-| Java | 17 |
+| Java | 21 |
 | Spring Boot | 3.4.4 |
 | Spring AI Alibaba | 1.0.0-M6.1 |
 | DashScope SDK | 2.19.1 |
@@ -23,7 +23,7 @@ AI 药品监管智能体后端服务。基于 Spring Boot + Spring AI Alibaba（
 
 ### 前置条件
 
-1. Java 17+
+1. Java 21+
 2. 阿里云百炼 DashScope API Key
 
 ### 配置 API Key
@@ -264,14 +264,78 @@ mvn test -Dtest="InMemoryCaseStoreTest,CaseServiceTest,DocxParserTest,DocumentPa
 
 | 阶段 | 状态 | 内容 |
 |---|---|---|
-| 7.1 任务接收 | **已完成** | 文件上传校验、caseId 生成、任务初始化 |
-| 7.2 文档解析 | **已完成** | DOCX 解析、blocks 提取、fields 字段提取、extractionMeta |
-| 7.3 结构化提取 | 待开发 | LLM 辅助深度字段提取 |
-| 7.4 围标规则命中 | 待开发 | 跨文档 normalizedKey 比对 |
-| 7.5 误报豁免 | 待开发 | 章节权重、豁免规则 |
-| 7.6 风险融合 | 待开发 | 多维度风险评分 |
-| 7.7 证据编排 | 待开发 | blockId 回溯、证据链生成 |
-| 7.8 报告生成 | 待开发 | 结构化风险报告输出 |
+| 7.1 任务接收 | ✅ **已完成** | 文件上传校验、caseId 生成、任务初始化 |
+| 7.2 文档解析 | ✅ **已完成** | DOCX 解析、blocks 提取、fields 字段提取、extractionMeta |
+| 7.3 结构化提取 | 📋 待开发 | LLM 辅助深度字段提取 |
+| 7.4 围标规则命中 | 📋 待开发 | 跨文档 normalizedKey 比对 |
+| 7.5 误报豁免 | 📋 待开发 | 章节权重、豁免规则 |
+| 7.6 风险融合 | 📋 待开发 | 多维度风险评分 |
+| 7.7 证据编排 | 📋 待开发 | blockId 回溯、证据链生成 |
+| 7.8 报告生成 | 📋 待开发 | 结构化风险报告输出 |
+
+---
+
+## 当前状态（2026-03-18）
+
+### ✅ 已完成
+
+**7.1 任务接收**
+- 接口：`POST /api/tender-review/cases`
+- 功能：上传 2+ 份 .docx 文件，生成 caseId 和 documentIds
+- 校验：文件数量、格式、文件名非空
+- 存储：内存存储（`InMemoryCaseStore`）
+- 测试：12 个单元测试 + 4 个接口测试，全部通过
+
+**7.2 文档解析**
+- 接口：`POST /api/tender-review/cases/{caseId}/parse/{docId}`
+- 功能：
+  - 段落块提取（100+ 块/文档）
+  - 表格块提取（5 块/文档）
+  - 章节树构建（7 个一级章节）
+  - 字段提取（手机号、邮箱、报价、人员，正则驱动）
+  - extractionMeta（schema v1, parser v1.0.0）
+- 测试：35 个解析测试 + 2 个编排测试，全部通过
+
+**Swagger UI 集成**
+- 所有接口已注册到 Swagger UI（`http://localhost:8124/api/swagger-ui.html`）
+- 标书审查分组独立展示
+- 7.1 接口支持文件上传表单（多文件选择）
+- 完整的 API 文档（summary、description、responses）
+
+### 📋 待办事项
+
+**短期（7.3 结构化提取）**
+- [ ] 设计 LLM prompt 模板，提取深度字段（项目名称、投标单位、联系人、技术方案摘要等）
+- [ ] 实现 `StructuredExtractionService`，调用 QwenService
+- [ ] 将提取结果合并到 `DocumentParseResult.fields`
+- [ ] 编写单元测试，验证提取准确率
+
+**中期（7.4 围标规则命中）**
+- [ ] 实现跨文档 `normalizedKey` 比对逻辑
+- [ ] 定义围标规则（手机号重复、邮箱重复、报价接近、人员重叠等）
+- [ ] 输出规则命中结果（ruleId、matchedDocIds、evidence）
+
+**长期（7.5-7.8）**
+- [ ] 误报豁免机制（章节权重、白名单）
+- [ ] 风险评分融合（多维度加权）
+- [ ] 证据链生成（blockId 回溯）
+- [ ] 结构化报告输出（JSON/PDF）
+
+### ⚠️ 已知问题
+
+1. **字段提取边界情况**：章节标题"六、投标报价汇总"被误命中为 `bid_price`，confidence=0.6（可通过阈值过滤）
+2. **内存存储限制**：当前使用 `ConcurrentHashMap`，重启后数据丢失，生产环境需替换为持久化存储
+3. **文件大小限制**：未设置上传文件大小限制，需在 `application.yml` 配置 `spring.servlet.multipart.max-file-size`
+
+---
+
+## 最近更新
+
+**2026-03-18**
+- 修复 Swagger UI 文件上传显示问题（`@ArraySchema` + `items.format=binary`）
+- 扩展 `packages-to-scan` 使标书审查接口出现在 Swagger UI
+- Java 版本对齐为 21
+- 手动测试 7.1/7.2 全部功能点通过（7 个测试用例）
 
 ---
 
