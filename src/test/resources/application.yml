@@ -1,0 +1,14 @@
+spring:
+  ai:
+    dashscope:
+      api-key: test-dummy-key-for-unit-tests
+      chat:
+        options:
+          model: qwen-plus
+      embedding:
+        options:
+          model: text-embedding-v3
+
+aliyun:
+  dashscope:
+    api-key: test-dummy-key-for-unit-tests
