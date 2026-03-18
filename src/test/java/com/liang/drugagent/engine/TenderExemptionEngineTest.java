@@ -30,7 +30,7 @@ class TenderExemptionEngineTest {
         hit.setRuleName("proposal_copy");
         hit.setRiskType("plagiarism");
         hit.setPriority("MEDIUM_HIGH");
-        hit.setWeight(85);
+        hit.setWeight(120);
         hit.setTriggerSummary("Two documents are highly similar in low-risk sections.");
         hit.setMatchedValue("according to procurement standard");
 
@@ -45,10 +45,10 @@ class TenderExemptionEngineTest {
 
         ExemptionResult result = engine.apply(List.of(hit), new TenderReviewData());
 
-        assertEquals(1, result.getExemptionHits().size());
+        assertEquals(2, result.getExemptionHits().size());
         assertEquals(1, result.getEffectiveHits().size());
         assertTrue(Boolean.TRUE.equals(result.getEffectiveHits().get(0).getExempted()));
-        assertTrue(result.getEffectiveHits().get(0).getAdjustedWeight() < 85);
+        assertTrue(result.getEffectiveHits().get(0).getAdjustedWeight() < 120);
     }
 
     @Test

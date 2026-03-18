@@ -2,6 +2,7 @@ package com.liang.drugagent.executor.tenderreview;
 
 import com.liang.drugagent.domain.tenderreview.CompareScope;
 import com.liang.drugagent.domain.tenderreview.Field;
+import com.liang.drugagent.domain.tenderreview.RuleEvidence;
 import com.liang.drugagent.domain.tenderreview.RuleHit;
 import com.liang.drugagent.domain.tenderreview.RuleResult;
 import com.liang.drugagent.domain.tenderreview.TenderReviewData;
@@ -91,17 +92,60 @@ public class CoreTeamOverlapExecutor extends AbstractTenderExecutor {
                 if (rightFields.isEmpty())
                     continue;
 
+                List<Field[]> matches = new ArrayList<>();
                 for (Field left : leftFields) {
                     for (Field right : rightFields) {
                         double similarity = getSimilarity(left, right);
                         if (similarity >= SIMILARITY_THRESHOLD) {
-                            hits.add(buildHit(scope, left, right, similarity));
+                            matches.add(new Field[]{left, right});
                         }
                     }
+                }
+
+                if (!matches.isEmpty()) {
+                    hits.add(buildAggregatedHit(scope, leftDocId, rightDocId, matches));
                 }
             }
         }
         return hits;
+    }
+
+    /**
+     * 构建聚合的命中记录对象。
+     */
+    private RuleHit buildAggregatedHit(CompareScope scope, String leftDocId, String rightDocId, List<Field[]> matches) {
+        RuleHit hit = createBaseHit(RULE_CODE, RULE_NAME, scope.getScopeId(), RISK_TYPE, PRIORITY, VERSION);
+        hit.setWeight(95);
+
+        List<String> names = matches.stream()
+                .map(m -> m[0].getNormalizedKey())
+                .distinct()
+                .collect(Collectors.toList());
+        hit.setMatchedValue("overlapping_members:" + String.join(",", names));
+
+        String namesSummary = String.join("、", names);
+        hit.setTriggerSummary(String.format("文档 %s 与 %s 的核心团队成员存在严重重叠（涉及 %d 人：%s）。两投主体的简历描述高度匹配，存在串通投标风险。",
+                leftDocId, rightDocId, names.size(), namesSummary));
+
+        hit.setDocumentIds(List.of(leftDocId, rightDocId));
+
+        List<String> fieldIds = new ArrayList<>();
+        List<String> blockIds = new ArrayList<>();
+        List<RuleEvidence> evidences = new ArrayList<>();
+
+        for (Field[] pair : matches) {
+            fieldIds.add(pair[0].getFieldId());
+            fieldIds.add(pair[1].getFieldId());
+            blockIds.add(pair[0].getBlockId());
+            blockIds.add(pair[1].getBlockId());
+            evidences.add(toEvidence(pair[0]));
+            evidences.add(toEvidence(pair[1]));
+        }
+
+        hit.setFieldIds(fieldIds.stream().distinct().collect(Collectors.toList()));
+        hit.setBlockIds(blockIds.stream().filter(Objects::nonNull).distinct().collect(Collectors.toList()));
+        hit.setEvidences(evidences);
+        return hit;
     }
 
     /**
@@ -160,23 +204,4 @@ public class CoreTeamOverlapExecutor extends AbstractTenderExecutor {
         return costs[s2.length()];
     }
 
-    /**
-     * 构建命中记录对象。
-     */
-    private RuleHit buildHit(CompareScope scope, Field left, Field right, double sim) {
-        RuleHit hit = createBaseHit(RULE_CODE, RULE_NAME, scope.getScopeId(), RISK_TYPE, PRIORITY, VERSION);
-        hit.setWeight(95);
-        hit.setMatchedValue("member_name:" + left.getNormalizedKey());
-
-        hit.setTriggerSummary(String.format("文档 %s 与 %s 的核心团队成员“%s”完全重叠。两份简历描述的高度匹配（相似度 %.0f%%），存在串通投标风险。",
-                left.getDocumentId(), right.getDocumentId(), left.getNormalizedKey(), sim * 100));
-
-        hit.setDocumentIds(List.of(left.getDocumentId(), right.getDocumentId()));
-        hit.setFieldIds(List.of(left.getFieldId(), right.getFieldId()));
-        hit.setBlockIds(List.of(left.getBlockId(), right.getBlockId()).stream()
-                .filter(Objects::nonNull).distinct().collect(Collectors.toList()));
-
-        hit.setEvidences(List.of(toEvidence(left), toEvidence(right)));
-        return hit;
-    }
 }
