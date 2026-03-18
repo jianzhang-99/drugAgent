@@ -1,14 +1,33 @@
 <template>
-  <div class="message-wrap" :class="{ 'is-user-wrap': msg.role === 'user' }">
-    <div class="message-bubble" :class="{ 'is-user': msg.role === 'user', 'is-ai': msg.role === 'assistant' }">
-      <div class="avatar" :class="msg.role === 'user' ? 'avatar-user' : 'avatar-ai'">
-        {{ msg.role === 'user' ? '我' : 'AI' }}
+  <div class="message-row" :class="{ 'is-user-row': msg.role === 'user' }">
+    <div v-if="msg.role === 'assistant'" class="bot-avatar">
+      <el-icon><MagicStick /></el-icon>
+    </div>
+
+    <div class="message-container">
+      <div v-if="msg.role === 'assistant'" class="meta">
+        <span class="author">Drug-Agent</span>
+        <span class="time">{{ msg.time || '刚刚' }}</span>
       </div>
-      <div class="content">
-        <div class="meta">{{ msg.role === 'user' ? '提问' : '合规助手' }}</div>
+      <div v-else class="meta user-meta">
+        <span class="time">您 • {{ msg.time || '刚刚' }}</span>
+      </div>
+
+      <div class="message-bubble" :class="{ 'is-user': msg.role === 'user', 'is-ai': msg.role === 'assistant' }">
         <div v-if="msg.role === 'assistant'" class="markdown-body" v-html="renderedContent" />
-        <div v-else>{{ msg.content }}</div>
+        <div v-else class="plain-content">{{ msg.content }}</div>
       </div>
+
+      <div v-if="msg.role === 'user' && msg.files && msg.files.length" class="attachment-list">
+        <div v-for="file in msg.files" :key="file.name" class="attachment-card">
+          <el-icon><Document /></el-icon>
+          <span class="file-name">{{ file.name }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="msg.role === 'user'" class="user-avatar-placeholder">
+       <el-icon><User /></el-icon>
     </div>
   </div>
 </template>
@@ -16,95 +35,128 @@
 <script setup>
 import { computed } from 'vue'
 import { marked } from 'marked'
+import { MagicStick, Document, User } from '@element-plus/icons-vue'
 
 const props = defineProps({
   msg: { type: Object, required: true }
 })
 
-const renderedContent = computed(() => {
-  return marked.parse(props.msg.content || '', { breaks: true })
-})
+const renderedContent = computed(() => marked.parse(props.msg.content || '', { breaks: true }))
 </script>
 
 <style scoped>
-.message-wrap {
+.message-row {
   display: flex;
-  justify-content: flex-start;
-  margin-bottom: 12px;
+  margin-bottom: 32px;
+  gap: 12px;
 }
 
-.is-user-wrap {
+.is-user-row {
   justify-content: flex-end;
 }
 
-.message-bubble {
-  display: flex;
-  gap: 10px;
-  max-width: 86%;
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid #e7edf8;
-  background: #fff;
-}
-
-.message-bubble.is-user {
-  flex-direction: row-reverse;
-  background: #eaf3ff;
-  border-color: #d5e5ff;
-}
-
-.avatar {
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
+.bot-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #3b82f6;
+  color: #fff;
   display: grid;
   place-items: center;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 20px;
   flex-shrink: 0;
 }
 
-.avatar-ai {
-  color: #185cc8;
-  background: #e6f0ff;
+.user-avatar-placeholder {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #64748b;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  flex-shrink: 0;
 }
 
-.avatar-user {
-  color: #fff;
-  background: #2f74ff;
-}
-
-.content {
-  flex: 1;
-  line-height: 1.68;
-  color: #28354d;
-  word-break: break-word;
+.message-container {
+  max-width: 80%;
+  display: flex;
+  flex-direction: column;
 }
 
 .meta {
-  font-size: 12px;
-  color: #7e8aa1;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.markdown-body :deep(h2),
-.markdown-body :deep(h3) {
-  margin: 8px 0;
-  color: #1f2d46;
+.user-meta {
+  justify-content: flex-end;
+}
+
+.author {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.time {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.message-bubble {
+  border-radius: 16px;
+  padding: 12px 16px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.message-bubble.is-ai {
+  background: #fff;
+  color: #1e293b;
+  border: 1px solid transparent;
+  width: fit-content;
+}
+
+.message-bubble.is-user {
+  background: #1e293b;
+  color: #fff;
+  border-radius: 20px 4px 20px 20px;
+}
+
+.attachment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  justify-content: flex-end;
+}
+
+.attachment-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #475569;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.file-name {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .markdown-body :deep(p) {
-  margin: 0 0 8px;
-}
-
-.markdown-body :deep(strong) {
-  color: #1d5ece;
-}
-
-.markdown-body :deep(pre) {
-  background: #f3f6fb;
-  padding: 10px;
-  border-radius: 8px;
-  overflow-x: auto;
+  margin: 0;
 }
 </style>
+

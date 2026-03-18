@@ -94,7 +94,7 @@ class TenderReviewControllerTest {
         document.setDocumentId("doc-1");
         document.setFilename("a.docx");
         when(caseService.getDocument(eq("doc-1"))).thenReturn(Optional.of(document));
-        when(documentParseService.parseDocument(eq("case-001"), eq("doc-1"), any(InputStream.class)))
+        when(documentParseService.parseDocument(eq("doc-1"), eq("a.docx"), any(InputStream.class)))
                 .thenReturn(parseResult);
 
         mockMvc.perform(post("/tender-review/cases/case-001/parse/doc-1"))

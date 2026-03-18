@@ -35,15 +35,15 @@ public class RequestTraceFilter extends OncePerRequestFilter {
         response.setHeader(TRACE_ID_HEADER, traceId);
 
         try {
-            log.info("HTTP request started: method={}, path={}, query={}, clientIp={}",
+            log.info(">>> [{}] {}?{} | IP: {}",
                     request.getMethod(),
                     request.getRequestURI(),
-                    request.getQueryString(),
+                    request.getQueryString() == null ? "" : request.getQueryString(),
                     resolveClientIp(request));
             filterChain.doFilter(request, response);
         } finally {
             long cost = System.currentTimeMillis() - startTime;
-            log.info("HTTP request completed: method={}, path={}, status={}, durationMs={}",
+            log.info("<<< [{}] {} | HTTP {} | {}ms",
                     request.getMethod(),
                     request.getRequestURI(),
                     response.getStatus(),

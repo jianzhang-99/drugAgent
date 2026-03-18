@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -74,7 +75,10 @@ class CoreTeamOverlapExecutorTest {
 
         RuleResult result = executor.execute(data);
 
-        assertTrue(result.getHits().isEmpty());
+        assertFalse(result.getHits().isEmpty());
+        RuleHit hit = result.getHits().get(0);
+        assertEquals(80, hit.getWeight());
+        assertTrue(hit.getTriggerSummary().contains("周辰"));
     }
 
     /**

@@ -23,6 +23,7 @@ public class ReviewReport {
     private String caseId;
     private String scene;
     private String generatedAt;
+    private String markdownContent;
     private Overview overview;
     private List<RiskItem> riskItems = new ArrayList<>();
     private List<String> managementSummary = new ArrayList<>();

@@ -108,12 +108,14 @@ class TenderReviewWorkflowTest {
         WorkflowResult result = workflow.execute(AgentContext.from(req));
 
         assertEquals("HIGH", result.getRiskLevel());
-        assertTrue(result.getAnswer().contains("Overall risk=HIGH"));
+        assertTrue(result.getAnswer().contains("整体风险等级为 高风险"));
         assertFalse(result.getEvidenceGroups().isEmpty());
         assertTrue(result.getEvidenceGroups().stream().anyMatch(group -> "risk_fusion".equals(group.getGroupKey())));
         assertTrue(result.getSteps().contains("report_generation"));
         assertTrue(result.getReport() != null);
         assertEquals(2, result.getReport().getOverview().getDocumentCount());
         assertFalse(result.getReport().getRiskItems().isEmpty());
+        assertTrue(result.getReport().getMarkdownContent().contains("# 标书审核报告"));
+        assertTrue(result.getReport().getMarkdownContent().contains("## 三、重点风险说明"));
     }
 }
