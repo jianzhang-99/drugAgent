@@ -1,6 +1,5 @@
 package com.liang.drugagent.advisor;
 
-import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.ai.chat.client.advisor.api.AdvisedRequest;
 import org.springframework.ai.chat.client.advisor.api.AdvisedResponse;
@@ -70,9 +69,7 @@ public class LoggingAdvisor implements CallAroundAdvisor, StreamAroundAdvisor {
                 .map(m -> String.format("[%s]: %s", m.getMessageType().name(), m.getText()))
                 .collect(Collectors.joining("\n  "));
 
-        log.info("========== 【AI 请求发起】 ==========\n" +
-                        "  Advise Context: {}\n" +
-                        "  Message History:\n  {}",
+        log.info("AI request started: adviseContext={}, messages=\n{}",
                 request.adviseContext(),
                 currentMessagesStr);
     }
@@ -87,10 +84,7 @@ public class LoggingAdvisor implements CallAroundAdvisor, StreamAroundAdvisor {
                     .map(r -> r.getOutput().getText())
                     .collect(Collectors.joining("\n  "));
 
-            log.info("========== 【AI 响应成功】 ==========\n" +
-                            "  耗时: {} ms\n" +
-                            "  Token 信息: {}\n" +
-                            "  生成的内容:\n  {}",
+            log.info("AI response completed: durationMs={}, usage={}, content=\n{}",
                     costTime,
                     chatResponse.getMetadata() != null ? chatResponse.getMetadata().getUsage() : "未知",
                     outputStr);

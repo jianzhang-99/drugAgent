@@ -5,6 +5,8 @@ import com.liang.drugagent.domain.Result;
 import com.liang.drugagent.domain.req.DrugAgentReq;
 import com.liang.drugagent.domain.resp.DrugAgentResp;
 import io.swagger.v3.oas.annotations.Operation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,6 +26,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RequestMapping("/agent/drug")
 public class DrugAgentController {
 
+    private static final Logger log = LoggerFactory.getLogger(DrugAgentController.class);
+
     private final DrugAgentService drugAgentService;
 
     public DrugAgentController(DrugAgentService drugAgentService) {
@@ -34,14 +38,21 @@ public class DrugAgentController {
     @PostMapping("/chat")
     public Result<DrugAgentResp> chat(@RequestBody DrugAgentReq req) {
         if (req == null || req.getQuery() == null || req.getQuery().isBlank()) {
+            log.warn("Reject empty chat request");
             return Result.error("query 不能为空");
         }
+        log.info("Receive sync chat request: sessionId={}, userId={}, queryLength={}",
+                req.getSessionId(), req.getUserId(), req.getQuery().length());
         return Result.success(drugAgentService.handle(req));
     }
 
     @Operation(summary = "Drug Agent 流式对话入口")
     @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamChat(@RequestBody DrugAgentReq req) {
+        log.info("Receive stream chat request: sessionId={}, userId={}, queryLength={}",
+                req == null ? null : req.getSessionId(),
+                req == null ? null : req.getUserId(),
+                req == null || req.getQuery() == null ? 0 : req.getQuery().length());
         return drugAgentService.streamHandle(req);
     }
 }

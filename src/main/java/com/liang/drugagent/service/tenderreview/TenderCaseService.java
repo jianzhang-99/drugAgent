@@ -5,6 +5,8 @@ import com.liang.drugagent.domain.resp.TenderCaseCreateResp;
 import com.liang.drugagent.domain.tenderreview.TenderCase;
 import com.liang.drugagent.domain.tenderreview.TenderDocument;
 import com.liang.drugagent.enums.TenderCaseStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -17,6 +19,8 @@ import java.util.UUID;
 
 @Service
 public class TenderCaseService {
+
+    private static final Logger log = LoggerFactory.getLogger(TenderCaseService.class);
 
     private final InMemoryTenderCaseStore store;
 
@@ -31,6 +35,7 @@ public class TenderCaseService {
      */
     public TenderCaseCreateResp createCase(TenderCaseCreateReq req) {
         validateRequest(req);
+        log.info("Creating tender case: submittedBy={}, filenames={}", req.getSubmittedBy(), req.getFilenames());
 
         String caseId = UUID.randomUUID().toString();
         List<String> documentIds = new ArrayList<>();
@@ -59,6 +64,7 @@ public class TenderCaseService {
 
         store.saveCase(c);
         docs.forEach(store::saveDocument);
+        log.info("Tender case persisted: caseId={}, documentCount={}", caseId, docs.size());
 
         return TenderCaseCreateResp.builder()
                 .caseId(caseId)
@@ -73,6 +79,7 @@ public class TenderCaseService {
      */
     public void storeFileContent(String docId, byte[] bytes) {
         store.saveFileBytes(docId, bytes);
+        log.info("Stored tender file content: docId={}, size={}", docId, bytes == null ? 0 : bytes.length);
     }
 
     /**
@@ -90,10 +97,12 @@ public class TenderCaseService {
      * 查询所有任务，按创建时间倒序返回。
      */
     public List<TenderCase> listCases() {
-        return store.findAllCases().stream()
+        List<TenderCase> cases = store.findAllCases().stream()
                 .sorted(Comparator.comparing(TenderCase::getCreatedAt,
                         Comparator.nullsLast(Comparator.naturalOrder())).reversed())
                 .toList();
+        log.info("Listed tender cases: count={}", cases.size());
+        return cases;
     }
 
     // ---- internal ----

@@ -7,6 +7,8 @@ import com.liang.drugagent.domain.req.DrugAgentReq;
 import com.liang.drugagent.domain.resp.DrugAgentResp;
 import com.liang.drugagent.enums.SceneEnum;
 import com.liang.drugagent.workflow.SceneWorkflow;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -24,6 +26,8 @@ import java.util.Map;
 @Service
 public class DrugAgentService {
 
+    private static final Logger log = LoggerFactory.getLogger(DrugAgentService.class);
+
     private final SceneRouter sceneRouter;
     private final WorkflowRegistry workflowRegistry;
     private final AgentChatService agentChatService;
@@ -36,12 +40,23 @@ public class DrugAgentService {
 
     public DrugAgentResp handle(DrugAgentReq req) {
         AgentContext context = AgentContext.from(req);
+        log.info("Start sync agent handling: traceId={}, sessionId={}, userId={}",
+                context.getTraceId(), context.getSessionId(), context.getUserId());
         SceneEnum sceneType = sceneRouter.route(req, context);
         context.setSceneType(sceneType);
+        log.info("Scene routed: traceId={}, scene={}, routeReason={}",
+                context.getTraceId(),
+                sceneType,
+                context.getAttributes().getOrDefault("routeReason", "unknown"));
 
         // 每个场景只关心自己的执行细节，统一服务只负责调度，不承载业务判断。
         SceneWorkflow workflow = workflowRegistry.get(sceneType);
         WorkflowResult workflowResult = workflow.execute(context);
+        log.info("Workflow executed: traceId={}, scene={}, riskLevel={}, stepCount={}",
+                context.getTraceId(),
+                workflowResult.getScene(),
+                workflowResult.getRiskLevel(),
+                workflowResult.getSteps() == null ? 0 : workflowResult.getSteps().size());
 
         DrugAgentResp resp = new DrugAgentResp();
         resp.setTraceId(context.getTraceId());
@@ -53,13 +68,20 @@ public class DrugAgentService {
         resp.setEvidenceList(workflowResult.getEvidenceList());
         resp.setEvidenceGroups(workflowResult.getEvidenceGroups());
         resp.setSteps(workflowResult.getSteps());
+        log.info("Sync agent response ready: traceId={}, scene={}", context.getTraceId(), resp.getScene());
         return resp;
     }
 
     public SseEmitter streamHandle(DrugAgentReq req) {
         AgentContext context = AgentContext.from(req);
+        log.info("Start stream agent handling: traceId={}, sessionId={}, userId={}",
+                context.getTraceId(), context.getSessionId(), context.getUserId());
         SceneEnum sceneType = sceneRouter.route(req, context);
         context.setSceneType(sceneType);
+        log.info("Stream scene routed: traceId={}, scene={}, routeReason={}",
+                context.getTraceId(),
+                sceneType,
+                context.getAttributes().getOrDefault("routeReason", "unknown"));
 
         SseEmitter emitter = new SseEmitter(0L);
         try {
@@ -94,10 +116,12 @@ public class DrugAgentService {
                             try {
                                 sendEvent(emitter, "delta", chunk);
                             } catch (IOException e) {
+                                log.error("Send SSE delta failed: traceId={}, scene={}", context.getTraceId(), sceneType, e);
                                 emitter.completeWithError(e);
                             }
                         },
                         error -> {
+                            log.error("Stream agent handling failed: traceId={}, scene={}", context.getTraceId(), sceneType, error);
                             try {
                                 sendEvent(emitter, "error", error.getMessage());
                             } catch (IOException ignored) {
@@ -108,8 +132,10 @@ public class DrugAgentService {
                         () -> {
                             try {
                                 sendEvent(emitter, "done", buildDonePayload(sceneType));
+                                log.info("Stream agent handling completed: traceId={}, scene={}", context.getTraceId(), sceneType);
                                 emitter.complete();
                             } catch (IOException e) {
+                                log.error("Send SSE done failed: traceId={}, scene={}", context.getTraceId(), sceneType, e);
                                 emitter.completeWithError(e);
                             }
                         }

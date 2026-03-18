@@ -36,6 +36,8 @@ public class TenderReviewDataResolver {
     private static final Pattern CASE_DATA_PATTERN =
             Pattern.compile("\\d+\\s*(?:家|个|项|套|名|座|台|年|%|亿元|万元|人次|余家|余个|余项)");
     private static final Pattern SECTION_NO_PATTERN = Pattern.compile("^([0-9一二三四五六七八九十]+(?:\\.[0-9]+)*)");
+    private static final Pattern BOLD_TEXT_PATTERN = Pattern.compile("\\*\\*(.*?)\\*\\*");
+    private static final Pattern SPECIFIC_TYPOS_PATTERN = Pattern.compile("应急响映|串并口|协仪|堆叠架构|逻辑漏斗");
 
     private final ObjectMapper objectMapper;
 
@@ -195,7 +197,25 @@ public class TenderReviewDataResolver {
                     addTableBlock(document, chapterPath, tableNo, tableBuffer, blocks, fields);
                     tableBuffer.clear();
                 }
-                chapterPath = headingMatcher.group(1).trim();
+
+                // 提取标题内容
+                String headingContent = headingMatcher.group(1).trim();
+                chapterPath = headingContent;
+                
+                // 为标题本身创建一个 BLOCK
+                Block headingBlock = buildBlock(document.documentId(), "HEADING", chapterPath, 
+                        normalizeSentence(headingContent), line, null, null);
+                blocks.add(headingBlock);
+                
+                // 提取 heading 类型的 Field，供 TemplateHomologyExecutor (W-M4) 使用
+                String level = line.startsWith("######") ? "H6" : 
+                               line.startsWith("#####") ? "H5" :
+                               line.startsWith("####") ? "H4" :
+                               line.startsWith("###") ? "H3" :
+                               line.startsWith("##") ? "H2" : "H1";
+                fields.add(buildField(document.documentId(), headingBlock, "heading", 
+                        "章节标题", headingContent, normalizeSentence(headingContent), level + ":" + normalizeSentence(headingContent)));
+                
                 continue;
             }
 
@@ -345,6 +365,23 @@ public class TenderReviewDataResolver {
             fields.add(buildField(document.documentId(), block, "text_segment",
                     trimFieldName(block.getChapterPath(), "文本片段"),
                     content, normalizeSentence(content), normalizeKeyFromChapter(block.getChapterPath())));
+        }
+
+        // 提取错别字或罕见项 (W-M5 支持)
+        Matcher boldMatcher = BOLD_TEXT_PATTERN.matcher(block.getRawContent());
+        while (boldMatcher.find()) {
+            String typoCandidate = boldMatcher.group(1).trim();
+            if (!isBlank(typoCandidate) && typoCandidate.length() >= 2 && typoCandidate.length() <= 15) {
+                fields.add(buildField(document.documentId(), block, "typo", "潜在错词",
+                        typoCandidate, normalizeSentence(typoCandidate), "typo:" + normalizeSentence(typoCandidate)));
+            }
+        }
+        
+        Matcher specificTypoMatcher = SPECIFIC_TYPOS_PATTERN.matcher(content);
+        while (specificTypoMatcher.find()) {
+            String typo = specificTypoMatcher.group();
+            fields.add(buildField(document.documentId(), block, "typo", "罕见错词",
+                    typo, normalizeSentence(typo), "typo:" + normalizeSentence(typo)));
         }
     }
 

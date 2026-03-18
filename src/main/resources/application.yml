@@ -35,6 +35,13 @@ knife4j:
   setting:
     language: zh_cn
 
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} traceId=%X{traceId:-N/A} - %msg%n"
+  level:
+    root: INFO
+    com.liang.drugagent: INFO
+
 # 阿里云百炼(DashScope) 千问模型配置
 aliyun:
   dashscope:

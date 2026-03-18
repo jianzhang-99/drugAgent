@@ -14,6 +14,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -36,6 +38,8 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/tender-review")
 public class TenderReviewController {
+
+    private static final Logger log = LoggerFactory.getLogger(TenderReviewController.class);
 
     // ---- Swagger schema for multipart upload ----
     @Schema(name = "CreateCaseForm", description = "创建审查任务 - 上传表单")
@@ -63,6 +67,7 @@ public class TenderReviewController {
             description = "返回当前已创建的标书审查任务，按创建时间倒序排列。")
     @GetMapping("/cases")
     public List<TenderCase> listCases() {
+        log.info("List tender review cases");
         return caseService.listCases();
     }
 
@@ -89,11 +94,13 @@ public class TenderReviewController {
     public ResponseEntity<?> createCase(
             @Parameter(hidden = true) @RequestParam("files") MultipartFile[] files,
             @Parameter(hidden = true) @RequestParam(value = "submittedBy", defaultValue = "anonymous") String submittedBy) {
+        log.info("Create tender case request: submittedBy={}, fileCount={}", submittedBy, files.length);
 
         List<String> filenames = new ArrayList<>();
         for (MultipartFile f : files) {
             filenames.add(f.getOriginalFilename());
         }
+        log.info("Tender case filenames: {}", filenames);
 
         TenderCaseCreateReq req = TenderCaseCreateReq.builder()
                 .filenames(filenames)
@@ -104,6 +111,7 @@ public class TenderReviewController {
         try {
             response = caseService.createCase(req);
         } catch (IllegalArgumentException e) {
+            log.warn("Create tender case rejected: reason={}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(Map.of("error", e.getMessage()));
         }
@@ -114,11 +122,13 @@ public class TenderReviewController {
             try {
                 caseService.storeFileContent(documentIds.get(i), files[i].getBytes());
             } catch (IOException e) {
+                log.error("Store uploaded file failed: docId={}, filename={}", documentIds.get(i), files[i].getOriginalFilename(), e);
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                         .body(Map.of("error", "文件读取失败: " + files[i].getOriginalFilename()));
             }
         }
 
+        log.info("Tender case created successfully: caseId={}, documentIds={}", response.getCaseId(), response.getDocumentIds());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -143,20 +153,24 @@ public class TenderReviewController {
     public ResponseEntity<?> parseDocument(
             @Parameter(description = "审查任务 ID", required = true) @PathVariable String caseId,
             @Parameter(description = "文档 ID（来自创建任务的响应）", required = true) @PathVariable String docId) {
+        log.info("Parse tender document request: caseId={}, docId={}", caseId, docId);
 
         Optional<byte[]> bytesOpt = caseService.getFileContent(docId);
         if (bytesOpt.isEmpty()) {
+            log.warn("Parse tender document failed, file content missing: caseId={}, docId={}", caseId, docId);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "未找到文件内容, docId=" + docId));
         }
 
         byte[] fileBytes = bytesOpt.get();
         if (fileBytes.length == 0) {
+            log.warn("Parse tender document failed, file content empty: caseId={}, docId={}", caseId, docId);
             return ResponseEntity.badRequest()
                     .body(Map.of("error", "文档解析失败: 文件内容为空，请确认上传文件不是空文件"));
         }
         Optional<com.liang.drugagent.domain.tenderreview.TenderDocument> documentOpt = caseService.getDocument(docId);
         if (documentOpt.isEmpty()) {
+            log.warn("Parse tender document failed, document metadata missing: caseId={}, docId={}", caseId, docId);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "未找到文档元数据, docId=" + docId));
         }
@@ -164,16 +178,20 @@ public class TenderReviewController {
         String filename = documentOpt.get().getFilename();
         try (ByteArrayInputStream stream = new ByteArrayInputStream(fileBytes)) {
             TenderDocumentParseResult result = documentParseService.parseDocument(docId, filename, stream);
+            log.info("Parse tender document succeeded: caseId={}, docId={}, filename={}", caseId, docId, filename);
             return ResponseEntity.ok(result);
         } catch (IllegalArgumentException e) {
+            log.warn("Parse tender document rejected: caseId={}, docId={}, reason={}", caseId, docId, e.getMessage());
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                     .body(Map.of("error", e.getMessage()));
         } catch (IOException e) {
+            log.error("Parse tender document IO failed: caseId={}, docId={}, filename={}", caseId, docId, filename, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "文档解析失败（IO异常）: " + e.getMessage()));
         } catch (Exception e) {
             // Apache POI 在处理损坏文件（如非DOCX格式、截断文件）时
             // 会抛出 OLE2NotOfficeXmlFileException / POIXMLException 等非 IOException
+            log.error("Parse tender document format failed: caseId={}, docId={}, filename={}", caseId, docId, filename, e);
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                     .body(Map.of("error", "文档解析失败（文件格式异常）: " + e.getClass().getSimpleName() + " - " + e.getMessage()));
         }

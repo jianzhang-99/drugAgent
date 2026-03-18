@@ -1,34 +1,30 @@
 <template>
   <div class="workspace-layout">
-    <aside class="workspace-sidebar">
+    <aside class="workspace-sidebar" :class="{ collapsed: isCollapsed }">
       <div class="sidebar-top">
         <slot name="sidebar-top">
           <section class="sidebar-group">
-            <p class="sidebar-label">我的空间</p>
+            <p v-if="!isCollapsed" class="sidebar-label">我的空间</p>
             <sidebar-item
               v-for="item in workspaceItems"
               :key="item.key"
               :icon="item.icon"
               :label="item.label"
               :active="activeMenu === item.key"
+              :collapsed="isCollapsed"
               @click="handleMenuClick(item)"
+              :title="isCollapsed ? item.label : ''"
             />
           </section>
         </slot>
       </div>
 
-      <div class="sidebar-bottom">
-        <slot name="sidebar-bottom">
-          <section class="sidebar-group">
-            <p class="sidebar-label">系统设置</p>
-            <sidebar-item
-              v-for="item in settingItems"
-              :key="item.key"
-              :icon="item.icon"
-              :label="item.label"
-            />
-          </section>
-        </slot>
+      <div class="sidebar-footer">
+        <button class="collapse-toggle" @click="isCollapsed = !isCollapsed">
+          <el-icon>
+            <component :is="isCollapsed ? Expand : Fold" />
+          </el-icon>
+        </button>
       </div>
     </aside>
 
@@ -39,20 +35,21 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Position,
   List,
   Reading,
   RefreshLeft,
-  Setting,
-  QuestionFilled
+  Fold,
+  Expand
 } from '@element-plus/icons-vue'
 import SidebarItem from './SidebarItem.vue'
 
 const route = useRoute()
 const router = useRouter()
+const isCollapsed = ref(false)
 
 const workspaceItems = [
   { key: 'hub', label: '工作台 (Agent Hub)', icon: Position, path: '/agent' },
@@ -61,17 +58,10 @@ const workspaceItems = [
   { key: 'audit', label: '全局审计日志', icon: RefreshLeft, path: '/agent/audit' }
 ]
 
-const settingItems = [
-  { key: 'prefs', label: '偏好与配置', icon: Setting, path: '/agent/settings' },
-  { key: 'help', label: '使用帮助', icon: QuestionFilled, path: '/agent/help' }
-]
-
 const activeMenu = computed(() => {
   if (route.path.startsWith('/agent/tasks')) return 'tasks'
   if (route.path.startsWith('/agent/knowledge')) return 'knowledge'
   if (route.path.startsWith('/agent/audit')) return 'audit'
-  if (route.path.startsWith('/agent/settings')) return 'prefs'
-  if (route.path.startsWith('/agent/help')) return 'help'
   return 'hub'
 })
 
@@ -101,6 +91,12 @@ const handleMenuClick = (item) => {
   position: sticky;
   top: 0;
   height: 100vh;
+  transition: var(--transition-smooth);
+}
+
+.workspace-sidebar.collapsed {
+  width: 80px;
+  padding: 32px 12px;
 }
 
 .sidebar-group {
@@ -116,6 +112,36 @@ const handleMenuClick = (item) => {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--border-light);
+  padding-top: 16px;
+}
+
+.workspace-sidebar.collapsed .sidebar-footer {
+  border-top: 0;
+}
+
+.collapse-toggle {
+  width: 100%;
+  height: 48px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.collapse-toggle:hover {
+  background: var(--primary-bg);
+  color: var(--primary-color);
 }
 
 .workspace-main {
@@ -129,12 +155,14 @@ const handleMenuClick = (item) => {
     flex-direction: column;
   }
   .workspace-sidebar {
-    width: 100%;
+    width: 100% !important;
     height: auto;
     position: relative;
     border-right: 0;
     border-bottom: 1px solid var(--border-light);
   }
+  .collapse-toggle {
+    display: none;
+  }
 }
 </style>
-```
