@@ -93,6 +93,38 @@
         </article>
       </section>
 
+      <section v-if="taskDetail?.report?.riskItems?.length || taskDetail?.report?.explanations" class="report-grid">
+        <article v-if="taskDetail?.report?.riskItems?.length" class="summary-panel">
+          <div class="panel-head">
+            <h2>重点风险主题</h2>
+            <span class="panel-tip">来自上层 Agent 的结构化报告</span>
+          </div>
+          <div class="risk-item-list">
+            <div v-for="item in taskDetail.report.riskItems" :key="`${item.title}-${item.riskType}`" class="risk-item-card">
+              <div class="risk-item-head">
+                <strong>{{ item.title }}</strong>
+                <span class="risk-badge" :class="item.riskLevel === 'HIGH' ? 'risk-review' : 'risk-safe'">{{ item.riskLevel }}</span>
+              </div>
+              <p>{{ item.summary }}</p>
+              <p v-if="item.reasonCodes?.length" class="muted-text">规则：{{ item.reasonCodes.join('、') }}</p>
+              <p v-if="item.recommendations?.length" class="muted-text">建议：{{ item.recommendations.join('；') }}</p>
+            </div>
+          </div>
+        </article>
+
+        <article v-if="taskDetail?.report?.explanations" class="summary-panel">
+          <div class="panel-head">
+            <h2>解释说明</h2>
+            <span class="panel-tip">便于继续追问与人工复核</span>
+          </div>
+          <ul class="flat-list">
+            <li v-for="(value, key) in taskDetail.report.explanations" :key="key">
+              <strong>{{ key }}：</strong>{{ value }}
+            </li>
+          </ul>
+        </article>
+      </section>
+
       <section v-if="documents.length > 0" class="doc-list-panel">
         <div class="panel-head">
           <h2>文档列表</h2>
@@ -228,6 +260,16 @@ const fieldTypeMap = computed(() => {
 const fieldTypeEntries = computed(() => Object.entries(fieldTypeMap.value).sort((a, b) => b[1] - a[1]).slice(0, 8))
 
 const generatedReport = computed(() => {
+  if (taskDetail.value?.report) {
+    return {
+      summary: taskDetail.value.summary || taskDetail.value.report?.overview?.summary || 'Agent 已生成场景报告。',
+      actions: taskDetail.value.report?.recommendedActions || ['查看详细报告并继续追问'],
+      risks: taskDetail.value.report?.managementSummary || ['已生成结构化报告，请结合证据项继续复核。'],
+      riskLabel: taskDetail.value.report?.overview?.riskLevel || taskDetail.value.status || '已完成',
+      riskClass: (taskDetail.value.report?.overview?.riskLevel || '').includes('HIGH') ? 'risk-review' : 'risk-safe'
+    }
+  }
+
   const risks = []
   const actions = []
 
@@ -528,6 +570,30 @@ h1 {
   padding-left: 18px;
   color: var(--text-main);
   line-height: 1.8;
+}
+
+.risk-item-list {
+  display: grid;
+  gap: 12px;
+}
+
+.risk-item-card {
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 16px;
+  background: #fbfcff;
+}
+
+.risk-item-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.risk-item-card p {
+  margin: 0;
 }
 
 .doc-list {

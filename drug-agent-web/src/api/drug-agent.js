@@ -88,6 +88,23 @@ export const createTenderReviewCase = (files, submittedBy = 'anonymous') => {
   })
 }
 
+export const submitDrugAgentTask = (payload = {}) => {
+  const formData = new FormData()
+  const files = Array.isArray(payload.files) ? payload.files : []
+  files.forEach((file) => formData.append('files', file))
+  if (payload.query) formData.append('query', payload.query)
+  if (payload.sceneHint) formData.append('sceneHint', payload.sceneHint)
+  if (payload.sessionId) formData.append('sessionId', payload.sessionId)
+  if (payload.userId) formData.append('userId', payload.userId)
+  formData.append('submittedBy', payload.submittedBy || 'anonymous')
+
+  return request.post('/agent/drug/submit', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}
+
 // 标书审查：查询任务列表
 export const listTenderReviewCases = () => {
   return request.get('/tender-review/cases')

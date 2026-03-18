@@ -58,6 +58,8 @@
         </div>
       </div>
 
+      <agent-result-panel v-if="latestResult" :result="latestResult" />
+
       <div class="quick-starts">
         <header class="section-header">
           <h2>常用监管工作流</h2>
@@ -87,7 +89,8 @@ import { ElMessage } from 'element-plus'
 import WorkspaceLayout from '../components/layout/WorkspaceLayout.vue'
 import SuggestCard from '../components/common/SuggestCard.vue'
 import MessageBubble from '../components/MessageBubble.vue'
-import { createTenderReviewCase, streamDrugAgentChat } from '../api/drug-agent'
+import AgentResultPanel from '../components/AgentResultPanel.vue'
+import { streamDrugAgentChat, submitDrugAgentTask } from '../api/drug-agent'
 import { appendAuditLog, getUserPreferences, setRecentTenderTask, upsertTenderTask } from '../utils/local-state'
 
 const router = useRouter()
@@ -97,6 +100,7 @@ const selectedFiles = ref([])
 const loading = ref(false)
 const lastScene = ref('')
 const messages = ref([])
+const latestResult = ref(null)
 const MAX_FILE_SIZE = 20 * 1024 * 1024
 const MIN_TENDER_FILES = 2
 const preferences = getUserPreferences()
@@ -150,6 +154,36 @@ const removeFile = (index) => {
 
 const createMessageId = (role) => `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
+const formatAgentResult = (result) => {
+  const sections = []
+
+  if (result?.summary) {
+    sections.push(`## 结果摘要\n${result.summary}`)
+  }
+
+  if (result?.answer) {
+    sections.push(`## Agent 输出\n${result.answer}`)
+  }
+
+  if (result?.report?.managementSummary?.length) {
+    sections.push(`## 管理摘要\n${result.report.managementSummary.map((item) => `- ${item}`).join('\n')}`)
+  }
+
+  if (result?.report?.recommendedActions?.length) {
+    sections.push(`## 建议动作\n${result.report.recommendedActions.map((item) => `- ${item}`).join('\n')}`)
+  }
+
+  if (result?.steps?.length) {
+    sections.push(`## 执行步骤\n${result.steps.map((item) => `- ${item}`).join('\n')}`)
+  }
+
+  if (result?.riskLevel) {
+    sections.push(`## 风险等级\n${result.riskLevel}`)
+  }
+
+  return sections.filter(Boolean).join('\n\n')
+}
+
 const handleSubmit = async () => {
   if (!promptText.value.trim() && selectedFiles.value.length === 0) {
     ElMessage.warning('请输入指令或上传文件')
@@ -164,40 +198,71 @@ const handleSubmit = async () => {
         return
       }
 
-      // 如果有文件，走标书审查流程
-      const response = await createTenderReviewCase(selectedFiles.value, preferences.submittedBy || 'anonymous')
+      const userMessage = promptText.value.trim() || '请结合我上传的文件判断场景并输出对应结果'
+      const userMessageId = createMessageId('user')
+      const assistantMessageId = createMessageId('assistant')
+
+      messages.value.push({
+        id: userMessageId,
+        role: 'user',
+        content: `${userMessage}\n\n已上传文件：${selectedFiles.value.map((file) => file.name).join('、')}`
+      })
+      messages.value.push({
+        id: assistantMessageId,
+        role: 'assistant',
+        content: '正在识别场景并执行对应工作流...'
+      })
+
+      const response = await submitDrugAgentTask({
+        files: selectedFiles.value,
+        query: promptText.value.trim(),
+        submittedBy: preferences.submittedBy || 'anonymous'
+      })
+
+      latestResult.value = response
+      lastScene.value = response?.scene || ''
+      const assistantMessage = messages.value.find((message) => message.id === assistantMessageId)
+      if (assistantMessage) {
+        assistantMessage.content = formatAgentResult(response)
+      }
+
       const taskPayload = {
         caseId: response?.caseId || '',
-        status: response?.status || 'PENDING',
+        status: response?.riskLevel || 'COMPLETED',
         documentIds: response?.documentIds || [],
         filenames: selectedFiles.value.map((file) => file.name),
         createdAt: new Date().toISOString(),
         scene: 'tender',
-        submittedBy: preferences.submittedBy || 'anonymous'
+        submittedBy: preferences.submittedBy || 'anonymous',
+        summary: response?.summary || '',
+        report: response?.report || null
       }
-      setRecentTenderTask(taskPayload)
-      upsertTenderTask(taskPayload)
+      if (taskPayload.caseId) {
+        setRecentTenderTask(taskPayload)
+        upsertTenderTask(taskPayload)
+      }
       appendAuditLog({
         id: `audit-${Date.now()}`,
-        type: 'TASK_CREATED',
-        title: '创建标书审查任务',
-        detail: `任务 ${taskPayload.caseId} 已创建，包含 ${taskPayload.documentIds.length} 份文档`,
+        type: 'AGENT_TASK_COMPLETED',
+        title: '完成一次场景化任务处理',
+        detail: `${response?.scene || 'UNKNOWN'} 场景已返回结果`,
         createdAt: new Date().toISOString()
       })
-      ElMessage.success('任务创建成功，Agent 正在继续处理文档...')
+      ElMessage.success('Agent 已返回场景结果')
       // 清空文件和输入
       selectedFiles.value = []
       promptText.value = ''
-      
-      setTimeout(() => {
-        router.push({
-          path: `/agent/tasks/${response?.caseId || ''}`,
-          query: {
-            caseId: response?.caseId || '',
-            autostart: '1'
-          }
-        })
-      }, 800)
+
+      if (response?.caseId) {
+        setTimeout(() => {
+          router.push({
+            path: `/agent/tasks/${response.caseId}`,
+            query: {
+              caseId: response.caseId
+            }
+          })
+        }, 1200)
+      }
     } else {
       const userMessage = promptText.value.trim()
       const userMessageId = createMessageId('user')
@@ -223,6 +288,7 @@ const handleSubmit = async () => {
       await streamDrugAgentChat({ query: userMessage }, {
         onMeta(payload) {
           lastScene.value = payload?.scene || ''
+          latestResult.value = null
         },
         onDelta(payload) {
           hasReceivedDelta = true

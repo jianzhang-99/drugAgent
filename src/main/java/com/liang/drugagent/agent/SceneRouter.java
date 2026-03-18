@@ -5,6 +5,8 @@ import com.liang.drugagent.enums.SceneEnum;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * MVP 场景路由器。
@@ -25,9 +27,17 @@ public class SceneRouter {
         }
 
         List<String> fileIds = req.getFileIds();
-        // 2. 带附件时，默认优先进入合同预审链路。
+        // 2. 带附件时，根据文件数量和元信息优先识别文档类任务。
         if (fileIds != null && !fileIds.isEmpty()) {
-            context.getAttributes().put("routeReason", "fileIds");
+            if (fileIds.size() >= 2) {
+                context.getAttributes().put("routeReason", "multiFileTender");
+                return SceneEnum.TENDER_REVIEW;
+            }
+            if (isTenderFileRequest(req)) {
+                context.getAttributes().put("routeReason", "tenderFileHint");
+                return SceneEnum.TENDER_REVIEW;
+            }
+            context.getAttributes().put("routeReason", "singleFileContract");
             return SceneEnum.CONTRACT_PRECHECK;
         }
 
@@ -54,6 +64,31 @@ public class SceneRouter {
         for (String word : words) {
             if (query.contains(word)) {
                 return true;
+            }
+        }
+        return false;
+    }
+
+    @SuppressWarnings("unchecked")
+    private boolean isTenderFileRequest(DrugAgentReq req) {
+        Map<String, Object> metadata = req.getMetadata();
+        if (metadata == null || metadata.isEmpty()) {
+            return false;
+        }
+        Object rawFiles = metadata.get("uploadedFiles");
+        if (!(rawFiles instanceof List<?> files)) {
+            return false;
+        }
+        for (Object item : files) {
+            if (!(item instanceof Map<?, ?> fileMap)) {
+                continue;
+            }
+            Object name = fileMap.get("filename");
+            if (name != null) {
+                String lowerName = name.toString().toLowerCase(Locale.ROOT);
+                if (containsAny(lowerName, "标书", "投标", "招标", "围标", "串标")) {
+                    return true;
+                }
             }
         }
         return false;
