@@ -57,6 +57,14 @@ public class CoreTeamOverlapExecutor extends AbstractTenderExecutor {
         return result;
     }
 
+    /**
+     * 在特定的对比范围内执行风险探测。
+     * 通常是一个标段（CompareScope）内的多个文档。
+     *
+     * @param scope 对比范围
+     * @param fields 已提取的所有字段
+     * @return 命中项列表
+     */
     private List<RuleHit> detectInScope(CompareScope scope, List<Field> fields) {
         if (scope == null || scope.getDocumentIds() == null || scope.getDocumentIds().size() < 2) {
             return List.of();
@@ -96,6 +104,14 @@ public class CoreTeamOverlapExecutor extends AbstractTenderExecutor {
         return hits;
     }
 
+    /**
+     * 计算两个字段（成员信息）之间的相似度。
+     * 首先匹配成员姓名（NormalizedKey），如果姓名一致，则计算简历（NormalizedValue）的文本相似度。
+     *
+     * @param f1 成员字段1
+     * @param f2 成员字段2
+     * @return 相似度得分 (0.0 - 1.0)
+     */
     private double getSimilarity(Field f1, Field f2) {
         String name1 = f1.getNormalizedKey();
         String name2 = f2.getNormalizedKey();
@@ -116,6 +132,10 @@ public class CoreTeamOverlapExecutor extends AbstractTenderExecutor {
         return (longerLength - editDistance(resume1, resume2)) / (double) longerLength;
     }
 
+    /**
+     * 使用编辑距离算法（Levenshtein Distance）计算两个字符串的差异。
+     * 空间优化的实现，只需一行数组。
+     */
     private int editDistance(String s1, String s2) {
         int[] costs = new int[s2.length() + 1];
         for (int i = 0; i <= s1.length(); i++) {
@@ -140,6 +160,9 @@ public class CoreTeamOverlapExecutor extends AbstractTenderExecutor {
         return costs[s2.length()];
     }
 
+    /**
+     * 构建命中记录对象。
+     */
     private RuleHit buildHit(CompareScope scope, Field left, Field right, double sim) {
         RuleHit hit = createBaseHit(RULE_CODE, RULE_NAME, scope.getScopeId(), RISK_TYPE, PRIORITY, VERSION);
         hit.setWeight(95);
