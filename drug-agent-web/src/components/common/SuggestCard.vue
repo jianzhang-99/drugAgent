@@ -21,42 +21,42 @@ defineEmits(['click'])
 
 <style scoped>
 .suggest-card {
-  min-height: 210px;
-  border-radius: var(--radius-lg);
+  min-height: 180px;
+  border-radius: 16px;
   padding: 24px;
-  background: var(--card-glass);
-  backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--border-light);
-  box-shadow: var(--shadow-sm);
-  transition: var(--transition-smooth);
+  background: #fff;
+  border: 1px solid #edf2f7;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   display: flex;
   flex-direction: column;
+  text-align: left;
 }
 
 .suggest-card:hover {
-  transform: translateY(-8px) scale(1.02);
-  box-shadow: var(--shadow-lg);
-  border-color: var(--primary-light);
+  transform: translateY(-6px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.06);
+  border-color: #3b82f633;
 }
 
 .suggest-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: var(--radius-md);
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
   display: grid;
   place-items: center;
-  font-size: 24px;
+  font-size: 22px;
   margin-bottom: 20px;
-  transition: var(--transition-smooth);
+  transition: all 0.3s;
 }
 
 .suggest-card:hover .suggest-icon {
-  transform: rotate(-5deg) scale(1.1);
+  transform: scale(1.1);
 }
 
 .theme-indigo {
-  color: #4b75ff;
+  color: #4f46e5;
   background: #f0f3ff;
 }
 
@@ -72,15 +72,16 @@ defineEmits(['click'])
 
 h3 {
   margin: 0;
-  font-size: 19px;
-  color: var(--text-main);
+  font-size: 18px;
+  color: #1a202c;
   font-weight: 700;
+  margin-bottom: 12px;
 }
 
 p {
-  margin: 12px 0 0;
+  margin: 0;
   font-size: 14px;
   line-height: 1.6;
-  color: var(--text-sub);
+  color: #718096;
 }
 </style>

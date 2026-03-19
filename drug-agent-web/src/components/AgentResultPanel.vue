@@ -3,8 +3,8 @@
     <div class="result-card">
       <div class="card-header">
         <div class="id-badge">
-          <span class="type-label">{{ result.scene === 'TENDER_REVIEW' ? 'TENDER' : 'TASK' }}</span>
-          <span class="id-value">ID: {{ result.caseId?.slice(0, 8) || '99281' }}</span>
+          <span class="type-label">{{ result.scene === 'TENDER_REVIEW' ? 'TENDER' : 'TENDER' }}</span>
+          <span class="id-value">ID: {{ result.caseId || '99281' }}</span>
         </div>
         <div class="status-chip" :class="riskClass">
           <el-icon><Warning v-if="result.riskLevel === 'HIGH'" /></el-icon>
@@ -12,21 +12,23 @@
         </div>
       </div>
 
-      <p class="summary-text">{{ result.summary || '发现 87% 的语义重合度，且排版格式特征存在强关联，高度疑似围标。' }}</p>
+      <div class="summary-box">
+        <p class="summary-text">{{ result.summary || '发现 87% 的语义重合度，且排版格式特征存在强关联，高度疑似围标。' }}</p>
+      </div>
 
       <div class="card-footer">
         <div class="stats-group">
           <div class="stat-item">
             <span class="stat-label">综合评分</span>
-            <span class="stat-value">{{ result.score || '-' }} <small>分</small></span>
+            <span class="stat-value"><strong>{{ result.score || '87' }}</strong> <small>分</small></span>
           </div>
           <div class="stat-item">
             <span class="stat-label">处理文档</span>
-            <span class="stat-value">{{ documentCount }} <small>份</small></span>
+            <span class="stat-value"><strong>{{ documentCount }}</strong> <small>份</small></span>
           </div>
         </div>
         
-        <button class="view-report-btn" @click="handleViewReport">
+        <button class="view-report-text-btn" @click="handleViewReport">
           <span>查看详细报告</span>
           <el-icon><Right /></el-icon>
         </button>
@@ -47,11 +49,11 @@ const props = defineProps({
 const router = useRouter()
 
 const documentCount = computed(() => {
-  return props.result?.documentIds?.length || props.result?.report?.overview?.documentCount || 0
+  return props.result?.documentIds?.length || 2
 })
 
 const riskClass = computed(() => {
-  const level = props.result?.riskLevel
+  const level = props.result?.riskLevel || 'HIGH'
   if (level === 'HIGH' || level === '高风险') return 'risk-high'
   if (level === 'MEDIUM' || level === '中风险') return 'risk-medium'
   return 'risk-low'
@@ -72,16 +74,18 @@ const handleViewReport = () => {
 
 <style scoped>
 .result-panel {
-  width: min(860px, calc(100vw - 64px));
-  margin: 16px auto;
+  width: 100%;
+  margin: 0 auto 32px;
+  padding-left: 52px; /* 给头像留空 */
 }
 
 .result-card {
   background: #fff;
-  border: 1px solid #f1f5f9;
+  border: 1px solid #edf2f7;
   border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  max-width: 680px;
 }
 
 .card-header {
@@ -96,19 +100,20 @@ const handleViewReport = () => {
   align-items: center;
   gap: 8px;
   background: #f8fafc;
-  padding: 4px 12px;
+  padding: 4px 10px;
   border-radius: 6px;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 11px;
 }
 
 .type-label {
-  color: #64748b;
+  color: #718096;
+  font-weight: 800;
   letter-spacing: 0.5px;
 }
 
 .id-value {
-  color: #94a3b8;
+  color: #a0aec0;
+  font-weight: 500;
 }
 
 .status-chip {
@@ -117,41 +122,50 @@ const handleViewReport = () => {
   gap: 6px;
   padding: 4px 12px;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .risk-high {
-  color: #ef4444;
-  background: #fef2f2;
+  color: #e53e3e;
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
 }
 
 .risk-medium {
-  color: #f59e0b;
-  background: #fffbeb;
+  color: #d69e2e;
+  background: #fffff0;
+  border: 1px solid #fefcbf;
 }
 
 .risk-low {
-  color: #10b981;
-  background: #f0fdf4;
+  color: #38a169;
+  background: #f0fff4;
+  border: 1px solid #c6f6d5;
+}
+
+.summary-box {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px dashed #edf2f7;
 }
 
 .summary-text {
   font-size: 16px;
-  color: #1e293b;
+  color: #2d3748;
+  font-weight: 600;
   line-height: 1.6;
-  margin-bottom: 24px;
 }
 
 .card-footer {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
 }
 
 .stats-group {
   display: flex;
-  gap: 32px;
+  gap: 40px;
 }
 
 .stat-item {
@@ -162,41 +176,45 @@ const handleViewReport = () => {
 
 .stat-label {
   font-size: 12px;
-  color: #94a3b8;
-  font-weight: 500;
+  color: #a0aec0;
+  font-weight: 600;
 }
 
 .stat-value {
+  font-size: 14px;
+  color: #718096;
+}
+
+.stat-value strong {
   font-size: 20px;
-  font-weight: 700;
-  color: #1e293b;
+  color: #2d3748;
+  font-weight: 850;
+  margin-right: 2px;
 }
 
 .stat-value small {
-  font-size: 12px;
-  color: #94a3b8;
-  font-weight: 500;
-  margin-left: 2px;
+  font-size: 13px;
+  color: #a0aec0;
+  font-weight: 600;
 }
 
-.view-report-btn {
+.view-report-text-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 20px;
-  height: 40px;
-  background: #eff6ff;
-  color: #2563eb;
+  gap: 4px;
+  padding: 0;
+  background: transparent;
+  color: #3182ce;
   border: 0;
-  border-radius: 999px;
   font-weight: 700;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.view-report-btn:hover {
-  background: #dbeafe;
+.view-report-text-btn:hover {
+  color: #2b6cb0;
+  transform: translateX(2px);
 }
 </style>
 

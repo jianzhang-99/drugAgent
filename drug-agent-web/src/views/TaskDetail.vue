@@ -8,7 +8,7 @@
           <p>查看标书审查任务的文档列表、解析进度、结构化统计和前端侧审查报告。</p>
         </div>
         <div class="header-actions">
-          <span v-if="isAutoRunning" class="auto-run-tip">Agent 正在自动解析文档...</span>
+          <span v-if="isAutoRunning" class="auto-run-tip">系统正在自动解析文档...</span>
           <button class="secondary-btn" @click="parseAllDocuments" :disabled="parsingDocIds.length > 0 || !taskDetail">
             批量解析文档
           </button>
@@ -97,7 +97,7 @@
         <article v-if="taskDetail?.report?.riskItems?.length" class="summary-panel">
           <div class="panel-head">
             <h2>重点风险主题</h2>
-            <span class="panel-tip">来自上层 Agent 的结构化报告</span>
+            <span class="panel-tip">来自横渡智能监管系统的结构化报告</span>
           </div>
           <div class="risk-item-list">
             <div v-for="item in taskDetail.report.riskItems" :key="`${item.title}-${item.riskType}`" class="risk-item-card">
@@ -262,7 +262,7 @@ const fieldTypeEntries = computed(() => Object.entries(fieldTypeMap.value).sort(
 const generatedReport = computed(() => {
   if (taskDetail.value?.report) {
     return {
-      summary: taskDetail.value.summary || taskDetail.value.report?.overview?.summary || 'Agent 已生成场景报告。',
+      summary: taskDetail.value.summary || taskDetail.value.report?.overview?.summary || '系统已生成场景报告。',
       actions: taskDetail.value.report?.recommendedActions || ['查看详细报告并继续追问'],
       risks: taskDetail.value.report?.managementSummary || ['已生成结构化报告，请结合证据项继续复核。'],
       riskLabel: taskDetail.value.report?.overview?.riskLevel || taskDetail.value.status || '已完成',

@@ -12,7 +12,7 @@
     <artifactId>drug-agent</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>drug-agent</name>
-    <description>AI 药品监管智能体后端服务</description>
+    <description>横渡智能监管系统后端服务</description>
 
     <properties>
         <java.version>21</java.version>

@@ -4,7 +4,7 @@
       <header class="board-header">
         <div class="header-text">
           <h1>任务调度看板</h1>
-          <p>实时管理由通用 Agent 引擎驱动的合规审查链路</p>
+          <p>实时管理由横渡智能引擎驱动的合规审查链路</p>
         </div>
         <button class="filter-trigger">
           <el-icon><Filter /></el-icon>
@@ -134,7 +134,7 @@ const mockTasks = [
     color: '#059669',
     title: '骨科供应商战略合作协议',
     riskLabel: '待人工确认',
-    riskMsg: '涉及 3 条合规敏感条款，Agent 无法自动放行',
+    riskMsg: '涉及 3 条合规敏感条款，系统无法自动放行',
     riskLevel: 'risk-wait',
     tag: '待处理',
     tagClass: 'pill-gold',

@@ -31,19 +31,21 @@ defineEmits(['click'])
 
 <style scoped>
 .sidebar-item {
-  height: 56px;
+  width: 100%;
+  height: 48px;
   border: 0;
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   background: transparent;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   padding: 0 16px;
-  color: var(--text-sub);
-  font-size: 15px;
-  font-weight: 600;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: var(--transition-smooth);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-bottom: 4px;
 }
 
 .sidebar-item.collapsed {
@@ -53,34 +55,26 @@ defineEmits(['click'])
 }
 
 .sidebar-item:hover {
-  background: var(--primary-bg);
-  color: var(--primary-color);
-  transform: translateX(4px);
-}
-
-.sidebar-item.collapsed:hover {
-  transform: none;
+  background: #f8fafc;
+  color: #1e293b;
 }
 
 .sidebar-item.active {
-  background: var(--primary-color);
-  color: #fff;
-  box-shadow: var(--shadow-md);
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
 }
 
 .icon-box {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   display: grid;
   place-items: center;
+  flex-shrink: 0;
 }
 
 .sidebar-item .el-icon {
-  font-size: 20px;
-}
-
-.sidebar-item.active .el-icon {
-  transform: scale(1.1);
+  font-size: 18px;
 }
 
 .label-text {

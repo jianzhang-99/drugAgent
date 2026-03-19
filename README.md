@@ -1,6 +1,6 @@
-# drug-agent
-
-AI 药品监管智能体后端服务。基于 Spring Boot + Spring AI Alibaba（通义千问），提供多场景路由、文档解析与合规风险识别能力。
+# 横渡智能监管系统 (Hengdu Intelligent Supervision System)
+ 
+横渡智能监管系统是一款 AI 驱动的医药监管智能体平台。基于 Spring Boot + Spring AI Alibaba，提供多场景路由、文档解析与合规风险识别能力。
 
 ---
 

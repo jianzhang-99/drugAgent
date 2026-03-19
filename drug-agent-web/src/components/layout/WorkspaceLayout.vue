@@ -3,17 +3,19 @@
     <aside class="workspace-sidebar" :class="{ collapsed: isCollapsed }">
       <div class="sidebar-header" v-if="!isCollapsed">
         <div class="logo-area">
-          <div class="logo-icon">
+          <div class="logo-box">
             <el-icon><MagicStick /></el-icon>
           </div>
-          <span class="logo-text">Drug-Agent</span>
+          <span class="logo-text">横渡智能监管</span>
         </div>
-        <button class="new-chat-btn">
+        <button class="new-chat-btn" title="新建任务/会话" @click="handleNewChat">
           <el-icon><EditPen /></el-icon>
         </button>
       </div>
       <div class="sidebar-header collapsed" v-else>
-        <el-icon><MagicStick /></el-icon>
+        <div class="logo-box">
+          <el-icon><MagicStick /></el-icon>
+        </div>
       </div>
 
       <div class="sidebar-scroll">
@@ -33,11 +35,23 @@
           <p class="sidebar-label">历史审查会话</p>
           <div class="history-block">
             <span class="history-time">今天</span>
-            <button class="history-item">年度设备采购标书比对</button>
+            <button
+              class="history-item"
+              :class="{ active: activeHistoryId === 'h1' }"
+              @click="handleHistoryClick('h1', '年度设备采购标书比对')"
+            >
+              年度设备采购标书比对
+            </button>
           </div>
           <div class="history-block">
             <span class="history-time">昨天</span>
-            <button class="history-item">骨科耗材供应商协议预审</button>
+            <button
+              class="history-item"
+              :class="{ active: activeHistoryId === 'h2' }"
+              @click="handleHistoryClick('h2', '骨科耗材供应商协议预审')"
+            >
+              骨科耗材供应商协议预审
+            </button>
           </div>
         </section>
       </div>
@@ -58,7 +72,7 @@
       </div>
     </aside>
 
-    <main class="workspace-main">
+    <main class="workspace-main" :class="{ 'sidebar-collapsed': isCollapsed }">
       <slot />
     </main>
   </div>
@@ -81,6 +95,7 @@ import SidebarItem from './SidebarItem.vue'
 const route = useRoute()
 const router = useRouter()
 const isCollapsed = ref(false)
+const activeHistoryId = ref('h1')
 
 const primaryItems = [
   { key: 'tasks', label: '全局任务看板', icon: Menu, path: '/agent/tasks' },
@@ -88,6 +103,7 @@ const primaryItems = [
 ]
 
 const activeMenu = computed(() => {
+  if (route.path === '/agent/workbench') return 'hub'
   if (route.path.startsWith('/agent/tasks')) return 'tasks'
   if (route.path.startsWith('/agent/knowledge')) return 'knowledge'
   return 'hub'
@@ -96,6 +112,26 @@ const activeMenu = computed(() => {
 const handleMenuClick = (item) => {
   if (item.path) {
     router.push(item.path)
+  }
+}
+
+const handleHistoryClick = (historyId, title) => {
+  activeHistoryId.value = historyId
+  if (route.path !== '/agent/workbench') {
+    router.push({ path: '/agent/workbench', query: { history: historyId, title } })
+  } else {
+    // 如果已经在工作台页面，触发加载历史会话
+    window.dispatchEvent(new CustomEvent('load-history', { detail: { historyId, title } }))
+  }
+}
+
+const handleNewChat = () => {
+  activeHistoryId.value = null
+  if (route.path === '/agent/workbench') {
+    // 触发页面内部重置，传递 new 参数
+    window.dispatchEvent(new CustomEvent('reset-workbench', { detail: { new: true } }))
+  } else {
+    router.push({ path: '/agent/workbench', query: { new: '1' } })
   }
 }
 
@@ -108,25 +144,27 @@ const showSettings = () => {
 .workspace-layout {
   display: flex;
   min-height: 100vh;
-  background: #f8fafc;
+  background: #fdfdff;
 }
 
 .workspace-sidebar {
   width: 280px;
   background: #fff;
-  border-right: 1px solid #e2e8f0;
+  border-right: 1px solid #f0f2f5;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  position: sticky;
+  position: fixed;
   top: 0;
-  height: 100vh;
+  left: 0;
+  bottom: 0;
+  z-index: 1000;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
 }
 
 .workspace-sidebar.collapsed {
-  width: 80px;
+  width: 72px;
 }
 
 .sidebar-header {
@@ -134,12 +172,12 @@ const showSettings = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  height: 80px;
 }
 
 .sidebar-header.collapsed {
+  padding: 24px 0;
   justify-content: center;
-  font-size: 24px;
-  color: #2563eb;
 }
 
 .logo-area {
@@ -148,54 +186,58 @@ const showSettings = () => {
   gap: 12px;
 }
 
-.logo-icon {
+.logo-box {
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  background: linear-gradient(135deg, #4f46e5, #3b82f6);
   color: #fff;
   display: grid;
   place-items: center;
   font-size: 20px;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
 }
 
 .logo-text {
   font-size: 20px;
-  font-weight: 750;
-  color: #1e293b;
+  font-weight: 850;
+  color: #1a202c;
   letter-spacing: -0.5px;
 }
 
 .new-chat-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  border: 0;
-  background: transparent;
-  color: #64748b;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #edf2f7;
+  background: #fff;
+  color: #2563eb;
   cursor: pointer;
   display: grid;
   place-items: center;
   font-size: 18px;
+  transition: all 0.2s;
+  flex-shrink: 0;
 }
 
 .new-chat-btn:hover {
-  background: #f1f5f9;
-  color: #1e293b;
+  background: #f8fafc;
+  border-color: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
 .sidebar-scroll {
   flex: 1;
   overflow-y: auto;
-  padding: 0 12px;
+  padding: 12px;
 }
 
 .sidebar-group {
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
 .history-section {
-  margin-top: 32px;
   padding: 0 8px;
 }
 
@@ -203,48 +245,65 @@ const showSettings = () => {
   font-size: 12px;
   font-weight: 600;
   color: #94a3b8;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  padding-left: 4px;
 }
 
 .history-block {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .history-time {
   display: block;
   font-size: 12px;
-  color: #94a3b8;
+  color: #cbd5e1;
   margin-bottom: 8px;
+  padding-left: 4px;
 }
 
 .history-item {
   width: 100%;
   text-align: left;
-  border: 0;
+  border: 1px solid transparent;
   background: transparent;
+  border-radius: 8px;
   font-size: 14px;
-  color: #475569;
-  padding: 6px 0;
+  color: #4a5568;
+  padding: 8px 12px;
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   display: block;
+  transition: all 0.2s;
 }
 
 .history-item:hover {
+  background: #f8fafc;
   color: #2563eb;
+}
+
+.history-item.active {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #3b82f633;
+  font-weight: 600;
 }
 
 .sidebar-footer {
   padding: 16px 12px;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid #f8fafc;
 }
 
 .workspace-main {
   flex: 1;
-  min-width: 0;
-  position: relative;
+  margin-left: 280px;
+  min-height: 100vh;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.workspace-main.sidebar-collapsed {
+  margin-left: 72px;
 }
 
 @media (max-width: 1024px) {

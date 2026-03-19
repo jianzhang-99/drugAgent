@@ -7,20 +7,26 @@
       </div>
     </div>
 
-    <el-menu
-      :default-active="activeIndex"
-      class="top-navbar"
-      mode="horizontal"
-      router
-      background-color="transparent"
-      text-color="#dbe6ff"
-      active-text-color="#ffffff"
-    >
-      <el-menu-item index="/agent">
-        <el-icon><Connection /></el-icon>
-        <span>Drug Agent</span>
-      </el-menu-item>
-    </el-menu>
+    <div class="navbar-center">
+      <el-menu
+        :default-active="activeIndex"
+        class="top-navbar"
+        mode="horizontal"
+        router
+        background-color="transparent"
+        text-color="#dbe6ff"
+        active-text-color="#ffffff"
+      >
+        <el-menu-item index="/agent">
+          <el-icon><Connection /></el-icon>
+          <span>横渡智能监管</span>
+        </el-menu-item>
+      </el-menu>
+    </div>
+
+    <div class="navbar-right">
+      <TaskQuickView />
+    </div>
   </header>
 </template>
 
@@ -28,6 +34,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { Connection } from '@element-plus/icons-vue'
+import TaskQuickView from './TaskQuickView.vue'
 
 const route = useRoute()
 const activeIndex = computed(() => {
@@ -94,5 +101,17 @@ const activeIndex = computed(() => {
 .top-navbar :deep(.el-menu-item.is-active) {
   background: rgba(255, 255, 255, 0.18) !important;
   font-weight: 600;
+}
+
+.navbar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 </style>
