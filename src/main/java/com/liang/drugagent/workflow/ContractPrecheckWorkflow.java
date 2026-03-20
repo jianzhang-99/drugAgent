@@ -1,10 +1,10 @@
 package com.liang.drugagent.workflow;
 
 import com.liang.drugagent.agent.AgentContext;
-import com.liang.drugagent.domain.workflow.EvidenceItem;
+import com.liang.drugagent.domain.workflow.RagOutcome;
 import com.liang.drugagent.domain.workflow.WorkflowResult;
 import com.liang.drugagent.enums.SceneEnum;
-import com.liang.drugagent.service.AgentChatService;
+import com.liang.drugagent.service.rag.WorkflowRagAdapter;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -18,10 +18,10 @@ import java.util.List;
 @Component
 public class ContractPrecheckWorkflow implements SceneWorkflow {
 
-    private final AgentChatService agentChatService;
+    private final WorkflowRagAdapter workflowRagAdapter;
 
-    public ContractPrecheckWorkflow(AgentChatService agentChatService) {
-        this.agentChatService = agentChatService;
+    public ContractPrecheckWorkflow(WorkflowRagAdapter workflowRagAdapter) {
+        this.workflowRagAdapter = workflowRagAdapter;
     }
 
     /**
@@ -43,17 +43,12 @@ public class ContractPrecheckWorkflow implements SceneWorkflow {
      */
     @Override
     public WorkflowResult execute(AgentContext context) {
-        String answer = agentChatService.chatWithScene(
-                context.getQuery(),
-                "compliance_review",
-                context.getSessionId()
-        );
-        WorkflowResult result = WorkflowResult.of(SceneEnum.CONTRACT_PRECHECK, answer);
-        result.setRiskLevel("MEDIUM");
-        result.setSteps(List.of("场景识别", "合同预审问答"));
-        result.setEvidenceList(List.of(
-                new EvidenceItem("执行说明", "当前 MVP 版本尚未接入真实合同解析，先走合同预审对话能力。", "system")
-        ));
+        RagOutcome outcome = workflowRagAdapter.ask(context, SceneEnum.CONTRACT_PRECHECK);
+
+        WorkflowResult result = WorkflowResult.of(SceneEnum.CONTRACT_PRECHECK, outcome.getAnswer());
+        result.setRiskLevel(outcome.getRiskLevel() == null ? "MEDIUM" : outcome.getRiskLevel());
+        result.setSteps(List.of("场景识别", "混合检索", "RAG门控", "合同预审输出"));
+        result.setEvidenceList(outcome.getEvidenceList());
         return result;
     }
 }

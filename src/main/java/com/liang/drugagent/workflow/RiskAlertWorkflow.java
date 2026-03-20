@@ -1,10 +1,10 @@
 package com.liang.drugagent.workflow;
 
 import com.liang.drugagent.agent.AgentContext;
-import com.liang.drugagent.domain.workflow.EvidenceItem;
+import com.liang.drugagent.domain.workflow.RagOutcome;
 import com.liang.drugagent.domain.workflow.WorkflowResult;
 import com.liang.drugagent.enums.SceneEnum;
-import com.liang.drugagent.service.AgentChatService;
+import com.liang.drugagent.service.rag.WorkflowRagAdapter;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -18,10 +18,10 @@ import java.util.List;
 @Component
 public class RiskAlertWorkflow implements SceneWorkflow {
 
-    private final AgentChatService agentChatService;
+    private final WorkflowRagAdapter workflowRagAdapter;
 
-    public RiskAlertWorkflow(AgentChatService agentChatService) {
-        this.agentChatService = agentChatService;
+    public RiskAlertWorkflow(WorkflowRagAdapter workflowRagAdapter) {
+        this.workflowRagAdapter = workflowRagAdapter;
     }
 
     /**
@@ -43,17 +43,12 @@ public class RiskAlertWorkflow implements SceneWorkflow {
      */
     @Override
     public WorkflowResult execute(AgentContext context) {
-        String answer = agentChatService.chatWithScene(
-                context.getQuery(),
-                "data_analysis",
-                context.getSessionId()
-        );
-        WorkflowResult result = WorkflowResult.of(SceneEnum.RISK_ALERT, answer);
-        result.setRiskLevel("PENDING");
-        result.setSteps(List.of("场景识别", "风险预警分析"));
-        result.setEvidenceList(List.of(
-                new EvidenceItem("执行说明", "当前 MVP 版本先复用数据分析人设，后续再接真实预警分析服务。", "system")
-        ));
+        RagOutcome outcome = workflowRagAdapter.ask(context, SceneEnum.RISK_ALERT);
+
+        WorkflowResult result = WorkflowResult.of(SceneEnum.RISK_ALERT, outcome.getAnswer());
+        result.setRiskLevel(outcome.getRiskLevel() == null ? "PENDING" : outcome.getRiskLevel());
+        result.setSteps(List.of("场景识别", "混合检索", "RAG门控", "风险预警输出"));
+        result.setEvidenceList(outcome.getEvidenceList());
         return result;
     }
 }
