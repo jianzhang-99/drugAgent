@@ -1,21 +1,18 @@
 package com.liang.drugagent.service.tenderreview;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.liang.drugagent.domain.req.TenderCaseCreateReq;
 import com.liang.drugagent.domain.resp.TenderCaseCreateResp;
-import com.liang.drugagent.domain.tenderreview.TenderCase;
-import com.liang.drugagent.domain.tenderreview.TenderDocument;
+import com.liang.drugagent.domain.tenderreview.*;
+import com.liang.drugagent.engine.TenderRuleEngine;
 import com.liang.drugagent.enums.TenderCaseStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class TenderCaseService {
@@ -23,9 +20,13 @@ public class TenderCaseService {
     private static final Logger log = LoggerFactory.getLogger(TenderCaseService.class);
 
     private final InMemoryTenderCaseStore store;
+    private final ObjectMapper objectMapper;
+    private final TenderRuleEngine ruleEngine;
 
-    public TenderCaseService(InMemoryTenderCaseStore store) {
+    public TenderCaseService(InMemoryTenderCaseStore store, ObjectMapper objectMapper, TenderRuleEngine ruleEngine) {
         this.store = store;
+        this.objectMapper = objectMapper;
+        this.ruleEngine = ruleEngine;
     }
 
     /**
@@ -103,6 +104,75 @@ public class TenderCaseService {
                 .toList();
         log.info("Listed tender cases: count={}", cases.size());
         return cases;
+    }
+
+    /**
+     * 执行审查任务。
+     *
+     * @param caseId 任务ID
+     * @param reviewData 审查数据
+     * @return 审查结果
+     */
+    public TenderCase executeReview(String caseId, TenderReviewData reviewData) {
+        log.info("Executing review for case: {}", caseId);
+
+        Optional<TenderCase> caseOpt = store.findCase(caseId);
+        if (caseOpt.isEmpty()) {
+            throw new IllegalArgumentException("未找到任务: " + caseId);
+        }
+
+        TenderCase tenderCase = caseOpt.get();
+        tenderCase.setStatus(TenderCaseStatus.RUNNING.name());
+        store.saveCase(tenderCase);
+
+        // 调用规则引擎执行所有规则检查
+        RuleResult ruleResult = ruleEngine.execute(reviewData);
+        List<RuleHit> allHits = ruleResult.getHits();
+        if (allHits == null) {
+            allHits = new ArrayList<>();
+        }
+
+        // 计算综合评分和风险等级
+        int totalScore = 0;
+        String riskLevel = "LOW";
+
+        for (RuleHit hit : allHits) {
+            totalScore += hit.getWeight();
+        }
+
+        if (totalScore >= 80) {
+            riskLevel = "HIGH";
+        } else if (totalScore >= 50) {
+            riskLevel = "MEDIUM";
+        }
+
+        tenderCase.setScore(totalScore);
+        tenderCase.setRiskLevel(riskLevel);
+        tenderCase.setStatus(TenderCaseStatus.COMPLETED.name());
+
+        // 存储审查结果
+        try {
+            String resultJson = objectMapper.writeValueAsString(allHits);
+            tenderCase.setReviewResult(resultJson);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize review result", e);
+        }
+
+        store.saveCase(tenderCase);
+        log.info("Review completed for case: {}, score={}, riskLevel={}", caseId, totalScore, riskLevel);
+
+        return tenderCase;
+    }
+
+    /**
+     * 查询审查结果。
+     *
+     * @param caseId 任务ID
+     * @return 审查结果
+     */
+    public Optional<TenderCase> getReviewResult(String caseId) {
+        log.info("Getting review result for case: {}", caseId);
+        return store.findCase(caseId);
     }
 
     // ---- internal ----

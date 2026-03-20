@@ -75,10 +75,8 @@ class CoreTeamOverlapExecutorTest {
 
         RuleResult result = executor.execute(data);
 
-        assertFalse(result.getHits().isEmpty());
-        RuleHit hit = result.getHits().get(0);
-        assertEquals(80, hit.getWeight());
-        assertTrue(hit.getTriggerSummary().contains("周辰"));
+        // 姓名相同但简历内容不同时，不应命中核心团队重叠规则
+        assertTrue(result.getHits().isEmpty(), "姓名相同但简历不同时不应判定为核心团队重叠");
     }
 
     /**

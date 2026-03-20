@@ -99,9 +99,9 @@ public class CoreTeamOverlapExecutor extends AbstractTenderExecutor {
                 List<Field[]> matches = new ArrayList<>();
                 for (Field left : leftFields) {
                     for (Field right : rightFields) {
-                        // 只要成员姓名完全相同，即判定为命中。
-                        // 简历可被故意改写，但人名难以替换，因此姓名相同是核心信号。
-                        if (nameMatches(left, right)) {
+                        // 姓名相同且简历相似度 >= 阈值时才判定为核心团队重叠
+                        // 单纯姓名相同但简历不同，不构成核心团队重叠
+                        if (nameMatches(left, right) && getResumeSimilarity(left, right) >= RESUME_HIGH_SIMILARITY_THRESHOLD) {
                             matches.add(new Field[]{left, right});
                         }
                     }

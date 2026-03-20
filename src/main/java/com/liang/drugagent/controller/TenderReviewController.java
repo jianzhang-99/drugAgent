@@ -196,4 +196,68 @@ public class TenderReviewController {
                     .body(Map.of("error", "文档解析失败（文件格式异常）: " + e.getClass().getSimpleName() + " - " + e.getMessage()));
         }
     }
+
+    /**
+     * POST /api/tender-review/cases/{caseId}/execute
+     * 执行审查任务。
+     */
+    @Operation(summary = "【7.3】执行审查任务",
+            description = "对已解析的文档执行规则审查，返回审查结果。")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "审查执行成功",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = TenderCase.class))),
+            @ApiResponse(responseCode = "404", description = "caseId 不存在",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(example = "{\"error\":\"未找到任务: xxx\"}")))
+    })
+    @PostMapping("/cases/{caseId}/execute")
+    public ResponseEntity<?> executeReview(
+            @Parameter(description = "审查任务 ID", required = true) @PathVariable String caseId) {
+        log.info("Execute review request: caseId={}", caseId);
+
+        try {
+            com.liang.drugagent.domain.tenderreview.TenderReviewData reviewData = new com.liang.drugagent.domain.tenderreview.TenderReviewData();
+            com.liang.drugagent.domain.tenderreview.TenderCase result = caseService.executeReview(caseId, reviewData);
+            log.info("Execute review succeeded: caseId={}", caseId);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            log.warn("Execute review rejected: caseId={}, reason={}", caseId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Execute review failed: caseId={}", caseId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "审查执行失败: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * GET /api/tender-review/cases/{caseId}/result
+     * 查询审查结果。
+     */
+    @Operation(summary = "【7.4】查询审查结果",
+            description = "查询指定任务的审查结果，包括风险等级、综合评分和详细命中结果。")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "查询成功",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = TenderCase.class))),
+            @ApiResponse(responseCode = "404", description = "caseId 不存在",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(example = "{\"error\":\"未找到任务: xxx\"}")))
+    })
+    @GetMapping("/cases/{caseId}/result")
+    public ResponseEntity<?> getReviewResult(
+            @Parameter(description = "审查任务 ID", required = true) @PathVariable String caseId) {
+        log.info("Get review result request: caseId={}", caseId);
+
+        Optional<com.liang.drugagent.domain.tenderreview.TenderCase> resultOpt = caseService.getReviewResult(caseId);
+        if (resultOpt.isEmpty()) {
+            log.warn("Get review result failed, case not found: caseId={}", caseId);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "未找到任务: " + caseId));
+        }
+
+        return ResponseEntity.ok(resultOpt.get());
+    }
 }

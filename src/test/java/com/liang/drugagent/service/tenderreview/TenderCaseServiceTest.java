@@ -3,6 +3,7 @@ package com.liang.drugagent.service.tenderreview;
 import com.liang.drugagent.domain.req.TenderCaseCreateReq;
 import com.liang.drugagent.domain.resp.TenderCaseCreateResp;
 import com.liang.drugagent.enums.TenderCaseStatus;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -21,7 +22,7 @@ class TenderCaseServiceTest {
     @BeforeEach
     void setUp() {
         store = new InMemoryTenderCaseStore();
-        caseService = new TenderCaseService(store);
+        caseService = new TenderCaseService(store, new ObjectMapper());
     }
 
     @Test

@@ -19,7 +19,7 @@
       </div>
     </div>
 
-    <section class="chat-page">
+    <section class="chat-page" :class="{ 'with-drawer': selectedReport }">
       <div ref="scrollContainer" class="chat-scroll">
         <div v-if="!messages.length" class="empty-state">
           <div class="hero-logo">
@@ -42,7 +42,7 @@
         <div v-else class="message-stream">
           <div v-for="message in messages" :key="message.id" class="message-wrapper">
             <message-bubble :msg="message" />
-            <agent-result-panel v-if="message.result" :result="message.result" />
+            <agent-result-panel v-if="message.result" :result="message.result" @view-detail="handleViewDetail(message.result)" />
           </div>
         </div>
       </div>
@@ -97,6 +97,87 @@
         <p class="disclaimer">AI 生成内容仅供参考，重大决策请人工复核 (横渡智能监管核心 v0.3)</p>
       </div>
     </section>
+
+    <!-- 右侧详情报告抽屉 -->
+    <aside v-if="selectedReport" class="detail-drawer">
+      <div class="drawer-header">
+        <div class="drawer-title">
+          <button class="back-btn" @click="selectedReport = null">
+            <el-icon><ArrowLeft /></el-icon>
+          </button>
+          <el-icon><Document /></el-icon>
+          <span>结构化分析报告</span>
+        </div>
+        <button class="download-btn">
+          <el-icon><Download /></el-icon>
+        </button>
+      </div>
+
+      <div class="drawer-content">
+        <!-- 风险定级和综合分值 -->
+        <div class="info-card risk-card">
+          <div class="info-item">
+            <p class="info-label">风险定级</p>
+            <div class="risk-level" :class="getRiskClass(selectedReport.riskLevel)">
+              <el-icon><Warning v-if="selectedReport.riskLevel === 'HIGH'" /></el-icon>
+              {{ translateRiskLevel(selectedReport.riskLevel) }}
+            </div>
+          </div>
+          <div class="info-item text-right">
+            <p class="info-label">综合分值</p>
+            <span class="score-value">{{ selectedReport.score || '87' }}</span>
+          </div>
+        </div>
+
+        <!-- 结果摘要 -->
+        <div class="info-card">
+          <h4 class="card-title">
+            <el-icon><ChatDotRound /></el-icon>
+            结果摘要 (Agent Output)
+          </h4>
+          <p class="card-text">{{ selectedReport.summary || '暂无摘要' }}</p>
+        </div>
+
+        <!-- 管理摘要 -->
+        <div class="info-card">
+          <h4 class="card-title">
+            <el-icon><DataAnalysis /></el-icon>
+            管理摘要
+          </h4>
+          <ul class="list-items">
+            <li>综合风险等级：{{ translateRiskLevel(selectedReport.riskLevel) }}，融合分值为 {{ selectedReport.score || '87' }}</li>
+            <li v-if="selectedReport.riskLevel === 'HIGH'">触发了强制拦截规则，建议立即中止当前流程并启动专项审计调查</li>
+            <li v-else>当前未保留高风险命中，建议将结果作为低风险基线</li>
+          </ul>
+        </div>
+
+        <!-- 建议动作 -->
+        <div class="info-card action-card">
+          <h4 class="card-title">
+            <el-icon><CircleCheck /></el-icon>
+            建议动作
+          </h4>
+          <ul class="list-items">
+            <li v-if="selectedReport.riskLevel === 'HIGH'">导出证据链报告，并约谈相关供应商</li>
+            <li v-else>保留当前报告作为初筛结果，并结合业务经验抽样检查重点章节</li>
+          </ul>
+        </div>
+
+        <!-- 执行步骤 -->
+        <div class="info-card">
+          <h4 class="card-title">
+            <el-icon><Cpu /></el-icon>
+            执行步骤 (Execution Trace)
+          </h4>
+          <div class="steps-list">
+            <div class="step-item" v-for="(step, idx) in executionSteps" :key="idx">
+              <div class="step-dot"></div>
+              <span>{{ step }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
   </workspace-layout>
 </template>
 
@@ -114,7 +195,13 @@ import {
   Checked,
   Warning,
   Promotion,
-  ArrowRight
+  ArrowRight,
+  ArrowLeft,
+  Download,
+  ChatDotRound,
+  DataAnalysis,
+  CircleCheck,
+  Cpu
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import WorkspaceLayout from '../components/layout/WorkspaceLayout.vue'
@@ -130,6 +217,33 @@ const preferences = getUserPreferences()
 const sessionTitle = ref('年度设备采购标书比对')
 
 const promptText = ref('')
+const selectedReport = ref(null)
+
+const executionSteps = [
+  'scene_route',
+  'structured_load',
+  'rule_hit',
+  'false_positive_exemption',
+  'risk_fusion',
+  'evidence_assembly',
+  'report_generation'
+]
+
+const handleViewDetail = (result) => {
+  selectedReport.value = result
+}
+
+const getRiskClass = (level) => {
+  if (level === 'HIGH') return 'risk-high'
+  if (level === 'MEDIUM') return 'risk-medium'
+  return 'risk-low'
+}
+
+const translateRiskLevel = (level) => {
+  if (level === 'HIGH' || level === '高风险') return '高风险'
+  if (level === 'MEDIUM' || level === '中风险') return '中风险'
+  return '低风险'
+}
 const fileInput = ref(null)
 const scrollContainer = ref(null)
 const selectedFiles = ref([])
@@ -628,6 +742,252 @@ const workflowCards = [
   font-size: 12px;
   color: #2d3748;
   border: 1px solid #e2e8f0;
+}
+
+.chat-page.with-drawer .message-stream {
+  width: min(680px, 100%);
+}
+
+/* 右侧详情报告抽屉 */
+.detail-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 33.333333%;
+  height: 100vh;
+  background: #f8fafc;
+  border-left: 1px solid #e2e8f0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -12px 0 24px -12px rgba(0, 0, 0, 0.05);
+  animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.drawer-header {
+  height: 64px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.drawer-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.back-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #f1f5f9;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  transition: all 0.2s;
+}
+
+.back-btn:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.download-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  transition: all 0.2s;
+}
+
+.download-btn:hover {
+  color: #64748b;
+}
+
+.drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.info-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.risk-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-item.text-right {
+  text-align: right;
+}
+
+.info-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.risk-level {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.risk-level.risk-high {
+  color: #e53e3e;
+}
+
+.risk-level.risk-medium {
+  color: #d69e2e;
+}
+
+.risk-level.risk-low {
+  color: #38a169;
+}
+
+.score-value {
+  font-size: 24px;
+  font-weight: 850;
+  color: #1e293b;
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 12px;
+}
+
+.card-text {
+  font-size: 14px;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.list-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.list-items li {
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+  padding-left: 16px;
+  position: relative;
+}
+
+.list-items li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: #cbd5e1;
+  font-weight: bold;
+}
+
+.action-card {
+  border-left: 4px solid #3b82f6;
+}
+
+.steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+  padding-left: 20px;
+}
+
+.steps-list::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: #e2e8f0;
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 16px;
+  position: relative;
+}
+
+.step-item:last-child {
+  padding-bottom: 0;
+}
+
+.step-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  border: 2px solid #fff;
+  position: absolute;
+  left: -20px;
+  z-index: 1;
+}
+
+.step-item span {
+  font-size: 13px;
+  font-family: monospace;
+  color: #64748b;
 }
 
 @media (max-width: 900px) {

@@ -1,6 +1,6 @@
 <template>
   <section v-if="result" class="result-panel">
-    <div class="result-card">
+    <div class="result-card" :class="{ 'is-selected': isSelected }">
       <div class="card-header">
         <div class="id-badge">
           <span class="type-label">{{ result.scene === 'TENDER_REVIEW' ? 'TENDER' : 'TENDER' }}</span>
@@ -27,7 +27,7 @@
             <span class="stat-value"><strong>{{ documentCount }}</strong> <small>份</small></span>
           </div>
         </div>
-        
+
         <button class="view-report-text-btn" @click="handleViewReport">
           <span>查看详细报告</span>
           <el-icon><Right /></el-icon>
@@ -40,13 +40,13 @@
 <script setup>
 import { computed } from 'vue'
 import { Warning, Right } from '@element-plus/icons-vue'
-import { useRouter } from 'vue-router'
 
 const props = defineProps({
-  result: { type: Object, default: null }
+  result: { type: Object, default: null },
+  isSelected: { type: Boolean, default: false }
 })
 
-const router = useRouter()
+const emit = defineEmits(['view-detail'])
 
 const documentCount = computed(() => {
   return props.result?.documentIds?.length || 2
@@ -66,9 +66,7 @@ const translateRiskLevel = (level) => {
 }
 
 const handleViewReport = () => {
-  if (props.result?.caseId) {
-    router.push(`/agent/tasks/${props.result.caseId}`)
-  }
+  emit('view-detail', props.result)
 }
 </script>
 
@@ -86,6 +84,18 @@ const handleViewReport = () => {
   padding: 24px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
   max-width: 680px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.result-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 8px 30px rgba(59, 130, 246, 0.1);
+}
+
+.result-card.is-selected {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .card-header {

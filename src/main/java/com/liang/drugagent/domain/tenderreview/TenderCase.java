@@ -28,4 +28,10 @@ public class TenderCase {
     private Instant createdAt;
     /** 关联的文档 ID 列表。 */
     private List<String> documentIds = new ArrayList<>();
+    /** 审查结果（JSON格式存储）。 */
+    private String reviewResult;
+    /** 风险等级。 */
+    private String riskLevel;
+    /** 综合评分。 */
+    private Integer score;
 }

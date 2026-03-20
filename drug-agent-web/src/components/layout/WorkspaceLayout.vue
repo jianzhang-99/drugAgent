@@ -13,7 +13,7 @@
         </button>
       </div>
       <div class="sidebar-header collapsed" v-else>
-        <div class="logo-box">
+        <div class="logo-box" @click="handleNewChat" style="cursor: pointer;">
           <el-icon><MagicStick /></el-icon>
         </div>
       </div>
@@ -33,25 +33,56 @@
 
         <section class="sidebar-group history-section" v-if="!isCollapsed">
           <p class="sidebar-label">历史审查会话</p>
-          <div class="history-block">
+
+          <!-- 今天分组 -->
+          <div class="history-block" v-if="todaySessions.length">
             <span class="history-time">今天</span>
-            <button
-              class="history-item"
-              :class="{ active: activeHistoryId === 'h1' }"
-              @click="handleHistoryClick('h1', '年度设备采购标书比对')"
-            >
-              年度设备采购标书比对
-            </button>
+            <div class="history-items">
+              <button
+                v-for="session in todaySessions"
+                :key="session.id"
+                class="history-item"
+                :class="{ active: activeHistoryId === session.id }"
+                @click="handleHistoryClick(session.id, session.title)"
+                :title="session.title"
+              >
+                {{ session.title }}
+              </button>
+            </div>
           </div>
-          <div class="history-block">
+
+          <!-- 昨天分组 -->
+          <div class="history-block" v-if="yesterdaySessions.length">
             <span class="history-time">昨天</span>
-            <button
-              class="history-item"
-              :class="{ active: activeHistoryId === 'h2' }"
-              @click="handleHistoryClick('h2', '骨科耗材供应商协议预审')"
-            >
-              骨科耗材供应商协议预审
-            </button>
+            <div class="history-items">
+              <button
+                v-for="session in yesterdaySessions"
+                :key="session.id"
+                class="history-item"
+                :class="{ active: activeHistoryId === session.id }"
+                @click="handleHistoryClick(session.id, session.title)"
+                :title="session.title"
+              >
+                {{ session.title }}
+              </button>
+            </div>
+          </div>
+
+          <!-- 过去7天分组 -->
+          <div class="history-block" v-if="weekSessions.length">
+            <span class="history-time">过去7天</span>
+            <div class="history-items">
+              <button
+                v-for="session in weekSessions"
+                :key="session.id"
+                class="history-item"
+                :class="{ active: activeHistoryId === session.id }"
+                @click="handleHistoryClick(session.id, session.title)"
+                :title="session.title"
+              >
+                {{ session.title }}
+              </button>
+            </div>
           </div>
         </section>
       </div>
@@ -65,7 +96,7 @@
         />
         <sidebar-item
           :icon="isCollapsed ? Expand : Fold"
-          label="收起侧边栏"
+          :label="isCollapsed ? '展开侧边栏' : '收起侧边栏'"
           :collapsed="isCollapsed"
           @click="isCollapsed = !isCollapsed"
         />
@@ -94,8 +125,24 @@ import SidebarItem from './SidebarItem.vue'
 
 const route = useRoute()
 const router = useRouter()
+
+// 历史会话数据
+const historySessions = ref([
+  { id: 'h1', title: '年度设备采购标书比对', dateGroup: '今天' },
+  { id: 'h2', title: '骨科耗材供应商协议预审', dateGroup: '昨天' },
+  { id: 'h3', title: '药品采购合规审查', dateGroup: '昨天' },
+  { id: 'h4', title: '医疗器械采购审计', dateGroup: '过去7天' },
+  { id: 'h5', title: '供应商资质复核', dateGroup: '过去7天' },
+  { id: 'h6', title: '药品销售数据分析', dateGroup: '过去7天' }
+])
+
 const isCollapsed = ref(false)
 const activeHistoryId = ref('h1')
+
+// 按分组过滤历史会话
+const todaySessions = computed(() => historySessions.value.filter(s => s.dateGroup === '今天'))
+const yesterdaySessions = computed(() => historySessions.value.filter(s => s.dateGroup === '昨天'))
+const weekSessions = computed(() => historySessions.value.filter(s => s.dateGroup === '过去7天'))
 
 const primaryItems = [
   { key: 'tasks', label: '全局任务看板', icon: Menu, path: '/agent/tasks' },
@@ -148,7 +195,7 @@ const showSettings = () => {
 }
 
 .workspace-sidebar {
-  width: 280px;
+  width: 288px;
   background: #fff;
   border-right: 1px solid #f0f2f5;
   display: flex;
@@ -164,7 +211,7 @@ const showSettings = () => {
 }
 
 .workspace-sidebar.collapsed {
-  width: 72px;
+  width: 80px;
 }
 
 .sidebar-header {
@@ -196,6 +243,7 @@ const showSettings = () => {
   place-items: center;
   font-size: 20px;
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+  flex-shrink: 0;
 }
 
 .logo-text {
@@ -203,6 +251,7 @@ const showSettings = () => {
   font-weight: 850;
   color: #1a202c;
   letter-spacing: -0.5px;
+  white-space: nowrap;
 }
 
 .new-chat-btn {
@@ -250,7 +299,7 @@ const showSettings = () => {
 }
 
 .history-block {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .history-time {
@@ -259,6 +308,13 @@ const showSettings = () => {
   color: #cbd5e1;
   margin-bottom: 8px;
   padding-left: 4px;
+  font-weight: 600;
+}
+
+.history-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .history-item {
@@ -297,13 +353,13 @@ const showSettings = () => {
 
 .workspace-main {
   flex: 1;
-  margin-left: 280px;
+  margin-left: 288px;
   min-height: 100vh;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .workspace-main.sidebar-collapsed {
-  margin-left: 72px;
+  margin-left: 80px;
 }
 
 @media (max-width: 1024px) {
@@ -313,7 +369,7 @@ const showSettings = () => {
     left: 0;
     transform: translateX(0);
   }
-  
+
   .workspace-sidebar.collapsed {
     transform: translateX(-100%);
   }

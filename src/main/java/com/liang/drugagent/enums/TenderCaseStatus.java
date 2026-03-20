@@ -7,5 +7,7 @@ public enum TenderCaseStatus {
     PENDING,
     PARSING,
     PARSED,
+    RUNNING,
+    COMPLETED,
     FAILED
 }
