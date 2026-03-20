@@ -1,9 +1,12 @@
 package com.liang.drugagent.service.rag;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.stereotype.Component;
 
+import java.io.File;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -15,21 +18,31 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * MVP 阶段关键词索引（内存）。
+ * MVP 阶段关键词索引（内存 + 本地持久化）。
  *
- * 当前实现：简化 BM25（支持 IDF、TF 归一、长度归一），
- * 便于在不引入外部搜索引擎的情况下先落地混合检索。
+ * 当前实现：简化 BM25（支持 IDF、TF、长度归一）。
+ * 为避免重启后候选丢失，索引会持久化到本地文件。
  */
 @Component
 public class KnowledgeChunkIndex {
 
     private static final double K1 = 1.5D;
     private static final double B = 0.75D;
+    private static final String INDEX_FILE = "knowledge_chunk_index.json";
 
     private final List<Entry> entries = new CopyOnWriteArrayList<>();
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public KnowledgeChunkIndex() {
+        loadIfExists();
+    }
 
     public void addAll(List<Entry> batch) {
+        if (batch == null || batch.isEmpty()) {
+            return;
+        }
         entries.addAll(batch);
+        persist();
     }
 
     public List<Entry> all() {
@@ -77,7 +90,7 @@ public class KnowledgeChunkIndex {
             }
         }
 
-        double avgDocLen = (double) totalLength / candidates.size();
+        double avgDocLen = Math.max((double) totalLength / candidates.size(), 1D);
         int totalDocs = candidates.size();
         Map<String, Double> scores = new HashMap<>();
 
@@ -109,6 +122,31 @@ public class KnowledgeChunkIndex {
                 .collect(HashMap::new,
                         (m, e) -> m.put(e.getKey(), e.getValue()),
                         HashMap::putAll);
+    }
+
+    private void loadIfExists() {
+        try {
+            File file = new File(INDEX_FILE);
+            if (!file.exists()) {
+                return;
+            }
+            List<Entry> loaded = objectMapper.readValue(file, new TypeReference<List<Entry>>() {
+            });
+            entries.clear();
+            if (loaded != null) {
+                entries.addAll(loaded);
+            }
+        } catch (Exception ignored) {
+            // 索引文件损坏时忽略加载，避免影响应用启动。
+        }
+    }
+
+    private void persist() {
+        try {
+            objectMapper.writeValue(new File(INDEX_FILE), entries);
+        } catch (Exception ignored) {
+            // 持久化失败不影响主流程，但会丢失重启恢复能力。
+        }
     }
 
     private List<String> tokenize(String text) {
