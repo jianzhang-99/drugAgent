@@ -25,6 +25,10 @@ public class DrugAgentResp {
     private String summary;
     private String answer;
     private String riskLevel;
+    private int score;
+    private int docCount;
+    private String managementSummary;
+    private List<String> suggestedActions = new ArrayList<>();
     private String caseId;
     private List<String> documentIds = new ArrayList<>();
     private ReviewReport report;

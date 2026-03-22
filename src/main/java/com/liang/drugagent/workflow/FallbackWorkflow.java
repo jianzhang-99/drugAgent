@@ -43,6 +43,7 @@ public class FallbackWorkflow implements SceneWorkflow {
                 "当前请求场景还不够明确。你可以补充是标书查重、合同预审，还是药品与耗材风险预警。"
         );
         result.setRiskLevel("UNKNOWN");
+        result.setScore(0); // 未知状态默认分数
         result.setSteps(List.of("场景识别", "兜底回复"));
         result.setEvidenceList(List.of(
                 new EvidenceItem("路由说明", "未命中明确场景，进入兜底工作流。", "system")

@@ -34,4 +34,6 @@ public class TenderCase {
     private String riskLevel;
     /** 综合评分。 */
     private Integer score;
+    /** 更新时间。 */
+    private Instant updatedAt;
 }

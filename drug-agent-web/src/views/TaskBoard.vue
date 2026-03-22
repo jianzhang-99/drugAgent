@@ -2,96 +2,42 @@
   <workspace-layout>
     <section class="board-container">
       <header class="board-header">
-        <div class="header-text">
-          <h1>任务调度看板</h1>
-          <p>实时管理由横渡智能引擎驱动的合规审查链路</p>
-        </div>
-        <button class="filter-trigger">
-          <el-icon><Filter /></el-icon>
-          <span>高级过滤</span>
-        </button>
+        <h1 class="board-title">任务调度看板</h1>
       </header>
 
-      <div class="stats-overview">
-        <div 
-          v-for="stat in summaryStats" 
-          :key="stat.label" 
-          class="stat-pill"
-          :class="stat.accent"
-        >
-          <div class="stat-icon" :class="stat.theme">
-            <el-icon><component :is="stat.icon" /></el-icon>
-          </div>
-          <div class="stat-info">
-            <span class="stat-value">{{ stat.value }}</span>
-            <span class="stat-label">{{ stat.label }}</span>
-          </div>
-        </div>
-      </div>
-
-      <nav class="category-nav">
-        <button
-          v-for="cat in categories"
-          :key="cat.id"
-          class="nav-item"
-          :class="{ active: activeCategory === cat.id }"
-          @click="activeCategory = cat.id"
-        >
-          {{ cat.label }}
-        </button>
-      </nav>
-
-      <div class="tasks-vault">
-        <article 
-          v-for="task in filteredTasks" 
-          :key="task.id" 
-          class="glass-task-card"
+      <div class="tasks-grid">
+        <div
+          v-for="task in tasks"
+          :key="task.id"
+          class="task-card"
           :class="{ 'highlight': task.isUrgent || task.isRecent }"
           @click="handleTaskAction(task)"
         >
           <div class="card-top">
-            <div class="type-badge" :style="{ '--badge-color': task.color }">
-              <el-icon><component :is="task.icon" /></el-icon>
-              <span>{{ task.type }}</span>
-            </div>
-            <span v-if="task.tag" class="status-pill" :class="task.tagClass">{{ task.tag }}</span>
+            <span class="scene-badge" :class="task.sceneClass">
+              {{ task.scene }}
+            </span>
+            <span class="status-badge">
+              {{ task.status }}
+            </span>
           </div>
 
-          <h3 class="task-title">{{ task.title }}</h3>
-          <p class="task-sn">UID: {{ task.id }}</p>
+          <h3 class="task-name">{{ task.name }}</h3>
+          <p class="task-id">{{ task.id }}</p>
 
-          <div class="risk-indicator" :class="task.riskLevel">
-            <div class="indicator-head">{{ task.riskLabel }}</div>
-            <div class="indicator-body">{{ task.riskMsg }}</div>
-          </div>
-
-          <div v-if="task.progress" class="agent-stepper">
-            <div class="step-meta">
-              <span>推理进度</span>
-              <strong>{{ task.progress }}%</strong>
-            </div>
-            <div class="step-track">
-              <div class="step-fill" :style="{ width: task.progress + '%' }"></div>
+          <div v-if="task.isRunning" class="progress-container">
+            <div class="progress-bar">
+              <div class="progress-fill" :style="{ width: task.progress + '%' }"></div>
             </div>
           </div>
-
-          <footer class="card-footer">
-            <div class="timestamp">
-              <el-icon><Clock /></el-icon>
-              <span>{{ task.time }}</span>
-            </div>
-            <button class="prime-action" :class="{ 'gold': task.isUrgent }" @click.stop="handleTaskAction(task)">
-              {{ task.action }}
-            </button>
-          </footer>
-        </article>
+        </div>
       </div>
     </section>
   </workspace-layout>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Clock, Document, Files, Filter, RefreshLeft, Monitor, Warning } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
@@ -245,8 +191,8 @@ const allTasks = computed(() => {
 })
 
 const filteredTasks = computed(() => {
-  return activeCategory.value === 'all' 
-    ? allTasks.value 
+  return activeCategory.value === 'all'
+    ? allTasks.value
     : allTasks.value.filter(t => t.scene === activeCategory.value)
 })
 
@@ -296,9 +242,29 @@ const loadTenderTasks = async () => {
   }
 }
 
+const tasks = ref([])
+
+const initTasks = () => {
+  tasks.value = filteredTasks.value.map(task => ({
+    id: task.id,
+    name: task.title,
+    scene: task.type,
+    sceneClass: task.scene,
+    status: task.riskLevel === 'risk-info' ? '运行中' : '已完成',
+    progress: task.progress || 0,
+    isRunning: task.riskLevel === 'risk-info',
+    isUrgent: task.isUrgent || task.tag === '待处理',
+    isRecent: task.isRecent
+  }))
+}
+
 onMounted(() => {
   loadTenderTasks()
 })
+
+watch(() => filteredTasks.value, () => {
+  initTasks()
+}, { immediate: true })
 
 const handleTaskAction = (task) => {
   if (task.scene === 'tender') {
@@ -314,19 +280,140 @@ const handleTaskAction = (task) => {
   }
   ElMessage.info('该场景详情页将在后续版本接入，当前先展示看板信息')
 }
-</script>
+
 
 <style scoped>
 .board-container {
-  padding: 40px;
-  max-width: 1400px;
+  padding: 32px;
+  max-width: 1440px;
   margin: 0 auto;
 }
 
 .board-header {
+  margin-bottom: 24px;
+}
+
+.board-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.tasks-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 24px;
+}
+
+@media (min-width: 768px) {
+  .tasks-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1280px) {
+  .tasks-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.task-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
+  padding: 24px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.task-card:hover {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  transform: translateY(-4px);
+}
+
+.task-card.highlight {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+}
+
+.card-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 16px;
+}
+
+.scene-badge {
+  padding: 6px 10px;
+  background: #eef2ff;
+  color: #4f46e5;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.scene-badge.contract {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.scene-badge.risk {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.status-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.task-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #334155;
+  margin: 0 0 4px;
+  line-height: 1.4;
+}
+
+.task-id {
+  font-size: 11px;
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  color: #94a3b8;
+  margin: 0 0 16px;
+}
+
+.progress-container {
+  margin-top: 16px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: #f1f5f9;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #2563eb;
+  border-radius: inherit;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
   margin-bottom: 32px;
 }
 

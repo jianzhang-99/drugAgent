@@ -1,570 +1,844 @@
 <template>
   <workspace-layout>
     <section class="knowledge-page">
-      <header class="knowledge-hero">
-        <div class="hero-copy">
-          <div class="hero-brand">
-            <div class="hero-brand-icon">
-              <el-icon><Coin /></el-icon>
-            </div>
-            <div>
-              <h1>合规知识大脑</h1>
-              <p>管理法规文献、规则组和实体字典，让 Agent 的知识底座可维护、可追踪、可持续更新。</p>
-            </div>
+      <header class="page-header">
+        <div class="header-top">
+          <div class="header-title">
+            <h1>合规知识大脑</h1>
+            <p>管理 Agent 的长期记忆与审查准则，包括 RAG 向量切片库和规则引擎字典</p>
           </div>
-        </div>
-        <div class="hero-actions">
-          <input ref="knowledgeInput" type="file" multiple style="display: none" @change="handleImportKnowledge" />
-          <button class="import-trigger" @click="knowledgeInput?.click()">
-            <el-icon><Plus /></el-icon>
-            <span>导入新知识</span>
-          </button>
+          <div class="header-actions">
+            <el-button type="primary" @click="showAddDialog = true">
+              <el-icon><Plus /></el-icon>
+              新增知识
+            </el-button>
+          </div>
         </div>
       </header>
 
-      <section class="hero-panels">
-        <article class="stat-card">
-          <span class="stat-title">RAG 文档数</span>
-          <div class="stat-row">
-            <strong>{{ documents.length }}</strong>
-            <span class="stat-status success">已接入</span>
+      <!-- 统计卡片 -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon bg-indigo">
+            <el-icon><Collection /></el-icon>
           </div>
-        </article>
-
-        <article class="stat-card">
-          <span class="stat-title">启用规则组</span>
-          <div class="stat-row">
-            <strong>{{ enabledRulesCount }}</strong>
-            <span class="stat-sub">/ {{ rules.length }} 组</span>
+          <div class="stat-info">
+            <span class="stat-value">{{ stats.totalKnowledge }}</span>
+            <span class="stat-label">知识条目</span>
           </div>
-        </article>
-
-        <article class="engine-card">
-          <div class="engine-head">
-            <el-icon><MagicStick /></el-icon>
-            <span>知识引擎状态</span>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon bg-emerald">
+            <el-icon><Document /></el-icon>
           </div>
-          <p>当前前端已支持知识文档管理、规则组启停、实体字典维护和本地持久化，可直接用于演示和日常录入。</p>
-        </article>
-      </section>
+          <div class="stat-info">
+            <span class="stat-value">{{ stats.totalChunks }}</span>
+            <span class="stat-label">向量切片</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon bg-amber">
+            <el-icon><Connection /></el-icon>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ stats.ruleCount }}</span>
+            <span class="stat-label">规则引擎</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon bg-rose">
+            <el-icon><Warning /></el-icon>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ stats.policyCount }}</span>
+            <span class="stat-label">合规政策</span>
+          </div>
+        </div>
+      </div>
 
-      <section class="knowledge-shell">
-        <nav class="knowledge-tabs">
-          <button
-            v-for="tab in tabs"
-            :key="tab.key"
-            class="tab-button"
-            :class="{ active: activeTab === tab.key }"
-            @click="activeTab = tab.key"
-          >
-            <el-icon><component :is="tab.icon" /></el-icon>
-            <span>{{ tab.label }}</span>
-          </button>
-        </nav>
+      <!-- 知识分类Tab -->
+      <div class="knowledge-tabs">
+        <el-radio-group v-model="activeTab" @change="handleTabChange">
+          <el-radio-button label="all">
+            全部知识
+            <el-badge :value="knowledgeList.length" type="primary" />
+          </el-radio-button>
+          <el-radio-button label="rule">
+            规则引擎
+            <el-badge :value="getCountByCategory('rule')" type="danger" />
+          </el-radio-button>
+          <el-radio-button label="rag">
+            RAG向量库
+            <el-badge :value="getCountByCategory('rag')" type="success" />
+          </el-radio-button>
+          <el-radio-button label="policy">
+            合规政策
+            <el-badge :value="getCountByCategory('policy')" type="warning" />
+          </el-radio-button>
+        </el-radio-group>
+      </div>
 
-        <div class="panel-toolbar">
-          <label class="search-box">
+      <!-- 搜索和筛选 -->
+      <div class="filter-bar">
+        <el-input
+          v-model="searchText"
+          placeholder="搜索知识名称或描述..."
+          clearable
+          class="search-input"
+          @input="handleSearch"
+        >
+          <template #prefix>
             <el-icon><Search /></el-icon>
-            <input v-model="searchText" type="text" :placeholder="activeTabPlaceholder" />
-          </label>
+          </template>
+        </el-input>
+        <el-select v-model="sortBy" placeholder="排序方式" class="sort-select">
+          <el-option label="最近更新" value="updatedAt" />
+          <el-option label="名称排序" value="title" />
+          <el-option label="切片数量" value="chunks" />
+        </el-select>
+      </div>
 
-          <button v-if="activeTab === 'rag'" class="reindex-trigger" @click="reindexDocuments">
-            <el-icon><Refresh /></el-icon>
-            <span>手动触发全量向量化</span>
-          </button>
+      <!-- 知识列表 -->
+      <div class="knowledge-list">
+        <div
+          v-for="item in displayedKnowledge"
+          :key="item.id"
+          class="knowledge-card"
+          @click="viewDetail(item)"
+        >
+          <div class="card-header">
+            <div class="card-title-row">
+              <h3 class="card-title">{{ item.title }}</h3>
+              <el-tag :type="getTagType(item.category)" size="small">
+                {{ getCategoryLabel(item.category) }}
+              </el-tag>
+            </div>
+            <p class="card-desc">{{ item.description }}</p>
+          </div>
 
-          <button v-if="activeTab === 'rules'" class="reindex-trigger" @click="addRule">
-            <el-icon><Plus /></el-icon>
-            <span>新增规则组</span>
-          </button>
+          <div class="card-stats">
+            <div class="stat-item">
+              <el-icon><Document /></el-icon>
+              <span>{{ item.chunks }} 个切片</span>
+            </div>
+            <div class="stat-item">
+              <el-icon><Clock /></el-icon>
+              <span>更新于 {{ item.updatedAt }}</span>
+            </div>
+          </div>
 
-          <button v-if="activeTab === 'dict'" class="reindex-trigger" @click="addDictionary">
-            <el-icon><Plus /></el-icon>
-            <span>新增词条</span>
-          </button>
+          <div class="card-tags" v-if="item.tags && item.tags.length">
+            <el-tag
+              v-for="tag in item.tags.slice(0, 3)"
+              :key="tag"
+              size="small"
+              type="info"
+            >
+              {{ tag }}
+            </el-tag>
+            <el-tag v-if="item.tags.length > 3" size="small" type="info">
+              +{{ item.tags.length - 3 }}
+            </el-tag>
+          </div>
+
+          <div class="card-actions" @click.stop>
+            <el-button size="small" @click="editKnowledge(item)">
+              <el-icon><Edit /></el-icon>
+              编辑
+            </el-button>
+            <el-button size="small" type="danger" plain @click="deleteKnowledge(item)">
+              <el-icon><Delete /></el-icon>
+              删除
+            </el-button>
+          </div>
         </div>
 
-        <div class="table-shell">
-          <table v-if="activeTab === 'rag'" class="knowledge-table">
-            <thead>
-              <tr>
-                <th>文件名 / 文献名</th>
-                <th>状态</th>
-                <th>向量切片数</th>
-                <th>导入时间</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="filteredDocuments.length === 0">
-                <td colspan="5" class="empty-cell">暂无知识文档，请先导入文件。</td>
-              </tr>
-              <tr v-for="item in filteredDocuments" :key="item.id">
-                <td>
-                  <div class="doc-cell">
-                    <div class="doc-icon" :class="item.fileType">
-                      <el-icon><Document /></el-icon>
-                    </div>
-                    <div>
-                      <div class="doc-title">{{ item.name }}</div>
-                      <div class="doc-meta">{{ item.size }}</div>
-                    </div>
-                  </div>
-                </td>
-                <td><span class="status-pill" :class="item.statusClass">{{ item.status }}</span></td>
-                <td class="metric-cell">{{ item.chunks }}</td>
-                <td class="time-cell">{{ item.importedAt }}</td>
-                <td class="action-cell">
-                  <button class="table-action" @click="markDocumentReady(item.id)">重建</button>
-                  <button class="table-action danger" @click="removeDocument(item.id)">删除</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <el-empty v-if="displayedKnowledge.length === 0" description="暂无知识条目" />
+      </div>
 
-          <table v-else-if="activeTab === 'rules'" class="knowledge-table">
-            <thead>
-              <tr>
-                <th>规则组名称</th>
-                <th>适用场景</th>
-                <th>优先级</th>
-                <th>状态</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="rule in filteredRules" :key="rule.id">
-                <td>{{ rule.name }}</td>
-                <td>{{ rule.scene }}</td>
-                <td>{{ rule.priority }}</td>
-                <td><span class="status-pill" :class="rule.enabled ? 'ready' : 'processing'">{{ rule.enabled ? '已启用' : '已停用' }}</span></td>
-                <td class="action-cell">
-                  <button class="table-action" @click="toggleRule(rule.id)">{{ rule.enabled ? '停用' : '启用' }}</button>
-                  <button class="table-action danger" @click="removeRule(rule.id)">删除</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+      <!-- 新增/编辑对话框 -->
+      <el-dialog
+        v-model="showAddDialog"
+        :title="editingItem ? '编辑知识' : '新增知识'"
+        width="600px"
+        :close-on-click-modal="false"
+      >
+        <el-form :model="form" label-width="80px">
+          <el-form-item label="名称">
+            <el-input v-model="form.title" placeholder="请输入知识名称" />
+          </el-form-item>
+          <el-form-item label="分类">
+            <el-select v-model="form.category" placeholder="请选择分类">
+              <el-option label="规则引擎" value="rule" />
+              <el-option label="RAG向量库" value="rag" />
+              <el-option label="合规政策" value="policy" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="描述">
+            <el-input
+              v-model="form.description"
+              type="textarea"
+              :rows="3"
+              placeholder="请输入知识描述"
+            />
+          </el-form-item>
+          <el-form-item label="标签">
+            <el-select
+              v-model="form.tags"
+              multiple
+              filterable
+              allow-create
+              placeholder="请输入标签"
+              style="width: 100%"
+            >
+              <el-option
+                v-for="tag in availableTags"
+                :key="tag"
+                :label="tag"
+                :value="tag"
+              />
+            </el-select>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="showAddDialog = false">取消</el-button>
+          <el-button type="primary" @click="saveKnowledge">
+            {{ editingItem ? '保存' : '创建' }}
+          </el-button>
+        </template>
+      </el-dialog>
 
-          <table v-else class="knowledge-table">
-            <thead>
-              <tr>
-                <th>实体类型</th>
-                <th>标准名称</th>
-                <th>别名</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in filteredDictionaries" :key="item.id">
-                <td>{{ item.type }}</td>
-                <td>{{ item.term }}</td>
-                <td>{{ item.alias }}</td>
-                <td class="action-cell">
-                  <button class="table-action" @click="renameDictionary(item.id)">编辑</button>
-                  <button class="table-action danger" @click="removeDictionary(item.id)">删除</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+      <!-- 详情对话框 -->
+      <el-dialog
+        v-model="showDetailDialog"
+        :title="selectedItem?.title"
+        width="700px"
+      >
+        <div v-if="selectedItem" class="detail-content">
+          <div class="detail-header">
+            <el-tag :type="getTagType(selectedItem.category)" size="large">
+              {{ getCategoryLabel(selectedItem.category) }}
+            </el-tag>
+            <span class="detail-date">更新于 {{ selectedItem.updatedAt }}</span>
+          </div>
+
+          <div class="detail-section">
+            <h4>描述</h4>
+            <p>{{ selectedItem.description }}</p>
+          </div>
+
+          <div class="detail-section">
+            <h4>标签</h4>
+            <div class="detail-tags">
+              <el-tag
+                v-for="tag in selectedItem.tags"
+                :key="tag"
+                type="info"
+              >
+                {{ tag }}
+              </el-tag>
+            </div>
+          </div>
+
+          <div class="detail-section">
+            <h4>向量切片预览</h4>
+            <div class="chunks-preview">
+              <div
+                v-for="(chunk, idx) in selectedItem.chunksPreview"
+                :key="idx"
+                class="chunk-item"
+              >
+                <span class="chunk-index">{{ idx + 1 }}</span>
+                <span class="chunk-text">{{ chunk }}</span>
+              </div>
+            </div>
+          </div>
         </div>
-      </section>
+        <template #footer>
+          <el-button @click="showDetailDialog = false">关闭</el-button>
+          <el-button type="primary" @click="editKnowledge(selectedItem); showDetailDialog = false">
+            编辑
+          </el-button>
+        </template>
+      </el-dialog>
     </section>
   </workspace-layout>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { Coin, Document, Files, MagicStick, Notebook, Plus, Refresh, Search, Checked } from '@element-plus/icons-vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import WorkspaceLayout from '../components/layout/WorkspaceLayout.vue'
 import {
-  appendAuditLog,
-  getKnowledgeDictionaries,
-  getKnowledgeDocuments,
-  getKnowledgeRules,
-  setKnowledgeDictionaries,
-  setKnowledgeDocuments,
-  setKnowledgeRules
-} from '../utils/local-state'
+  Plus,
+  Collection,
+  Document,
+  Connection,
+  Warning,
+  Search,
+  Edit,
+  Delete,
+  Clock
+} from '@element-plus/icons-vue'
+import WorkspaceLayout from '../components/layout/WorkspaceLayout.vue'
 
-const activeTab = ref('rag')
+// 状态
+const activeTab = ref('all')
 const searchText = ref('')
-const knowledgeInput = ref(null)
-const documents = ref(getKnowledgeDocuments())
-const rules = ref(getKnowledgeRules())
-const dictionaries = ref(getKnowledgeDictionaries())
+const sortBy = ref('updatedAt')
+const showAddDialog = ref(false)
+const showDetailDialog = ref(false)
+const editingItem = ref(null)
+const selectedItem = ref(null)
 
-const tabs = [
-  { key: 'rag', label: '法规文献源 (RAG)', icon: Files },
-  { key: 'rules', label: '审查规则组 (Rule Engine)', icon: Checked },
-  { key: 'dict', label: '实体字典库 (Dictionaries)', icon: Notebook }
-]
-
-const enabledRulesCount = computed(() => rules.value.filter((rule) => rule.enabled).length)
-
-const activeTabPlaceholder = computed(() => {
-  if (activeTab.value === 'rules') return '检索规则组名称或适用场景...'
-  if (activeTab.value === 'dict') return '检索实体名称、别名或类型...'
-  return '检索法规、指引或政策文献...'
+// 表单
+const form = ref({
+  title: '',
+  category: 'rule',
+  description: '',
+  tags: []
 })
 
-const keywordMatches = (value) => value.toLowerCase().includes(searchText.value.trim().toLowerCase())
+// 模拟知识库数据
+const knowledgeList = ref([
+  {
+    id: 'kb-001',
+    title: '围标行为认定规则',
+    description: '用于识别投标人之间是否存在围标行为的判定规则，包括价格雷同、文件特征相似度等指标。',
+    category: 'rule',
+    chunks: 156,
+    updatedAt: '2024-03-15',
+    tags: ['围标', '串标', '价格异常'],
+    chunksPreview: [
+      '价格雷同判定：投标报价差异小于等于 5% 视为高度可疑',
+      '文件特征相似度：技术方案文档相似度超过 80% 触发预警',
+      '投标时间异常：多家投标人提交文件时间间隔小于 10 分钟'
+    ]
+  },
+  {
+    id: 'kb-002',
+    title: '医疗设备采购合规标准',
+    description: '医疗设备采购过程中需要遵守的法律法规、合规要求和标准流程。',
+    category: 'policy',
+    chunks: 89,
+    updatedAt: '2024-02-20',
+    tags: ['医疗器械', '采购合规', '法规'],
+    chunksPreview: [
+      '《医疗器械监督管理条例》相关要求',
+      '采购流程必须经过招标、投标、评标、定标四个阶段',
+      '进口设备需要提供医疗器械注册证'
+    ]
+  },
+  {
+    id: 'kb-003',
+    title: '合同风险条款库',
+    description: '常见合同风险条款的识别模板和应对建议，包括付款周期、违约责任、知识产权等。',
+    category: 'rag',
+    chunks: 234,
+    updatedAt: '2024-03-01',
+    tags: ['合同风险', '条款审查', '法律'],
+    chunksPreview: [
+      '付款周期异常：预付款超过 30% 或付款周期超过 90 天需重点关注',
+      '违约责任不对等：乙方违约责任明显重于甲方时触发预警',
+      '知识产权归属：未明确约定技术成果归属权的条款'
+    ]
+  },
+  {
+    id: 'kb-004',
+    title: '投标人资质审查规则',
+    description: '投标人资质审查的标准流程和关键检查点，包括营业执照、资质证书、经营范围等。',
+    category: 'rule',
+    chunks: 67,
+    updatedAt: '2024-01-28',
+    tags: ['资质审查', '投标人', '合规'],
+    chunksPreview: [
+      '营业执照有效期检查：距离到期不足 6 个月需提醒续期',
+      '资质证书匹配度：投标产品必须在资质证书经营范围内',
+      '业绩要求：近三年同类项目业绩数量不得少于 3 个'
+    ]
+  },
+  {
+    id: 'kb-005',
+    title: '药品集中采购政策',
+    description: '国家药品集中采购相关政策文件、实施细则和操作指南。',
+    category: 'policy',
+    chunks: 312,
+    updatedAt: '2024-02-10',
+    tags: ['药品集采', '政策', '医保'],
+    chunksPreview: [
+      '带量采购政策：原则上不低于年度采购量的 60%',
+      '价格联动：同品种药品价格不得高于全国最低价',
+      '质量分层：通过一致性评价的药品优先采购'
+    ]
+  },
+  {
+    id: 'kb-006',
+    title: '标书相似度检测模型',
+    description: '基于语义分析的标书相似度检测模型，用于识别技术方案雷同情况。',
+    category: 'rag',
+    chunks: 45,
+    updatedAt: '2024-03-05',
+    tags: ['相似度', '语义分析', '机器学习'],
+    chunksPreview: [
+      '文本向量化：使用 BERT 模型将标书文本转换为向量',
+      '相似度计算：余弦相似度超过 0.85 视为高度相似',
+      '段落匹配：连续 50 字以上相同视为重复段落'
+    ]
+  }
+])
 
-const filteredDocuments = computed(() => {
-  const keyword = searchText.value.trim().toLowerCase()
-  if (!keyword) return documents.value
-  return documents.value.filter((item) => item.name.toLowerCase().includes(keyword))
-})
+const availableTags = ref([
+  '围标', '串标', '价格异常', '医疗器械', '采购合规', '法规',
+  '合同风险', '条款审查', '法律', '资质审查', '投标人', '合规',
+  '药品集采', '政策', '医保', '相似度', '语义分析', '机器学习'
+])
 
-const filteredRules = computed(() => {
-  const keyword = searchText.value.trim().toLowerCase()
-  if (!keyword) return rules.value
-  return rules.value.filter((item) => keywordMatches(item.name) || keywordMatches(item.scene))
-})
+// 计算属性
+const stats = computed(() => ({
+  totalKnowledge: knowledgeList.value.length,
+  totalChunks: knowledgeList.value.reduce((sum, item) => sum + item.chunks, 0),
+  ruleCount: knowledgeList.value.filter(item => item.category === 'rule').length,
+  policyCount: knowledgeList.value.filter(item => item.category === 'policy').length
+}))
 
-const filteredDictionaries = computed(() => {
-  const keyword = searchText.value.trim().toLowerCase()
-  if (!keyword) return dictionaries.value
-  return dictionaries.value.filter((item) => keywordMatches(item.type) || keywordMatches(item.term) || keywordMatches(item.alias))
-})
+const displayedKnowledge = computed(() => {
+  let result = [...knowledgeList.value]
 
-const persistDocuments = () => setKnowledgeDocuments(documents.value)
-const persistRules = () => setKnowledgeRules(rules.value)
-const persistDictionaries = () => setKnowledgeDictionaries(dictionaries.value)
+  // 分类筛选
+  if (activeTab.value !== 'all') {
+    result = result.filter(item => item.category === activeTab.value)
+  }
 
-const handleImportKnowledge = (event) => {
-  const files = Array.from(event.target.files || [])
-  if (!files.length) return
+  // 搜索筛选
+  if (searchText.value) {
+    const search = searchText.value.toLowerCase()
+    result = result.filter(item =>
+      item.title.toLowerCase().includes(search) ||
+      item.description.toLowerCase().includes(search) ||
+      item.tags.some(tag => tag.toLowerCase().includes(search))
+    )
+  }
 
-  const imported = files.map((file) => ({
-    id: `doc-${Date.now()}-${file.name}`,
-    name: file.name,
-    size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
-    fileType: file.name.toLowerCase().endsWith('.pdf') ? 'pdf' : 'doc',
-    status: '已向量化',
-    statusClass: 'ready',
-    chunks: `${Math.max(12, Math.round(file.size / 2048))} Chunks`,
-    importedAt: new Date().toLocaleDateString('zh-CN')
-  }))
-
-  documents.value = [...imported, ...documents.value]
-  persistDocuments()
-  appendAuditLog({
-    id: `audit-${Date.now()}`,
-    type: 'KNOWLEDGE_IMPORTED',
-    title: '导入知识文档',
-    detail: `新增导入 ${imported.length} 份知识文件`,
-    createdAt: new Date().toISOString()
+  // 排序
+  result.sort((a, b) => {
+    if (sortBy.value === 'title') {
+      return a.title.localeCompare(b.title, 'zh-CN')
+    } else if (sortBy.value === 'chunks') {
+      return b.chunks - a.chunks
+    } else {
+      return new Date(b.updatedAt) - new Date(a.updatedAt)
+    }
   })
-  ElMessage.success(`成功导入 ${imported.length} 份知识文件`)
-  event.target.value = ''
+
+  return result
+})
+
+// 方法
+const getCountByCategory = (category) => {
+  return knowledgeList.value.filter(item => item.category === category).length
 }
 
-const markDocumentReady = (id) => {
-  documents.value = documents.value.map((item) => item.id === id ? { ...item, status: '已向量化', statusClass: 'ready' } : item)
-  persistDocuments()
-  ElMessage.success('已触发重建索引')
+const getTagType = (category) => {
+  const types = {
+    rule: 'danger',
+    rag: 'success',
+    policy: 'warning'
+  }
+  return types[category] || ''
 }
 
-const removeDocument = async (id) => {
-  await ElMessageBox.confirm('确认删除这份知识文档吗？删除后需要重新导入。', '删除确认', { type: 'warning' })
-  documents.value = documents.value.filter((item) => item.id !== id)
-  persistDocuments()
-  ElMessage.success('知识文档已删除')
+const getCategoryLabel = (category) => {
+  const labels = {
+    rule: '规则引擎',
+    rag: 'RAG向量库',
+    policy: '合规政策'
+  }
+  return labels[category] || category
 }
 
-const reindexDocuments = () => {
-  documents.value = documents.value.map((item) => ({ ...item, status: '已向量化', statusClass: 'ready' }))
-  persistDocuments()
-  ElMessage.success('已触发全量向量化')
+const handleTabChange = () => {
+  searchText.value = ''
 }
 
-const addRule = () => {
-  rules.value = [
-    {
-      id: `rule-${Date.now()}`,
-      name: `新规则组 ${rules.value.length + 1}`,
-      scene: '标书审查',
-      enabled: true,
-      priority: '中'
-    },
-    ...rules.value
-  ]
-  persistRules()
+const handleSearch = () => {
+  // 搜索是响应式的，这里不需要额外处理
 }
 
-const toggleRule = (id) => {
-  rules.value = rules.value.map((item) => item.id === id ? { ...item, enabled: !item.enabled } : item)
-  persistRules()
+const viewDetail = (item) => {
+  selectedItem.value = item
+  showDetailDialog.value = true
 }
 
-const removeRule = (id) => {
-  rules.value = rules.value.filter((item) => item.id !== id)
-  persistRules()
+const editKnowledge = (item) => {
+  editingItem.value = item
+  form.value = {
+    title: item.title,
+    category: item.category,
+    description: item.description,
+    tags: [...item.tags]
+  }
+  showAddDialog.value = true
 }
 
-const addDictionary = () => {
-  dictionaries.value = [
-    {
-      id: `dict-${Date.now()}`,
-      type: '药品',
-      term: `新词条 ${dictionaries.value.length + 1}`,
-      alias: '待补充'
-    },
-    ...dictionaries.value
-  ]
-  persistDictionaries()
+const deleteKnowledge = async (item) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除知识「${item.title}」吗？此操作不可恢复。`,
+      '删除确认',
+      {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    const index = knowledgeList.value.findIndex(k => k.id === item.id)
+    if (index !== -1) {
+      knowledgeList.value.splice(index, 1)
+      ElMessage.success('删除成功')
+    }
+  } catch {
+    // 用户取消
+  }
 }
 
-const renameDictionary = (id) => {
-  dictionaries.value = dictionaries.value.map((item) => item.id === id ? { ...item, alias: `${item.alias}（已编辑）` } : item)
-  persistDictionaries()
-}
+const saveKnowledge = () => {
+  if (!form.value.title || !form.value.description) {
+    ElMessage.warning('请填写完整信息')
+    return
+  }
 
-const removeDictionary = (id) => {
-  dictionaries.value = dictionaries.value.filter((item) => item.id !== id)
-  persistDictionaries()
+  if (editingItem.value) {
+    // 编辑
+    const index = knowledgeList.value.findIndex(k => k.id === editingItem.value.id)
+    if (index !== -1) {
+      knowledgeList.value[index] = {
+        ...knowledgeList.value[index],
+        ...form.value,
+        updatedAt: new Date().toISOString().split('T')[0]
+      }
+      ElMessage.success('保存成功')
+    }
+  } else {
+    // 新增
+    const newItem = {
+      id: `kb-${Date.now()}`,
+      ...form.value,
+      chunks: 0,
+      updatedAt: new Date().toISOString().split('T')[0],
+      tags: form.value.tags || [],
+      chunksPreview: []
+    }
+    knowledgeList.value.unshift(newItem)
+    ElMessage.success('创建成功')
+  }
+
+  showAddDialog.value = false
+  editingItem.value = null
+  form.value = {
+    title: '',
+    category: 'rule',
+    description: '',
+    tags: []
+  }
 }
 </script>
 
 <style scoped>
 .knowledge-page {
-  padding: 44px 38px 56px;
-  max-width: 1480px;
+  padding: 32px;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
-.knowledge-hero,
-.hero-brand,
-.panel-toolbar,
-.action-cell {
+.page-header {
+  margin-bottom: 24px;
+}
+
+.header-top {
   display: flex;
-}
-
-.knowledge-hero {
   justify-content: space-between;
   align-items: flex-start;
-  gap: 24px;
-  margin-bottom: 34px;
 }
 
-.hero-brand {
-  align-items: flex-start;
-  gap: 24px;
-}
-
-.hero-brand-icon {
-  width: 78px;
-  height: 78px;
-  border-radius: 22px;
-  background: linear-gradient(180deg, #d8f7e7 0%, #b8efd3 100%);
-  display: grid;
-  place-items: center;
-  color: #0b8a63;
-  font-size: 40px;
-  box-shadow: 0 10px 30px rgba(23, 162, 108, 0.15);
-}
-
-h1 {
-  margin: 0 0 10px;
-  font-size: 34px;
+.header-title h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
   font-weight: 850;
+  color: #1a202c;
 }
 
-.hero-copy p,
-.engine-card p {
-  color: var(--text-sub);
-  line-height: 1.7;
+.header-title p {
   margin: 0;
+  color: #718096;
+  font-size: 14px;
 }
 
-.import-trigger,
-.reindex-trigger,
-.table-action {
-  border: 0;
-  border-radius: 14px;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.import-trigger,
-.reindex-trigger {
-  height: 48px;
-  padding: 0 18px;
-  background: white;
-  border: 1px solid var(--border-light);
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.hero-panels {
+/* 统计卡片 */
+.stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
-  margin-bottom: 28px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 32px;
 }
 
-.stat-card,
-.engine-card,
-.knowledge-shell {
+.stat-card {
   background: white;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-}
-
-.stat-card,
-.engine-card {
-  padding: 24px;
-}
-
-.stat-title,
-.stat-sub {
-  color: var(--text-sub);
-}
-
-.stat-row,
-.engine-head {
+  border-radius: 16px;
+  padding: 20px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 12px;
-}
-
-.stat-row strong {
-  font-size: 36px;
-}
-
-.knowledge-shell {
-  padding: 24px;
-}
-
-.knowledge-tabs {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.tab-button {
-  border: 1px solid var(--border-light);
-  background: #f8fafc;
-  border-radius: 14px;
-  padding: 12px 18px;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.tab-button.active {
-  background: var(--primary-color);
-  color: white;
-}
-
-.panel-toolbar {
-  justify-content: space-between;
   align-items: center;
   gap: 16px;
-  margin-bottom: 18px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-.search-box {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 48px;
-  padding: 0 14px;
-  border: 1px solid var(--border-light);
+.stat-icon {
+  width: 56px;
+  height: 56px;
   border-radius: 14px;
-}
-
-.search-box input {
-  width: 100%;
-  border: 0;
-  outline: none;
-  background: transparent;
-}
-
-.knowledge-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.knowledge-table th,
-.knowledge-table td {
-  padding: 16px 12px;
-  border-bottom: 1px solid var(--border-light);
-  text-align: left;
-}
-
-.doc-cell {
   display: flex;
   align-items: center;
-  gap: 14px;
+  justify-content: center;
+  font-size: 24px;
 }
 
-.doc-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
+.stat-icon.bg-indigo {
   background: #eef2ff;
   color: #4f46e5;
 }
 
-.status-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 12px;
-  border-radius: 999px;
+.stat-icon.bg-emerald {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.stat-icon.bg-amber {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.stat-icon.bg-rose {
+  background: #fff1f2;
+  color: #e11d48;
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1.2;
+}
+
+.stat-label {
   font-size: 13px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* 知识分类Tab */
+.knowledge-tabs {
+  margin-bottom: 20px;
+}
+
+.knowledge-tabs :deep(.el-radio-button__inner) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 搜索和筛选 */
+.filter-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.search-input {
+  flex: 1;
+  max-width: 400px;
+}
+
+.sort-select {
+  width: 150px;
+}
+
+/* 知识列表 */
+.knowledge-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.knowledge-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.knowledge-card:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.card-header {
+  margin-bottom: 16px;
+}
+
+.card-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.card-title {
+  margin: 0;
+  font-size: 16px;
   font-weight: 700;
+  color: #1e293b;
 }
 
-.ready {
-  background: #ecfdf3;
-  color: #15803d;
+.card-desc {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.processing {
-  background: #fff7ed;
-  color: #ea580c;
+.card-stats {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
 }
 
-.action-cell {
-  gap: 10px;
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #94a3b8;
 }
 
-.table-action {
-  background: #eef2ff;
+.card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* 详情对话框 */
+.detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.detail-date {
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.detail-section h4 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
   color: #334155;
-  padding: 8px 12px;
 }
 
-.table-action.danger {
-  background: #fef2f2;
-  color: #dc2626;
+.detail-section p {
+  margin: 0;
+  font-size: 14px;
+  color: #64748b;
+  line-height: 1.6;
 }
 
-.empty-cell {
-  text-align: center;
-  color: var(--text-sub);
+.detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-@media (max-width: 900px) {
-  .hero-panels {
+.chunks-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chunk-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.chunk-index {
+  width: 24px;
+  height: 24px;
+  background: #e2e8f0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.chunk-text {
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+@media (max-width: 1024px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .knowledge-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .stats-grid {
     grid-template-columns: 1fr;
   }
 
-  .knowledge-tabs,
-  .panel-toolbar,
-  .knowledge-hero {
+  .filter-bar {
     flex-direction: column;
-    align-items: stretch;
+  }
+
+  .search-input {
+    max-width: none;
   }
 }
 </style>

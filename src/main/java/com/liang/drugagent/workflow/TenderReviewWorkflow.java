@@ -79,6 +79,7 @@ public class TenderReviewWorkflow implements SceneWorkflow {
         String answer = agentChatService.chatWithScene(context.getQuery(), "default", context.getSessionId());
         WorkflowResult result = WorkflowResult.of(SceneEnum.TENDER_REVIEW, answer);
         result.setRiskLevel("NONE");
+        result.setScore(0); // 默认分数
         result.setSteps(List.of("scene_route", "generic_review"));
         result.setEvidenceList(List.of(
                 new EvidenceItem("system_note", "MVP fallback path is still using generic chat ability.", "system")
@@ -121,6 +122,7 @@ public class TenderReviewWorkflow implements SceneWorkflow {
                 reportGenerationService.buildAnswer(report)
         );
         result.setRiskLevel(fusionResult.getRiskLevel());
+        result.setScore(fusionResult.getScore() != null ? fusionResult.getScore() : 0);
         result.setSteps(List.of("scene_route", "structured_load", "rule_hit", "false_positive_exemption", "risk_fusion", "evidence_assembly", "report_generation"));
         result.setReport(report);
         result.setEvidenceList(evidenceAssemblyResult.getFlatItems());

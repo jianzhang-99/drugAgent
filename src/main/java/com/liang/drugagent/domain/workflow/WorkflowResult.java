@@ -22,6 +22,7 @@ public class WorkflowResult {
     private SceneEnum scene;
     private String answer;
     private String riskLevel;
+    private Integer score;
     private ReviewReport report;
     private List<EvidenceItem> evidenceList = new ArrayList<>();
     private List<EvidenceGroup> evidenceGroups = new ArrayList<>();

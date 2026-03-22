@@ -92,10 +92,14 @@ public class DrugAgentService {
         resp.setSummary(buildSummary(workflowResult));
         resp.setAnswer(workflowResult.getAnswer());
         resp.setRiskLevel(workflowResult.getRiskLevel());
+        resp.setScore(workflowResult.getScore() != null ? workflowResult.getScore() : 0);
+        resp.setDocCount(getDocumentCount(context, workflowResult));
+        resp.setManagementSummary(String.join("\n", buildManagementSummary(workflowResult)));
+        resp.setSuggestedActions(buildSuggestedActions(workflowResult));
+        resp.setSteps(workflowResult.getSteps() != null ? workflowResult.getSteps() : new ArrayList<>());
         resp.setReport(workflowResult.getReport());
         resp.setEvidenceList(workflowResult.getEvidenceList());
         resp.setEvidenceGroups(workflowResult.getEvidenceGroups());
-        resp.setSteps(workflowResult.getSteps());
         attachStructuredData(resp, context, workflowResult);
         log.info("Sync agent response ready: traceId={}, scene={}", context.getTraceId(), resp.getScene());
         return resp;
@@ -287,6 +291,49 @@ public class DrugAgentService {
                     "report", workflowResult.getReport()
             ));
         }
+    }
+
+    private int getDocumentCount(AgentContext context, WorkflowResult workflowResult) {
+        if (workflowResult.getEvidenceGroups() != null) {
+            return workflowResult.getEvidenceGroups().stream()
+                    .mapToInt(group -> group.getItems() != null ? group.getItems().size() : 0)
+                    .sum();
+        }
+        return 0;
+    }
+
+    private List<String> buildManagementSummary(WorkflowResult workflowResult) {
+        List<String> managementSummary = new ArrayList<>();
+        if (workflowResult.getReport() != null && workflowResult.getReport().getOverview() != null) {
+            managementSummary.add(workflowResult.getReport().getOverview().getSummary());
+        }
+        if (managementSummary.isEmpty()) {
+            managementSummary.add("待处理");
+        }
+        return managementSummary;
+    }
+
+    private List<String> buildSuggestedActions(WorkflowResult workflowResult) {
+        List<String> suggestedActions = new ArrayList<>();
+        if (workflowResult.getRiskLevel() != null) {
+            switch (workflowResult.getRiskLevel()) {
+                case "HIGH":
+                    suggestedActions.add("立即处理，进行详细审查");
+                    suggestedActions.add("建议由专家团队复核");
+                    break;
+                case "MEDIUM":
+                    suggestedActions.add("需要关注，定期复查");
+                    suggestedActions.add("建议补充相关材料");
+                    break;
+                case "LOW":
+                    suggestedActions.add("正常流程处理");
+                    suggestedActions.add("建议保持定期监控");
+                    break;
+                default:
+                    suggestedActions.add("按常规流程处理");
+            }
+        }
+        return suggestedActions;
     }
 
     private void hydrateTenderMetadata(DrugAgentReq req, String submittedBy, MultipartFile[] files) {

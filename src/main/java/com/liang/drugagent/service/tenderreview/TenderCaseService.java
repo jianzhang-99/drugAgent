@@ -95,6 +95,14 @@ public class TenderCaseService {
     }
 
     /**
+     * 保存任务（用于更新任务状态）
+     */
+    public void saveCase(TenderCase tenderCase) {
+        store.saveCase(tenderCase);
+        log.info("Saved tender case: caseId={}, status={}", tenderCase.getCaseId(), tenderCase.getStatus());
+    }
+
+    /**
      * 查询所有任务，按创建时间倒序返回。
      */
     public List<TenderCase> listCases() {

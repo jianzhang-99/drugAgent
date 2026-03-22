@@ -93,7 +93,10 @@ export const getUserPreferences = () => {
     submittedBy: 'anonymous',
     streamOutput: true,
     autoParseAfterUpload: true,
-    defaultSceneHint: 'AUTO'
+    defaultSceneHint: 'AUTO',
+    taskSortBy: 'createdAt',
+    autoRefreshTasks: true,
+    taskRefreshInterval: 30
   })
 }
 

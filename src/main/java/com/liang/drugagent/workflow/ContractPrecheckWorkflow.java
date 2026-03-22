@@ -50,6 +50,7 @@ public class ContractPrecheckWorkflow implements SceneWorkflow {
         );
         WorkflowResult result = WorkflowResult.of(SceneEnum.CONTRACT_PRECHECK, answer);
         result.setRiskLevel("MEDIUM");
+        result.setScore(50); // 中等风险默认分数
         result.setSteps(List.of("场景识别", "合同预审问答"));
         result.setEvidenceList(List.of(
                 new EvidenceItem("执行说明", "当前 MVP 版本尚未接入真实合同解析，先走合同预审对话能力。", "system")

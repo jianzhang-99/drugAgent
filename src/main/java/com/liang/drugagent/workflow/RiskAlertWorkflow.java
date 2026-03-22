@@ -50,6 +50,7 @@ public class RiskAlertWorkflow implements SceneWorkflow {
         );
         WorkflowResult result = WorkflowResult.of(SceneEnum.RISK_ALERT, answer);
         result.setRiskLevel("PENDING");
+        result.setScore(0); // 待定状态默认分数
         result.setSteps(List.of("场景识别", "风险预警分析"));
         result.setEvidenceList(List.of(
                 new EvidenceItem("执行说明", "当前 MVP 版本先复用数据分析人设，后续再接真实预警分析服务。", "system")
