@@ -1,9 +1,12 @@
 <template>
   <div class="h-full flex flex-col bg-gradient-to-b from-slate-50 to-white">
     <!-- Chat Area -->
-    <div class="flex-1 overflow-y-auto">
+    <div
+      class="flex-1"
+      :class="hasActiveSession ? 'overflow-y-auto' : 'flex items-center justify-center px-6 py-10'"
+    >
       <!-- Empty State -->
-      <div v-if="!hasActiveSession" class="max-w-3xl mx-auto px-6 pt-20 pb-40">
+      <div v-if="!hasActiveSession" class="w-full max-w-3xl">
         <!-- Hero Section -->
         <div class="text-center mb-16">
           <div class="relative inline-block mb-8">
@@ -50,8 +53,20 @@
           >
             <!-- User Message -->
             <div v-if="message.role === 'user'" class="flex gap-4 justify-end">
-              <div class="max-w-md bg-indigo-600 text-white rounded-2xl rounded-br-md px-5 py-3 shadow-lg">
-                <p class="text-sm">{{ message.content }}</p>
+              <div class="max-w-md">
+                <div class="bg-indigo-600 text-white rounded-2xl rounded-br-md px-5 py-3 shadow-lg">
+                  <p class="text-sm">{{ message.content }}</p>
+                </div>
+                <!-- Attachments -->
+                <div v-if="message.attachments?.length" class="flex flex-wrap justify-end gap-2 mt-2">
+                  <span
+                    v-for="(file, idx) in message.attachments"
+                    :key="idx"
+                    class="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-lg"
+                  >
+                    {{ file }}
+                  </span>
+                </div>
               </div>
               <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 text-xs font-bold flex-shrink-0">
                 U
@@ -69,11 +84,76 @@
             </div>
           </div>
         </div>
+
+        <!-- AI Result Panel -->
+        <div v-if="aiResult" class="mt-6 animate-fadeIn">
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <!-- Risk Header -->
+            <div class="px-6 py-4 bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200 flex items-center justify-between">
+              <div class="flex items-center gap-4">
+                <div
+                  class="px-3 py-1.5 rounded-full text-xs font-bold"
+                  :class="{
+                    'bg-red-100 text-red-700': aiResult.riskLevel === 'High',
+                    'bg-amber-100 text-amber-700': aiResult.riskLevel === 'Medium',
+                    'bg-emerald-100 text-emerald-700': aiResult.riskLevel === 'Low'
+                  }"
+                >
+                  <component :is="aiResult.riskLevel === 'High' ? ShieldAlert : aiResult.riskLevel === 'Medium' ? AlertCircle : CheckCircle2" class="w-4 h-4 inline mr-1" />
+                  {{ aiResult.riskLevel === 'High' ? '高风险' : aiResult.riskLevel === 'Medium' ? '中风险' : '低风险' }}
+                </div>
+                <span class="text-xs text-slate-500">{{ aiResult.scene === 'TENDER' ? '标书审查' : aiResult.scene === 'CONTRACT' ? '合同预审' : '合规预警' }}</span>
+              </div>
+              <span class="text-xs text-slate-400 font-mono">{{ aiResult.traceId }}</span>
+            </div>
+
+            <!-- Summary -->
+            <div class="px-6 py-4 border-b border-slate-100">
+              <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">结果摘要</h4>
+              <p class="text-sm text-slate-700">{{ aiResult.summary }}</p>
+            </div>
+
+            <!-- Steps -->
+            <div v-if="aiResult.steps?.length" class="px-6 py-4 border-b border-slate-100">
+              <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">执行步骤</h4>
+              <div class="flex flex-wrap gap-2">
+                <span
+                  v-for="(step, idx) in aiResult.steps"
+                  :key="idx"
+                  class="px-2.5 py-1 bg-indigo-50 text-indigo-600 text-xs rounded-full"
+                >
+                  {{ idx + 1 }}. {{ step }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Evidence List -->
+            <div v-if="aiResult.evidenceList?.length" class="px-6 py-4">
+              <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">关键证据</h4>
+              <ul class="space-y-2">
+                <li
+                  v-for="(evidence, idx) in aiResult.evidenceList"
+                  :key="idx"
+                  class="flex gap-2 text-xs text-slate-600"
+                >
+                  <span class="text-indigo-400 flex-shrink-0">•</span>
+                  <span class="leading-relaxed">{{ evidence }}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Input Area -->
-    <div class="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6">
+    <div
+      :class="
+        hasActiveSession
+          ? 'fixed bottom-8 left-1/2 w-full max-w-2xl -translate-x-1/2 px-6'
+          : 'w-full max-w-2xl mx-auto px-6 pb-4'
+      "
+    >
       <div class="bg-white rounded-2xl shadow-xl border border-slate-200/60 p-4 transition-all duration-300 focus-within:shadow-2xl focus-within:border-indigo-200/60">
         <!-- File Preview -->
         <div v-if="selectedFiles.length > 0" class="flex flex-wrap gap-2 mb-3">
@@ -133,14 +213,15 @@
       </div>
 
       <p class="text-center text-xs text-slate-400 mt-3">
-        AI 生成内容仅供参考，重大决策请人工复核 (Drug-Agent Core v0.3)
+        AI 生成内容仅供参考，重大决策请人工复核 (横渡智能系统 v1.0)
       </p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   Sparkles,
   FileText,
@@ -149,32 +230,41 @@ import {
   Send,
   Upload,
   X,
-  File as FileIcon
+  File as FileIcon,
+  ShieldAlert,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-vue-next'
+import { useSessionStore } from '@/stores/session'
+
+const route = useRoute()
+const sessionStore = useSessionStore()
 
 const inputText = ref('')
 const selectedFiles = ref([])
 const fileInput = ref(null)
-const messages = ref([])
 
-// Demo session data
-const currentSession = ref({
-  id: 'sess_demo',
-  title: '年度设备采购标书比对',
-  messages: [
-    {
-      role: 'user',
-      content: '帮我对比新上传的这几份标书文件，检查是否有雷同或围标嫌疑。'
-    },
-    {
-      role: 'assistant',
-      content: '我已经为您完成了这两份标书文件的深度比对审查。根据系统分析，存在高风险围标嫌疑。'
-    }
-  ]
+// Get active session from store
+const activeSession = computed(() => {
+  const sessionId = route.query.sessionId
+  if (sessionId) {
+    return sessionStore.sessions.find(s => s.id === sessionId) || null
+  }
+  return sessionStore.activeSession
+})
+
+const messages = computed(() => {
+  return activeSession.value?.messages || []
 })
 
 const hasActiveSession = computed(() => {
-  return currentSession.value && currentSession.value.messages.length > 0
+  return messages.value.length > 0
+})
+
+// Get AI result from agent messages
+const aiResult = computed(() => {
+  const agentMsg = messages.value.find(m => m.role === 'agent' && m.result)
+  return agentMsg?.result || null
 })
 
 const quickActions = [
@@ -212,20 +302,29 @@ const handleQuickAction = (action) => {
 const handleSend = () => {
   if (!inputText.value.trim() && selectedFiles.value.length === 0) return
 
-  // Add user message
-  messages.value.push({
+  // Create new session if needed
+  let sessionId = activeSession.value?.id
+  if (!sessionId) {
+    const newSession = sessionStore.createSession('新对话')
+    sessionId = newSession.id
+  }
+
+  // Add user message to store
+  const fileNames = selectedFiles.value.map(f => f.name)
+  sessionStore.addMessage(sessionId, {
     role: 'user',
-    content: inputText.value
+    content: inputText.value,
+    attachments: fileNames.length > 0 ? fileNames : undefined
   })
 
   // Clear input
   inputText.value = ''
   selectedFiles.value = []
 
-  // Simulate agent response
+  // Simulate agent response (in real app, this would be an API call)
   setTimeout(() => {
-    messages.value.push({
-      role: 'assistant',
+    sessionStore.addMessage(sessionId, {
+      role: 'agent',
       content: '正在分析您的请求，请稍候...'
     })
   }, 1000)

@@ -16,7 +16,7 @@
           v-if="!collapsed"
           class="font-bold text-slate-800 tracking-tight"
         >
-          Drug-Agent
+          横渡智能系统
         </span>
       </div>
 
@@ -119,19 +119,12 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-vue-next'
+import { useSessionStore } from '@/stores/session'
 
 const props = defineProps({
   collapsed: {
     type: Boolean,
     default: false
-  },
-  sessions: {
-    type: Array,
-    default: () => []
-  },
-  activeSessionId: {
-    type: String,
-    default: null
   }
 })
 
@@ -139,37 +132,38 @@ defineEmits(['new-chat', 'load-session', 'toggle-collapse'])
 
 const route = useRoute()
 const router = useRouter()
+const sessionStore = useSessionStore()
+
+const sessions = computed(() => sessionStore.sessions)
+const activeSessionId = computed(() => sessionStore.activeSessionId)
 
 const navItems = [
-  { route: '/tasks', label: '全局任务看板', icon: LayoutList },
+  { route: '/tasks', label: '任务调度看板', icon: LayoutList },
   { route: '/knowledge', label: '合规知识库', icon: BookOpen }
 ]
 
 const historyGroups = computed(() => {
-  const now = new Date()
-  const today = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })
-  const yesterday = new Date(now.setDate(now.getDate() - 1)).toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })
+  // 原型中的分组顺序
+  const groupOrder = ['今天', '昨天', '过去 7 天']
 
-  const groups = {
-    today: { label: '今天', sessions: [] },
-    yesterday: { label: '昨天', sessions: [] },
-    week: { label: '过去7天', sessions: [] }
-  }
+  // 按 dateGroup 分组，保持原型中的顺序
+  const groupMap = new Map()
+  groupOrder.forEach(label => groupMap.set(label, { label, sessions: [] }))
 
-  props.sessions.forEach(session => {
-    const sessionDate = new Date(session.updatedAt || Date.now())
-    const sessionDateStr = sessionDate.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })
-
-    if (sessionDateStr === today) {
-      groups.today.sessions.push(session)
-    } else if (sessionDateStr === yesterday) {
-      groups.yesterday.sessions.push(session)
+  sessions.value.forEach(session => {
+    const group = session.dateGroup || '过去 7 天'
+    if (groupMap.has(group)) {
+      groupMap.get(group).sessions.push(session)
     } else {
-      groups.week.sessions.push(session)
+      // 未识别的分组放入"过去 7 天"
+      groupMap.get('过去 7 天').sessions.push(session)
     }
   })
 
-  return Object.values(groups).filter(g => g.sessions.length > 0)
+  // 按原型顺序返回有数据的组
+  return groupOrder
+    .map(label => groupMap.get(label))
+    .filter(g => g.sessions.length > 0)
 })
 
 const isActive = (path) => {

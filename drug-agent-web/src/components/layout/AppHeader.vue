@@ -55,13 +55,13 @@ defineEmits(['toggle-task-pane'])
 const route = useRoute()
 
 const routeTitles = {
-  '/workspace': 'Agent 审查工作台',
+  '/workspace': '智能审查工作台',
   '/tasks': '任务调度看板',
   '/knowledge': '合规知识库',
   '/settings': '系统配置'
 }
 
-const parentTitle = 'Drug-Agent'
+const parentTitle = '横渡智能系统'
 
 const currentTitle = computed(() => {
   const path = route.path

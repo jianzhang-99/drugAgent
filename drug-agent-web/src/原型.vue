@@ -157,7 +157,7 @@ return (
   <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
     <Sparkles className="text-white" size={18} />
   </div>
-  {isSidebarOpen && <span className="font-bold text-lg tracking-tight text-slate-800 truncate">Drug-Agent</span>}
+  {isSidebarOpen && <span className="font-bold text-lg tracking-tight text-slate-800 truncate">横渡智能系统</span>}
 </div>
 {isSidebarOpen && (
 <button
@@ -488,7 +488,7 @@ return (
 
 <div className={`flex flex-col ${selectedReport ? 'max-w-[95%]' : 'max-w-[85%] sm:max-w-[75%]'} ${isUser ? 'items-end' : 'items-start'}`}>
 <span className="text-[10px] text-slate-400 font-semibold mb-1 px-1">
-                    {isUser ? '您' : 'Drug-Agent'} · {msg.time}
+                    {isUser ? '您' : '横渡智能系统'} · {msg.time}
                   </span>
 
 {isUser && (
@@ -608,7 +608,7 @@ selectedReport?.traceId === msg.result.traceId
   </div>
   </div>
   <div className="text-center text-[10px] text-slate-400 mt-3 font-medium">
-  AI 生成内容仅供参考，重大决策请人工复核 (Drug-Agent Core v0.3)
+  AI 生成内容仅供参考，重大决策请人工复核 (横渡智能系统 v1.0)
   </div>
   </div>
   </div>

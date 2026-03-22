@@ -7,12 +7,13 @@
           <div class="logo">
             <el-icon><Sparkles /></el-icon>
           </div>
-          <span v-if="isSidebarOpen" class="logo-text">Drug-Agent</span>
+          <span v-if="isSidebarOpen" class="logo-text">横渡智能系统</span>
         </div>
         <button
           v-if="isSidebarOpen"
           class="new-chat-btn"
           title="新建任务/会话"
+          @click="handleNewChat"
         >
           <el-icon><SquarePen /></el-icon>
         </button>
@@ -182,9 +183,9 @@
           </div>
         </div>
 
-        <p class="disclaimer">AI 生成内容仅供参考，重大决策请人工复核 (Drug-Agent Core v0.3)</p>
+        <p class="disclaimer">AI 生成内容仅供参考，重大决策请人工复核 (横渡智能系统 v1.0)</p>
       </div>
-    </section>
+    </main>
 
     <!-- 任务中心抽屉 -->
     <transition name="drawer-transition">
@@ -639,7 +640,7 @@ ${(report.steps || []).map((step, i) => `${i + 1}. ${step}`).join('\n')}
 
 =====================================
 生成时间: ${new Date().toLocaleString('zh-CN')}
-Drug-Agent Core v0.3
+横渡智能系统 v1.0
 =====================================
 `.trim()
 
@@ -1537,8 +1538,11 @@ const quickActions = [
   left: 50%;
   bottom: 24px;
   transform: translateX(-50%);
-  width: min(900px, calc(100vw - 40px));
+  width: min(900px, calc(100vw - 280px));
+  max-width: 100%;
   z-index: 100;
+  padding: 0 20px;
+  box-sizing: border-box;
 }
 
 .composer-container {
@@ -1546,7 +1550,7 @@ const quickActions = [
   border: 1px solid #edf2f7;
   border-radius: 20px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
-  padding: 18px;
+  padding: 16px 20px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -1564,9 +1568,11 @@ const quickActions = [
   outline: none;
   font-size: 16px;
   color: #1e293b;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   font-family: inherit;
   line-height: 1.6;
+  padding: 0;
+  background: transparent;
 }
 
 .main-prompt::placeholder {
@@ -1577,11 +1583,13 @@ const quickActions = [
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
 }
 
 .footer-actions {
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .action-btn {
@@ -1592,12 +1600,14 @@ const quickActions = [
   padding: 0 14px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   font-size: 13px;
   color: #64748b;
   cursor: pointer;
   transition: all 0.2s;
   font-weight: 500;
+  flex-shrink: 0;
 }
 
 .action-btn:hover {
@@ -1615,10 +1625,12 @@ const quickActions = [
   padding: 0 18px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   font-weight: 600;
   font-size: 14px;
   transition: all 0.3s;
+  flex-shrink: 0;
 }
 
 .submit-btn:not(:disabled) {
