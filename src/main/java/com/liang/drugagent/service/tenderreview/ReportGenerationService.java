@@ -48,25 +48,23 @@ public class ReportGenerationService {
         report.setOverview(buildOverview(data, rawHits, effectiveHits, exemptionHits, fusionResult, evidenceAssemblyResult));
         report.setRiskItems(buildRiskItems(effectiveHits, fusionResult, evidenceAssemblyResult));
         report.setManagementSummary(buildManagementSummary(data, fusionResult, effectiveHits, exemptionHits));
-        report.setRecommendedActions(buildRecommendedActions(fusionResult, effectiveHits, exemptionHits));
+        String topRisk = report.getRiskItems() != null && !report.getRiskItems().isEmpty()
+                ? report.getRiskItems().get(0).getTitle() : "重点风险项";
+        report.setRecommendedActions(buildRecommendedActions(fusionResult, effectiveHits, exemptionHits, topRisk));
         report.setExplanations(buildExplanations(fusionResult, evidenceAssemblyResult, effectiveHits, exemptionHits));
         report.setMarkdownContent(renderMarkdownReport(report, data, evidenceAssemblyResult, exemptionHits));
         return report;
     }
 
     public String buildAnswer(ReviewReport report) {
-        if (report == null || report.getOverview() == null) {
-            return "标书结构化审查已完成，但暂无报告摘要。";
+        if (report == null) {
+            return "标书结构化审查已完成，但暂无报告内容。";
         }
-        ReviewReport.Overview overview = report.getOverview();
-        List<ReviewReport.RiskItem> items = report.getRiskItems() == null ? List.of() : report.getRiskItems();
-        String topRisk = items.isEmpty() ? "未发现关键风险主题。" : items.get(0).getTitle();
-        return "本次共审查 " + safeNumber(overview.getDocumentCount()) + " 份文档，提取到 "
-                + safeNumber(overview.getEffectiveHitCount()) + " 条高风险命中"
-                + (safeNumber(overview.getExemptionCount()) > 0 ? "，另有 " + overview.getExemptionCount() + " 条命中被豁免/降权" : "")
-                + "。整体风险等级为 " + translateRiskLevel(fallback(overview.getRiskLevel(), "UNKNOWN"))
-                + "，分值 " + safeNumber(overview.getScore())
-                + "。重点关注: " + topRisk + "。完整审查报告已生成。";
+        // 直接使用 renderMarkdownReport 生成的完整模板格式报告
+        if (report.getMarkdownContent() != null && !report.getMarkdownContent().isBlank()) {
+            return report.getMarkdownContent();
+        }
+        return "标书结构化审查已完成，但暂无报告内容。";
     }
 
     private ReviewReport.Overview buildOverview(TenderReviewData data,
@@ -148,24 +146,15 @@ public class ReportGenerationService {
 
     private List<String> buildRecommendedActions(RiskFusionResult fusionResult,
                                                  List<RuleHit> effectiveHits,
-                                                 List<ExemptionHit> exemptionHits) {
+                                                 List<ExemptionHit> exemptionHits,
+                                                 String topRisk) {
+        // 按模板生成固定的4条建议
         List<String> actions = new ArrayList<>();
-        String riskLevel = fusionResult == null ? null : fusionResult.getRiskLevel();
-        if ("HIGH".equals(riskLevel) || "高风险".equals(riskLevel)) {
-            actions.add("立即复核联系人、核心团队和报价清单，判定是否存在围标实锤证据。");
-            actions.add("针对高权重偏移项，手动导出原文比对表进行跨行验证。");
-        } else if ("MEDIUM".equals(riskLevel) || "中风险".equals(riskLevel)) {
-            actions.add("抽查重复字段涉及的章节，评估是否属于投标主体间的高度协同。");
-        } else {
-            actions.add("保留此报告作为合规初查记录，建议对核心技术方案进行例行人工审核。");
-        }
-        if (effectiveHits != null && effectiveHits.stream().anyMatch(hit -> fallback(hit.getRuleCode(), "").startsWith("W-M1"))) {
-            actions.add("针对报价相关异常，请核对各投标人报价明细是否出现非对称但高度同构的梯度。");
-        }
-        if (exemptionHits != null && !exemptionHits.isEmpty()) {
-            actions.add("审查豁免项逻辑是否被滥用，特别是行业通用表达是否确实属于不可避免的重复。");
-        }
-        return actions.stream().distinct().toList();
+        actions.add("对\"" + fallback(topRisk, "重点风险项") + "\"相关线索启动人工复核，重点核查投标文件独立编制情况及投标主体关联关系。");
+        actions.add("对异常相似段落、异常一致报价或重复性附件开展专项比对，必要时补充外部佐证材料。");
+        actions.add("视情况调取企业人员、联系方式、历史投标记录等关联信息，排查是否存在协同投标迹象。");
+        actions.add("对当前审查结果及数字底稿进行归档留存，作为后续审计、复议或监管核查依据。");
+        return actions;
     }
 
     private java.util.Map<String, String> buildExplanations(RiskFusionResult fusionResult,

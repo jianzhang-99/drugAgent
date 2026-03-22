@@ -1,6 +1,7 @@
 package com.liang.drugagent.service;
 
 import com.liang.drugagent.agent.*;
+import com.liang.drugagent.domain.entity.ChatSession;
 import com.liang.drugagent.domain.workflow.EvidenceItem;
 import com.liang.drugagent.domain.workflow.WorkflowResult;
 import com.liang.drugagent.domain.req.DrugAgentReq;
@@ -29,11 +30,13 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Drug Agent 主服务
@@ -52,17 +55,23 @@ public class DrugAgentService {
     private final AgentChatService agentChatService;
     private final TenderCaseService tenderCaseService;
     private final TenderDocumentParseService tenderDocumentParseService;
+    private final ChatSessionService chatSessionService;
+    private final ChatMessageService chatMessageService;
 
     public DrugAgentService(SceneRouter sceneRouter,
                             WorkflowRegistry workflowRegistry,
                             AgentChatService agentChatService,
                             TenderCaseService tenderCaseService,
-                            TenderDocumentParseService tenderDocumentParseService) {
+                            TenderDocumentParseService tenderDocumentParseService,
+                            ChatSessionService chatSessionService,
+                            ChatMessageService chatMessageService) {
         this.sceneRouter = sceneRouter;
         this.workflowRegistry = workflowRegistry;
         this.agentChatService = agentChatService;
         this.tenderCaseService = tenderCaseService;
         this.tenderDocumentParseService = tenderDocumentParseService;
+        this.chatSessionService = chatSessionService;
+        this.chatMessageService = chatMessageService;
     }
 
     public DrugAgentResp handle(DrugAgentReq req) {
@@ -115,6 +124,25 @@ public class DrugAgentService {
             throw new IllegalArgumentException("请至少上传一个文件");
         }
 
+        // 创建或获取 session
+        ChatSession chatSession;
+        if (sessionId == null || sessionId.isBlank()) {
+            chatSession = chatSessionService.createSession("新对话", sceneHint, userId);
+            sessionId = chatSession.getId();
+        } else {
+            chatSession = chatSessionService.getById(sessionId);
+            if (chatSession == null) {
+                chatSession = chatSessionService.createSession("新对话", sceneHint, userId);
+                sessionId = chatSession.getId();
+            }
+        }
+
+        // 保存用户消息
+        String fileNamesJson = files.length > 0
+            ? "[\"" + Arrays.stream(files).map(f -> Optional.ofNullable(f.getOriginalFilename()).orElse("unnamed")).collect(Collectors.joining("\",\"")) + "\"]"
+            : null;
+        chatMessageService.addMessage(sessionId, "user", query, fileNamesJson);
+
         DrugAgentReq req = new DrugAgentReq();
         req.setQuery(query);
         req.setSceneHint(sceneHint);
@@ -142,7 +170,28 @@ public class DrugAgentService {
             hydrateTenderMetadata(req, submittedBy, files);
         }
 
-        return handle(req);
+        DrugAgentResp resp = handle(req);
+
+        // 保存 AI 响应消息
+        String aiContent = resp.getAnswer() != null ? resp.getAnswer() : resp.getSummary();
+        String aiMetadata = String.format(
+                "{\"scene\":\"%s\",\"riskLevel\":\"%s\",\"score\":%d,\"traceId\":\"%s\"}",
+                resp.getScene() != null ? resp.getScene() : "",
+                resp.getRiskLevel() != null ? resp.getRiskLevel() : "",
+                resp.getScore(),
+                resp.getTraceId() != null ? resp.getTraceId() : ""
+        );
+        chatMessageService.addMessage(sessionId, "assistant", aiContent, aiMetadata);
+
+        // 更新 session 标题
+        if (query != null && !query.isBlank() && chatSession.getTitle().equals("新对话")) {
+            String title = query.length() > 20 ? query.substring(0, 20) + "..." : query;
+            chatSessionService.updateSessionTitle(sessionId, title);
+        }
+
+        // 返回 sessionId 让前端同步会话
+        resp.setSessionId(sessionId);
+        return resp;
     }
 
     public SseEmitter streamHandle(DrugAgentReq req) {

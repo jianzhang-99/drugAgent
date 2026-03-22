@@ -40,8 +40,8 @@ public class RiskFusionService {
             result.setRiskLevel("LOW");
             result.setScore(exemptions.isEmpty() ? 0 : 20);
             result.setSummary(exemptions.isEmpty()
-                    ? "No retained high-risk hits after rule scan."
-                    : "Raw hits were observed, but all were downgraded or filtered by exemption.");
+                    ? "规则扫描后未保留高风险命中，当前结果显示该批标书在规则维度偏差较小。"
+                    : "检测到原始命中，但均已被豁免规则降权或过滤。");
             if (!exemptions.isEmpty()) {
                 result.setReasonCodes(List.of("EXEMPTION_DOWNGRADE"));
             }
@@ -143,10 +143,10 @@ public class RiskFusionService {
      * 构建风险简报。
      */
     private String buildSummary(int score, int hitCount, int exemptionCount, Set<String> ruleCodes) {
-        return "Risk fusion score=" + score
-                + ", retainedHits=" + hitCount
-                + ", ruleTypes=" + ruleCodes.size()
-                + (exemptionCount > 0 ? ", exemptions=" + exemptionCount : "");
+        return "风险融合分值=" + score
+                + "，有效命中=" + hitCount
+                + "，规则类型数=" + ruleCodes.size()
+                + (exemptionCount > 0 ? "，豁免项=" + exemptionCount : "");
     }
 
     /**

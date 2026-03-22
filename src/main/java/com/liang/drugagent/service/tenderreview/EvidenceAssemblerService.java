@@ -52,17 +52,20 @@ public class EvidenceAssemblerService {
     private EvidenceGroup buildFusionGroup(RiskFusionResult fusionResult) {
         EvidenceGroup group = new EvidenceGroup();
         group.setGroupKey("risk_fusion");
-        group.setTitle("Risk Fusion");
+        group.setTitle("风险融合");
         group.setSource("risk-fusion");
         group.setSummary(fusionResult == null
-                ? "No fusion result available."
+                ? "暂无融合结果。"
                 : fusionResult.getSummary());
 
         if (fusionResult != null) {
+            String reasons = fusionResult.getReasonCodes() == null || fusionResult.getReasonCodes().isEmpty()
+                    ? "无"
+                    : String.join(",", fusionResult.getReasonCodes());
             group.getItems().add(new EvidenceItem(
                     "fusion_score",
-                    "score=" + fusionResult.getScore() + ", level=" + fusionResult.getRiskLevel()
-                            + ", reasons=" + String.join(",", fusionResult.getReasonCodes()),
+                    "分值=" + fusionResult.getScore() + "，等级=" + translateLevel(fusionResult.getRiskLevel())
+                            + "，原因=" + reasons,
                     "risk-fusion"
             ));
         }
@@ -73,12 +76,12 @@ public class EvidenceAssemblerService {
         if (hits == null || hits.isEmpty()) {
             EvidenceGroup group = new EvidenceGroup();
             group.setGroupKey("rule_hits");
-            group.setTitle("Rule Hits");
+            group.setTitle("规则命中");
             group.setSource("rule-engine");
-            group.setSummary("No retained high-risk rule hits.");
+            group.setSummary("无保留的高风险规则命中。");
             group.getItems().add(new EvidenceItem(
                     "rule_scan_result",
-                    "No contact reuse, team overlap, abnormal pricing, or other high-risk hits were retained.",
+                    "未检测到联系人复用、团队重叠、报价异常或其他高风险命中。",
                     "rule-engine"
             ));
             return List.of(group);
@@ -101,8 +104,8 @@ public class EvidenceAssemblerService {
         group.setGroupKey(groupKey);
         group.setTitle(resolveGroupTitle(groupKey));
         group.setSource("rule-engine");
-        group.setSummary("retainedHits=" + hits.size() + ", topRule="
-                + hits.stream().findFirst().map(RuleHit::getRuleName).orElse("unknown"));
+        group.setSummary("保留命中=" + hits.size() + "，首要规则="
+                + hits.stream().findFirst().map(RuleHit::getRuleName).orElse("未知"));
 
         for (RuleHit hit : hits) {
             group.getItems().add(new EvidenceItem(
@@ -117,15 +120,15 @@ public class EvidenceAssemblerService {
     private EvidenceGroup buildExemptionGroup(List<ExemptionHit> exemptionHits) {
         EvidenceGroup group = new EvidenceGroup();
         group.setGroupKey("exemptions");
-        group.setTitle("Exemptions");
+        group.setTitle("豁免项");
         group.setSource("exemption-engine");
-        group.setSummary("processed=" + exemptionHits.size());
+        group.setSummary("已处理=" + exemptionHits.size() + "项");
 
         for (ExemptionHit hit : exemptionHits) {
             group.getItems().add(new EvidenceItem(
                     hit.getRuleName(),
-                    hit.getAction() + ", " + hit.getReason()
-                            + ", weight " + hit.getBeforeWeight() + " -> " + hit.getAfterWeight(),
+                    hit.getAction() + "，" + hit.getReason()
+                            + "，权重 " + hit.getBeforeWeight() + " -> " + hit.getAfterWeight(),
                     "exemption-engine"
             ));
         }
@@ -141,9 +144,9 @@ public class EvidenceAssemblerService {
     private String buildRuleContent(RuleHit hit) {
         StringBuilder builder = new StringBuilder();
         builder.append(hit.getTriggerSummary());
-        builder.append(" | weight=").append(effectiveWeight(hit));
+        builder.append(" | 权重=").append(effectiveWeight(hit));
         if (hit.getDocumentIds() != null && !hit.getDocumentIds().isEmpty()) {
-            builder.append(" | docs=").append(String.join(",", hit.getDocumentIds()));
+            builder.append(" | 文档=").append(String.join(",", hit.getDocumentIds()));
         }
         if (hit.getEvidences() != null && !hit.getEvidences().isEmpty()) {
             String anchors = hit.getEvidences().stream()
@@ -153,11 +156,11 @@ public class EvidenceAssemblerService {
                     .limit(3)
                     .collect(Collectors.joining("; "));
             if (!anchors.isBlank()) {
-                builder.append(" | evidence=").append(anchors);
+                builder.append(" | 证据=").append(anchors);
             }
         }
         if (Boolean.TRUE.equals(hit.getExempted()) && hit.getExemptionReason() != null && !hit.getExemptionReason().isBlank()) {
-            builder.append(" | exemption=").append(hit.getExemptionReason());
+            builder.append(" | 豁免原因=").append(hit.getExemptionReason());
         }
         return builder.toString();
     }
@@ -201,11 +204,11 @@ public class EvidenceAssemblerService {
 
     private String resolveGroupTitle(String groupKey) {
         return switch (groupKey) {
-            case "pricing" -> "Pricing Signals";
-            case "contact" -> "Contact Signals";
-            case "team" -> "Team Signals";
-            case "plagiarism" -> "Similarity Signals";
-            default -> "Other Signals";
+            case "pricing" -> "报价信号";
+            case "contact" -> "联系人信号";
+            case "team" -> "团队信号";
+            case "plagiarism" -> "相似度信号";
+            default -> "其他信号";
         };
     }
 
@@ -214,5 +217,15 @@ public class EvidenceAssemblerService {
             return null;
         }
         return hit.getAdjustedWeight() != null ? hit.getAdjustedWeight() : hit.getWeight();
+    }
+
+    private String translateLevel(String level) {
+        if (level == null) return "未知";
+        return switch (level.toUpperCase()) {
+            case "HIGH" -> "高风险";
+            case "MEDIUM" -> "中风险";
+            case "LOW" -> "低风险";
+            default -> level;
+        };
     }
 }

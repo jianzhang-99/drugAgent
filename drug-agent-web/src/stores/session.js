@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { load, save } from '@/utils/localStorage'
+import { chatApi } from '@/services/chatApi'
 
 export const useSessionStore = defineStore('session', () => {
   const sessions = ref(load('sessions') || [])
@@ -30,14 +31,18 @@ export const useSessionStore = defineStore('session', () => {
   }
 
   function deleteSession(id) {
+    // Immediately remove from local state for fast UI response
     const index = sessions.value.findIndex(s => s.id === id)
     if (index !== -1) {
       sessions.value.splice(index, 1)
       if (activeSessionId.value === id) {
         activeSessionId.value = sessions.value[0]?.id || null
       }
-      persist()
     }
+    // Async call backend API (fire and forget)
+    chatApi.deleteSession(id).catch(e => {
+      console.warn('Backend delete failed:', e)
+    })
   }
 
   function updateSession(id, updates) {
@@ -74,6 +79,7 @@ export const useSessionStore = defineStore('session', () => {
     deleteSession,
     updateSession,
     setActiveSession,
-    addMessage
+    addMessage,
+    persist
   }
 })

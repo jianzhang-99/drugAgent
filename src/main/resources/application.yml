@@ -3,6 +3,11 @@ spring:
     name: drug-agent
   profiles:
     active: local
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
   ai:
     dashscope:
       api-key: ${aliyun.dashscope.api-key}

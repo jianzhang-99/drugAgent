@@ -63,7 +63,7 @@
             <div
               v-for="session in group.sessions"
               :key="session.id"
-              class="history-item"
+              class="history-item group flex items-center gap-2"
               :class="[
                 activeSessionId === session.id
                   ? 'bg-indigo-50 text-indigo-800'
@@ -73,7 +73,15 @@
               @click="$emit('load-session', session.id)"
             >
               <MessageSquare class="w-4 h-4 flex-shrink-0" />
-              <span v-if="!collapsed" class="text-sm truncate">{{ session.title }}</span>
+              <span v-if="!collapsed" class="text-sm truncate flex-1">{{ session.title }}</span>
+              <button
+                v-if="!collapsed"
+                class="opacity-0 group-hover:opacity-100 p-1 hover:text-red-500 transition-opacity"
+                title="删除会话"
+                @click.stop="handleDeleteSession(session.id)"
+              >
+                <Trash2 class="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
         </div>
@@ -117,7 +125,8 @@ import {
   BookOpen,
   MessageSquare,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Trash2
 } from 'lucide-vue-next'
 import { useSessionStore } from '@/stores/session'
 
@@ -142,6 +151,22 @@ const navItems = [
   { route: '/knowledge', label: '合规知识库', icon: BookOpen }
 ]
 
+// Helper to compute date group from updatedAt timestamp
+const getDateGroup = (updatedAt) => {
+  if (!updatedAt) return '过去 7 天'
+  const date = new Date(updatedAt)
+  if (isNaN(date.getTime())) return '过去 7 天'
+
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const sessionDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const diffDays = Math.floor((today - sessionDate) / 86400000)
+
+  if (diffDays === 0) return '今天'
+  if (diffDays === 1) return '昨天'
+  return '过去 7 天'
+}
+
 const historyGroups = computed(() => {
   // 原型中的分组顺序
   const groupOrder = ['今天', '昨天', '过去 7 天']
@@ -151,7 +176,8 @@ const historyGroups = computed(() => {
   groupOrder.forEach(label => groupMap.set(label, { label, sessions: [] }))
 
   sessions.value.forEach(session => {
-    const group = session.dateGroup || '过去 7 天'
+    // Use session.dateGroup if available, otherwise derive from updatedAt
+    const group = session.dateGroup || getDateGroup(session.updatedAt)
     if (groupMap.has(group)) {
       groupMap.get(group).sessions.push(session)
     } else {
@@ -173,10 +199,31 @@ const isActive = (path) => {
 const navigate = (path) => {
   router.push(path)
 }
+
+const handleDeleteSession = (sessionId) => {
+  if (confirm('确定要删除这个会话吗？')) {
+    sessionStore.deleteSession(sessionId)
+  }
+}
 </script>
 
 <style scoped>
 .nav-item {
   @apply flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 border;
+}
+.history-item {
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #4a5568;
+  padding: 8px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all 0.2s;
 }
 </style>

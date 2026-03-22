@@ -19,6 +19,7 @@ import java.util.Map;
 @Getter
 public class DrugAgentResp {
 
+    private String sessionId;
     private String traceId;
     private String scene;
     private String routeReason;

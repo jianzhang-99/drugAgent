@@ -44,7 +44,7 @@
       </div>
 
       <!-- Chat Messages -->
-      <div v-else class="max-w-4xl mx-auto px-6 py-8 pb-48">
+      <div v-else class="max-w-3xl mx-auto px-6 py-8 pb-36">
         <div class="space-y-6">
           <div
             v-for="(message, index) in messages"
@@ -150,7 +150,7 @@
     <div
       :class="
         hasActiveSession
-          ? 'fixed bottom-8 left-1/2 w-full max-w-2xl -translate-x-1/2 px-6'
+          ? 'w-full max-w-3xl mx-auto px-6 pb-6'
           : 'w-full max-w-2xl mx-auto px-6 pb-4'
       "
     >
@@ -233,9 +233,12 @@ import {
   File as FileIcon,
   ShieldAlert,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-vue-next'
 import { useSessionStore } from '@/stores/session'
+import { chatApi } from '@/services/chatApi'
+import { submitDrugAgentTask } from '@/api/drug-agent'
 
 const route = useRoute()
 const sessionStore = useSessionStore()
@@ -243,6 +246,7 @@ const sessionStore = useSessionStore()
 const inputText = ref('')
 const selectedFiles = ref([])
 const fileInput = ref(null)
+const isLoading = ref(false)
 
 // Get active session from store
 const activeSession = computed(() => {
@@ -299,7 +303,7 @@ const handleQuickAction = (action) => {
   handleSend()
 }
 
-const handleSend = () => {
+const handleSend = async () => {
   if (!inputText.value.trim() && selectedFiles.value.length === 0) return
 
   // Create new session if needed
@@ -309,25 +313,145 @@ const handleSend = () => {
     sessionId = newSession.id
   }
 
-  // Add user message to store
-  const fileNames = selectedFiles.value.map(f => f.name)
-  sessionStore.addMessage(sessionId, {
-    role: 'user',
-    content: inputText.value,
-    attachments: fileNames.length > 0 ? fileNames : undefined
-  })
+  // Store user input for API call
+  const userContent = inputText.value
+  const files = selectedFiles.value
+  const fileNames = files.map(f => f.name)
+
+  // Add user message to store (for non-file case, file case handled by backend)
+  if (files.length === 0) {
+    sessionStore.addMessage(sessionId, {
+      role: 'user',
+      content: userContent,
+      attachments: undefined
+    })
+  }
 
   // Clear input
   inputText.value = ''
   selectedFiles.value = []
 
-  // Simulate agent response (in real app, this would be an API call)
-  setTimeout(() => {
-    sessionStore.addMessage(sessionId, {
-      role: 'agent',
-      content: '正在分析您的请求，请稍候...'
-    })
-  }, 1000)
+  // Add loading indicator
+  const loadingMsgId = Date.now().toString()
+  sessionStore.addMessage(sessionId, {
+    role: 'agent',
+    content: '正在分析您的请求，请稍候...',
+    isLoading: true
+  })
+
+  try {
+    let response
+    if (files.length > 0) {
+      // 有文件上传时，调用 submit 接口触发 workflow
+      // 后端会保存用户消息和 AI 响应，前端只更新 loading 消息
+      response = await submitDrugAgentTask({
+        query: userContent,
+        sessionId: sessionId,
+        userId: 'user',
+        submittedBy: 'user',
+        files: files
+      })
+    } else {
+      // 无文件时，调用普通聊天接口
+      response = await chatApi.sendMessage(sessionId, {
+        role: 'user',
+        content: userContent,
+        metadata: null
+      })
+    }
+
+    // Remove loading indicator and add actual response
+    // 对于有文件的情况，后端会创建新 session 并返回 sessionId
+    let actualSessionId = sessionId
+    if (files.length > 0 && response?.sessionId) {
+      actualSessionId = response.sessionId
+    }
+    let session = sessionStore.sessions.find(s => s.id === actualSessionId)
+
+    // 如果找不到 session（后端创建的新 session），从后端拉取会话数据
+    if (!session && response?.sessionId) {
+      try {
+        const sessionRes = await chatApi.getSession(response.sessionId)
+        if (sessionRes?.data) {
+          const backendSessionData = sessionRes.data
+          // 使用后端返回的 session 数据更新或创建本地 session
+          const existingIdx = sessionStore.sessions.findIndex(s => s.id === response.sessionId)
+          if (existingIdx !== -1) {
+            sessionStore.sessions[existingIdx] = backendSessionData
+          } else {
+            sessionStore.sessions.unshift(backendSessionData)
+          }
+          session = backendSessionData
+          sessionStore.setActiveSession(session.id)
+        }
+      } catch (e) {
+        console.warn('Failed to fetch session from backend:', e)
+      }
+    }
+
+    if (!session) {
+      session = sessionStore.sessions.find(s => s.id === sessionId)
+    }
+
+    if (session) {
+      const msgs = session.messages
+      // Remove loading message
+      const loadingIdx = msgs.findIndex(m => m.id === loadingMsgId)
+      if (loadingIdx !== -1) msgs.splice(loadingIdx, 1)
+
+      // 构建响应内容
+      let responseContent = '处理完成'
+      let resultData = null
+      if (files.length > 0) {
+        // 有文件时，submitDrugAgentTask 返回 DrugAgentResp 对象本身（经 request 拦截器处理）
+        resultData = response
+        if (response?.summary) {
+          responseContent = response.summary
+        } else if (response?.answer) {
+          responseContent = response.answer
+        } else if (response?.markdownContent) {
+          responseContent = response.markdownContent
+        }
+      } else if (response?.data) {
+        // 无文件时，chatApi.sendMessage 返回 { data: { aiResponse: string } }
+        const data = response.data
+        resultData = data
+        if (data.aiResponse) {
+          responseContent = data.aiResponse
+        }
+      }
+
+      // 如果后端 session 有消息列表，使用后端的消息；否则添加响应到当前 session
+      if (session.messages && session.messages.length > 0) {
+        // 已有后端消息，不需要额外添加
+      } else {
+        msgs.push({
+          id: Date.now().toString(),
+          role: 'agent',
+          content: responseContent,
+          timestamp: new Date().toISOString(),
+          result: resultData
+        })
+      }
+      session.updatedAt = new Date().toISOString()
+    }
+  } catch (error) {
+    console.error('API call failed:', error)
+    // Replace loading message with error
+    const session = sessionStore.sessions.find(s => s.id === sessionId)
+    if (session) {
+      const msgs = session.messages
+      const loadingIdx = msgs.findIndex(m => m.id === loadingMsgId)
+      if (loadingIdx !== -1) {
+        msgs[loadingIdx] = {
+          id: loadingMsgId,
+          role: 'agent',
+          content: '抱歉，服务器繁忙，请稍后重试。',
+          timestamp: new Date().toISOString()
+        }
+      }
+    }
+  }
 }
 
 const triggerFileInput = () => {
