@@ -22,7 +22,7 @@ class TenderCaseServiceTest {
     @BeforeEach
     void setUp() {
         store = new InMemoryTenderCaseStore();
-        caseService = new TenderCaseService(store, new ObjectMapper());
+        caseService = new TenderCaseService(store, new ObjectMapper(), null);
     }
 
     @Test

@@ -17,7 +17,7 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/sessions")
+@RequestMapping("/api/legacy/sessions")
 @RequiredArgsConstructor
 public class SessionController {
 
