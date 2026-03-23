@@ -15,22 +15,51 @@
         </div>
       </header>
 
+      <!-- 阶段指示器 -->
+      <section class="stage-indicator">
+        <div class="stage" :class="{ active: parseStatus === 'parsing', completed: parseStatus === 'parsed', failed: parseStatus === 'failed' }">
+          <span class="stage-icon">
+            <span v-if="parseStatus === 'parsed'" class="icon-check">✓</span>
+            <span v-else-if="parseStatus === 'failed'" class="icon-x">✕</span>
+            <span v-else>1</span>
+          </span>
+          <span class="stage-label">文档解析</span>
+          <span class="stage-status">{{ parseStatusText }}</span>
+        </div>
+        <div class="stage-arrow">→</div>
+        <div class="stage" :class="{ active: reviewStatus === 'reviewing', completed: reviewStatus === 'completed', failed: reviewStatus === 'failed' }">
+          <span class="stage-icon">
+            <span v-if="reviewStatus === 'completed'" class="icon-check">✓</span>
+            <span v-else-if="reviewStatus === 'failed'" class="icon-x">✕</span>
+            <span v-else>2</span>
+          </span>
+          <span class="stage-label">风险审查</span>
+          <span class="stage-status">{{ reviewStatusText }}</span>
+        </div>
+      </section>
+
       <section v-if="taskDetail" class="overview-grid">
         <article class="overview-card">
           <span class="overview-label">任务 ID</span>
           <strong>{{ taskDetail.caseId }}</strong>
         </article>
         <article class="overview-card">
-          <span class="overview-label">当前状态</span>
-          <strong>{{ taskStatusLabel }}</strong>
+          <span class="overview-label">解析状态</span>
+          <div class="status-row">
+            <span class="status-dot" :class="parseStatusClass"></span>
+            <strong>{{ parseStatusText }}</strong>
+          </div>
+        </article>
+        <article class="overview-card">
+          <span class="overview-label">审查状态</span>
+          <div class="status-row">
+            <span class="status-dot" :class="reviewStatusClass"></span>
+            <strong>{{ reviewStatusText }}</strong>
+          </div>
         </article>
         <article class="overview-card">
           <span class="overview-label">提交人</span>
           <strong>{{ taskDetail.submittedBy || 'anonymous' }}</strong>
-        </article>
-        <article class="overview-card">
-          <span class="overview-label">文档数量</span>
-          <strong>{{ documents.length }}</strong>
         </article>
       </section>
 
@@ -139,13 +168,16 @@
                 <p>文档 ID：{{ doc.documentId }}</p>
               </div>
               <span class="status-chip" :class="statusClassMap[doc.status] || 'status-pending'">
-                {{ doc.status }}
+                {{ docStatusText(doc.status) }}
               </span>
             </div>
 
             <div class="doc-actions">
-              <button class="primary-btn" @click="parseDocumentAction(doc)" :disabled="parsingDocIds.includes(doc.documentId)">
-                {{ parsingDocIds.includes(doc.documentId) ? '解析中...' : '解析文档' }}
+              <span v-if="parsingDocIds.includes(doc.documentId)" class="parsing-indicator">
+                <span class="parsing-dot"></span> 解析中...
+              </span>
+              <button v-else class="primary-btn" @click="parseDocumentAction(doc)" :disabled="doc.status === 'PARSED'">
+                {{ doc.status === 'PARSED' ? '已解析' : '解析文档' }}
               </button>
             </div>
 
@@ -233,6 +265,16 @@ const statusClassMap = {
 const previewFieldNames = (result) => {
   const fields = result?.fields || []
   return fields.slice(0, 4).map((field) => field.fieldName || field.fieldType || '未命名字段')
+}
+
+const docStatusText = (status) => {
+  const textMap = {
+    PENDING: '待解析',
+    PARSING: '解析中',
+    PARSED: '已解析',
+    FAILED: '解析失败'
+  }
+  return textMap[status] || status
 }
 
 const documents = computed(() => {
@@ -332,6 +374,71 @@ const taskStatusLabel = computed(() => {
   if (parsingDocIds.value.length > 0) return 'PARSING'
   if (documents.value.length > 0 && parsedDocCount.value === documents.value.length) return 'PARSED'
   return taskDetail.value?.status || 'PENDING'
+})
+
+// 解析状态
+const parseStatus = computed(() => {
+  if (parsingDocIds.value.length > 0) return 'parsing'
+  if (documents.value.length === 0) return 'pending'
+  if (parsedDocCount.value === 0) return 'pending'
+  if (parsedDocCount.value < documents.value.length) return 'partial'
+  if (parsedDocCount.value === documents.value.length) return 'parsed'
+  return 'pending'
+})
+
+const parseStatusText = computed(() => {
+  const statusMap = {
+    pending: '待解析',
+    parsing: '解析中',
+    partial: '部分解析',
+    parsed: '已解析',
+    failed: '解析失败'
+  }
+  return statusMap[parseStatus.value] || '待解析'
+})
+
+const parseStatusClass = computed(() => {
+  const classMap = {
+    pending: 'dot-pending',
+    parsing: 'dot-parsing',
+    partial: 'dot-parsing',
+    parsed: 'dot-success',
+    failed: 'dot-failed'
+  }
+  return classMap[parseStatus.value] || 'dot-pending'
+})
+
+// 审查状态
+const reviewStatus = computed(() => {
+  if (!taskDetail.value) return 'pending'
+  // 如果有报告数据，认为审查已完成
+  if (taskDetail.value?.report?.riskItems?.length || taskDetail.value?.report?.explanations) return 'completed'
+  // 如果解析未完成，审查也不能开始
+  if (parseStatus.value !== 'parsed') return 'pending'
+  // 如果任务状态是审查中
+  if (taskDetail.value.status === 'REVIEWING') return 'reviewing'
+  if (taskDetail.value.status === 'FAILED') return 'failed'
+  return 'pending'
+})
+
+const reviewStatusText = computed(() => {
+  const statusMap = {
+    pending: '待审查',
+    reviewing: '审查中',
+    completed: '已完成',
+    failed: '审查失败'
+  }
+  return statusMap[reviewStatus.value] || '待审查'
+})
+
+const reviewStatusClass = computed(() => {
+  const classMap = {
+    pending: 'dot-pending',
+    reviewing: 'dot-parsing',
+    completed: 'dot-success',
+    failed: 'dot-failed'
+  }
+  return classMap[reviewStatus.value] || 'dot-pending'
 })
 
 const isAutoRunning = computed(() => parsingDocIds.value.length > 0)
@@ -442,6 +549,137 @@ onMounted(async () => {
   max-width: 1280px;
   margin: 0 auto;
   padding: 40px;
+}
+
+/* 阶段指示器 */
+.stage-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 24px;
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 28px;
+}
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 32px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 2px solid var(--border-light);
+  transition: all 0.3s ease;
+  min-width: 140px;
+}
+
+.stage.active {
+  background: #fff7ed;
+  border-color: #ea580c;
+}
+
+.stage.completed {
+  background: #ecfdf3;
+  border-color: #15803d;
+}
+
+.stage.failed {
+  background: #fef2f2;
+  border-color: #dc2626;
+}
+
+.stage-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--text-muted);
+}
+
+.stage.active .stage-icon {
+  border-color: #ea580c;
+  color: #ea580c;
+}
+
+.stage.completed .stage-icon {
+  border-color: #15803d;
+  color: #15803d;
+}
+
+.stage.failed .stage-icon {
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
+.icon-check {
+  font-size: 20px;
+}
+
+.icon-x {
+  font-size: 20px;
+}
+
+.stage-label {
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--text-main);
+}
+
+.stage-status {
+  font-size: 13px;
+  color: var(--text-sub);
+}
+
+.stage-arrow {
+  font-size: 28px;
+  color: var(--text-muted);
+  font-weight: 300;
+}
+
+/* 状态行 */
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.dot-pending {
+  background: #4f46e5;
+}
+
+.dot-parsing {
+  background: #ea580c;
+  animation: pulse 1.5s infinite;
+}
+
+.dot-success {
+  background: #15803d;
+}
+
+.dot-failed {
+  background: #dc2626;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .detail-header {
@@ -684,6 +922,28 @@ h1 {
 .primary-btn {
   background: var(--primary-color);
   color: white;
+}
+
+.primary-btn:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+}
+
+.parsing-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  color: #ea580c;
+  font-weight: 700;
+}
+
+.parsing-dot {
+  width: 8px;
+  height: 8px;
+  background: #ea580c;
+  border-radius: 50%;
+  animation: pulse 1s infinite;
 }
 
 .secondary-btn {
