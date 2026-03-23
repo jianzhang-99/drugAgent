@@ -1,9 +1,10 @@
 package com.liang.drugagent.llm;
 
 import com.liang.drugagent.config.MiniMaxProperties;
-import com.liang.drugagent.llm.model.LlmProviderType;
-import com.liang.drugagent.llm.model.LlmRequest;
-import com.liang.drugagent.llm.model.LlmResponse;
+import com.liang.drugagent.integrations.model_provider.MiniMaxLlmClient;
+import com.liang.drugagent.shared_capabilities.llm.model.LlmProviderType;
+import com.liang.drugagent.shared_capabilities.llm.model.LlmRequest;
+import com.liang.drugagent.shared_capabilities.llm.model.LlmResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
