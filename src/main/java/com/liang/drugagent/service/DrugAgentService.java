@@ -105,10 +105,10 @@ public class DrugAgentService {
         resp.setDocCount(getDocumentCount(context, workflowResult));
         resp.setManagementSummary(String.join("\n", buildManagementSummary(workflowResult)));
         resp.setSuggestedActions(buildSuggestedActions(workflowResult));
-        resp.setSteps(workflowResult.getSteps() != null ? workflowResult.getSteps() : new ArrayList<>());
+        resp.setSteps(normalizeSteps(workflowResult.getSteps()));
         resp.setReport(workflowResult.getReport());
-        resp.setEvidenceList(workflowResult.getEvidenceList());
-        resp.setEvidenceGroups(workflowResult.getEvidenceGroups());
+        resp.setEvidenceList(normalizeEvidenceItems(workflowResult.getEvidenceList()));
+        resp.setEvidenceGroups(normalizeEvidenceGroups(workflowResult.getEvidenceGroups()));
         attachStructuredData(resp, context, workflowResult);
         log.info("Sync agent response ready: traceId={}, scene={}", context.getTraceId(), resp.getScene());
         return resp;
@@ -383,6 +383,91 @@ public class DrugAgentService {
             }
         }
         return suggestedActions;
+    }
+
+    private List<String> normalizeSteps(List<String> steps) {
+        if (steps == null) {
+            return new ArrayList<>();
+        }
+        return steps.stream().map(this::translateStep).toList();
+    }
+
+    private List<EvidenceItem> normalizeEvidenceItems(List<EvidenceItem> items) {
+        if (items == null) {
+            return new ArrayList<>();
+        }
+        List<EvidenceItem> normalized = new ArrayList<>();
+        for (EvidenceItem item : items) {
+            if (item == null) {
+                continue;
+            }
+            EvidenceItem copy = new EvidenceItem();
+            copy.setTitle(translateEvidenceTitle(item.getTitle()));
+            copy.setContent(item.getContent());
+            copy.setSource(item.getSource());
+            normalized.add(copy);
+        }
+        return normalized;
+    }
+
+    private List<com.liang.drugagent.domain.workflow.EvidenceGroup> normalizeEvidenceGroups(
+            List<com.liang.drugagent.domain.workflow.EvidenceGroup> groups) {
+        if (groups == null) {
+            return new ArrayList<>();
+        }
+        List<com.liang.drugagent.domain.workflow.EvidenceGroup> normalized = new ArrayList<>();
+        for (com.liang.drugagent.domain.workflow.EvidenceGroup group : groups) {
+            if (group == null) {
+                continue;
+            }
+            com.liang.drugagent.domain.workflow.EvidenceGroup copy = new com.liang.drugagent.domain.workflow.EvidenceGroup();
+            copy.setGroupKey(group.getGroupKey());
+            copy.setTitle(translateEvidenceTitle(group.getTitle()));
+            copy.setSummary(group.getSummary());
+            copy.setSource(group.getSource());
+            copy.setItems(normalizeEvidenceItems(group.getItems()));
+            normalized.add(copy);
+        }
+        return normalized;
+    }
+
+    private String translateStep(String step) {
+        if (step == null || step.isBlank()) {
+            return "未命名步骤";
+        }
+        return switch (step) {
+            case "scene_route" -> "场景路由";
+            case "generic_review" -> "通用审查";
+            case "structured_load" -> "结构化加载";
+            case "rule_hit" -> "规则命中分析";
+            case "false_positive_exemption" -> "误报豁免";
+            case "risk_fusion" -> "风险融合";
+            case "evidence_assembly" -> "证据组装";
+            case "report_generation" -> "报告生成";
+            default -> step;
+        };
+    }
+
+    private String translateEvidenceTitle(String title) {
+        if (title == null || title.isBlank()) {
+            return "未命名证据";
+        }
+        return switch (title) {
+            case "fusion_score" -> "融合评分";
+            case "rule_scan_result" -> "规则扫描结果";
+            case "quote_gradient" -> "报价梯度异常";
+            case "contact_nearby", "contact_proximity" -> "联系人近邻";
+            case "team_overlap", "core_team_overlap" -> "核心团队重叠";
+            case "proposal_copy", "proposal_plagiarism" -> "方案内容雷同";
+            case "template_homology" -> "模板同源";
+            case "rare_typo_cooccurrence" -> "罕见错误共现";
+            case "error_replication" -> "错误复现";
+            case "service_commitment" -> "服务承诺雷同";
+            case "implementation_method" -> "实施方法雷同";
+            case "case_data_plagiarism" -> "案例数据复用";
+            case "risk_identification" -> "风险识别异常";
+            default -> title;
+        };
     }
 
     private void hydrateTenderMetadata(DrugAgentReq req, String submittedBy, MultipartFile[] files) {

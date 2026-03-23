@@ -31,13 +31,9 @@
 import { computed } from 'vue'
 import WorkspaceLayout from '../components/layout/WorkspaceLayout.vue'
 import { getAuditLogs } from '../utils/local-state'
+import { formatTime } from '@/utils/timeFormat'
 
 const logs = computed(() => getAuditLogs())
-
-const formatTime = (value) => {
-  if (!value) return '未知时间'
-  return new Date(value).toLocaleString('zh-CN')
-}
 </script>
 
 <style scoped>

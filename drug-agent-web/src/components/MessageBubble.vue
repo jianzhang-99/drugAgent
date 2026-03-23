@@ -8,10 +8,10 @@
       <div v-if="msg.role === 'assistant'" class="meta">
         <span class="author">横渡智能监管</span>
         <span class="dot">·</span>
-        <span class="time">{{ msg.time || '刚刚' }}</span>
+        <span class="time">{{ formatTime(msg.createdAt) || '刚刚' }}</span>
       </div>
       <div v-else class="meta user-meta">
-        <span class="time">您 · {{ msg.time || '14:20' }}</span>
+        <span class="time">您 · {{ formatTime(msg.createdAt) || '刚刚' }}</span>
       </div>
 
       <div class="message-bubble" :class="{ 'is-user': msg.role === 'user', 'is-ai': msg.role === 'assistant' }">
@@ -37,6 +37,7 @@
 import { computed } from 'vue'
 import { marked } from 'marked'
 import { MagicStick, Document, User } from '@element-plus/icons-vue'
+import { formatTime } from '@/utils/timeFormat'
 
 const props = defineProps({
   msg: { type: Object, required: true }

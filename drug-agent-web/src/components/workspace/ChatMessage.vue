@@ -59,6 +59,7 @@
 <script setup>
 import { Bot, FileText } from 'lucide-vue-next'
 import ReportCard from './ReportCard.vue'
+import { formatTime } from '@/utils/timeFormat'
 
 const props = defineProps({
   message: {
@@ -72,15 +73,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['select-report'])
-
-const formatTime = (timestamp) => {
-  if (!timestamp) return ''
-  const date = new Date(timestamp)
-  return date.toLocaleTimeString('zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
 
 const formatFileSize = (bytes) => {
   if (!bytes) return ''

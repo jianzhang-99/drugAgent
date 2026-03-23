@@ -109,7 +109,7 @@ public class EvidenceAssemblerService {
 
         for (RuleHit hit : hits) {
             group.getItems().add(new EvidenceItem(
-                    hit.getRuleName(),
+                    resolveEvidenceItemTitle(hit),
                     buildRuleContent(hit),
                     "rule-engine"
             ));
@@ -126,7 +126,7 @@ public class EvidenceAssemblerService {
 
         for (ExemptionHit hit : exemptionHits) {
             group.getItems().add(new EvidenceItem(
-                    hit.getRuleName(),
+                    resolveDisplayLabel(hit == null ? null : hit.getRuleName()),
                     hit.getAction() + "，" + hit.getReason()
                             + "，权重 " + hit.getBeforeWeight() + " -> " + hit.getAfterWeight(),
                     "exemption-engine"
@@ -226,6 +226,59 @@ public class EvidenceAssemblerService {
             case "MEDIUM" -> "中风险";
             case "LOW" -> "低风险";
             default -> level;
+        };
+    }
+
+    private String resolveEvidenceItemTitle(RuleHit hit) {
+        if (hit == null) {
+            return "规则命中";
+        }
+        String label = resolveDisplayLabel(hit.getRuleName());
+        if (label != null && !label.isBlank()) {
+            return label;
+        }
+        return resolveDisplayLabel(hit.getRuleCode());
+    }
+
+    private String resolveDisplayLabel(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "未命名证据";
+        }
+        return switch (raw) {
+            case "fusion_score" -> "融合评分";
+            case "rule_scan_result" -> "规则扫描结果";
+            case "quote_gradient" -> "报价梯度异常";
+            case "contact_nearby", "contact_proximity" -> "联系人近邻";
+            case "team_overlap", "core_team_overlap" -> "核心团队重叠";
+            case "proposal_copy", "proposal_plagiarism" -> "方案内容雷同";
+            case "template_homology" -> "模板同源";
+            case "rare_typo_cooccurrence" -> "罕见错误共现";
+            case "error_replication" -> "错误复现";
+            case "service_commitment" -> "服务承诺雷同";
+            case "implementation_method" -> "实施方法雷同";
+            case "case_data_plagiarism" -> "案例数据复用";
+            case "risk_identification" -> "风险识别异常";
+            default -> {
+                if (raw.startsWith("W-M1")) {
+                    yield "报价梯度异常";
+                }
+                if (raw.startsWith("W-M2")) {
+                    yield "联系人近邻";
+                }
+                if (raw.startsWith("W-M3")) {
+                    yield "核心团队重叠";
+                }
+                if (raw.startsWith("W-P1")) {
+                    yield "技术方案雷同";
+                }
+                if (raw.startsWith("W-P3")) {
+                    yield "服务承诺雷同";
+                }
+                if (raw.startsWith("W-P5")) {
+                    yield "错误复现";
+                }
+                yield raw;
+            }
         };
     }
 }

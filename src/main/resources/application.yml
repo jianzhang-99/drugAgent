@@ -49,3 +49,11 @@ logging:
 aliyun:
   dashscope:
     api-key: ${DASHscope_API_KEY:} # 优先从环境变量读取，本地开发则由 application-local.yml 覆盖
+
+# Agent 路由配置
+agent:
+  routing:
+    llm-enabled: true  # 百炼路由开关
+    llm-timeout: 10000 # 百炼调用超时(ms)
+    confidence-threshold: 0.75  # 采纳阈值
+    confidence-low-threshold: 0.5  # 回退阈值

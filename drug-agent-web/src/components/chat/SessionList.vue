@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useChatStore } from '@/stores/chatStore'
 import { ElInput, ElButton, ElDropdown, ElDropdownMenu, ElDropdownItem, ElEmpty, ElSpin } from 'element-plus'
 import { Search, Plus, MoreFilled, ChatDotRound, Delete, Edit } from '@element-plus/icons-vue'
+import { formatTime } from '@/utils/timeFormat'
 
 const chatStore = useChatStore()
 const searchQuery = ref('')
@@ -42,12 +43,6 @@ function handleSaveTitle(session) {
 
 function handleDeleteSession(session) {
   chatStore.deleteSession(session.id)
-}
-
-function formatTime(dateStr) {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 }
 </script>
 

@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { ElAvatar } from 'element-plus'
 import { User, Robot } from '@element-plus/icons-vue'
+import { formatTime } from '@/utils/timeFormat'
 
 const props = defineProps({
   message: {
@@ -24,12 +25,6 @@ const metadata = computed(() => {
     return null
   }
 })
-
-function formatTime(time) {
-  if (!time) return ''
-  const date = new Date(time)
-  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-}
 </script>
 
 <template>

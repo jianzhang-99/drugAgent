@@ -185,6 +185,7 @@
 
         <p class="disclaimer">AI 生成内容仅供参考，重大决策请人工复核 (横渡智能系统 v1.0)</p>
       </div>
+      </section>
     </main>
 
     <!-- 任务中心抽屉 -->
@@ -255,9 +256,9 @@
           <div class="info-card">
             <h4 class="card-title">
               <el-icon><Activity /></el-icon>
-              结果摘要 (Agent Output)
+              结果摘要
             </h4>
-            <p class="card-text">{{ selectedReport.summary || '暂无摘要' }}</p>
+            <p class="card-text">{{ normalizeSummary(selectedReport.summary) }}</p>
           </div>
 
           <!-- 管理摘要 -->
@@ -290,7 +291,7 @@
           <div class="info-card">
             <h4 class="card-title">
               <el-icon><Terminal /></el-icon>
-              执行步骤 (Execution Trace)
+              执行步骤
             </h4>
             <div class="steps-list">
               <div
@@ -299,7 +300,7 @@
                 class="step-item"
               >
                 <div class="step-dot"></div>
-                <span class="step-name">{{ step }}</span>
+                <span class="step-name">{{ translateStep(step) }}</span>
               </div>
             </div>
           </div>
@@ -627,7 +628,7 @@ const downloadAsText = () => {
 - 追踪ID: ${report.traceId || 'N/A'}
 
 【结果摘要】
-${report.summary || '暂无摘要'}
+${normalizeSummary(report.summary)}
 
 【管理摘要】
 ${(report.managementSummary || []).map((point, i) => `${i + 1}. ${point}`).join('\n')}
@@ -636,7 +637,7 @@ ${(report.managementSummary || []).map((point, i) => `${i + 1}. ${point}`).join(
 ${(report.suggestedActions || []).map((action, i) => `${i + 1}. ${action}`).join('\n')}
 
 【执行步骤】
-${(report.steps || []).map((step, i) => `${i + 1}. ${step}`).join('\n')}
+${(report.steps || []).map((step, i) => `${i + 1}. ${translateStep(step)}`).join('\n')}
 
 =====================================
 生成时间: ${new Date().toLocaleString('zh-CN')}
@@ -664,7 +665,7 @@ const tasks = ref([
     scene: 'TENDER',
     progress: 100,
     status: 'completed',
-    time: '10分钟前',
+    createdAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
     riskLevel: 'High',
     findings: '发现 87% 语义重合，疑似围标'
   }
@@ -682,12 +683,12 @@ const sessions = ref([
         role: 'user',
         content: '帮我对比新上传的这几份标书文件，检查是否有雷同或围标嫌疑。',
         attachments: ['样例A_XX医院标书.docx', '样例B_XX药房投标.pdf'],
-        time: '14:20'
+        createdAt: new Date(new Date().setHours(14, 20, 0, 0)).toISOString()
       },
       {
         role: 'agent',
         content: '我已经为您完成了这两份标书文件的深度比对审查。根据系统分析，存在高风险围标嫌疑。',
-        time: '14:22',
+        createdAt: new Date(new Date().setHours(14, 22, 0, 0)).toISOString(),
         result: {
           scene: 'TENDER',
           riskLevel: 'High',
@@ -712,12 +713,12 @@ const sessions = ref([
         role: 'user',
         content: '审查一下这份最新的采购合同框架，按知识库提取风险条款。',
         attachments: ['骨科耗材采购合同_v3.pdf'],
-        time: '16:05'
+        createdAt: new Date(Date.now() - 86400000 + (16 * 60 + 5) * 60000).toISOString()
       },
       {
         role: 'agent',
         content: '合同预审完毕。整体结构完整，但提取到几处需要关注的潜在风险条款。',
-        time: '16:06',
+        createdAt: new Date(Date.now() - 86400000 + (16 * 60 + 6) * 60000).toISOString(),
         result: {
           scene: 'CONTRACT',
           riskLevel: 'Medium',
@@ -854,6 +855,28 @@ const getRiskIcon = (level) => {
   return getRiskConfig(level).icon
 }
 
+const stepLabelMap = {
+  scene_route: '场景路由',
+  generic_review: '通用审查',
+  structured_load: '结构化加载',
+  rule_hit: '规则命中分析',
+  false_positive_exemption: '误报豁免',
+  risk_fusion: '风险融合',
+  evidence_assembly: '证据组装',
+  report_generation: '报告生成'
+}
+
+const translateStep = (step) => {
+  return stepLabelMap[step] || step || '未命名步骤'
+}
+
+const normalizeSummary = (summary) => {
+  if (summary === 'No retained high-risk hits after rule scan.') {
+    return '规则扫描后未保留高风险命中。'
+  }
+  return summary || '暂无摘要'
+}
+
 const addTask = (name, scene) => {
   const newTask = {
     id: `T-${Math.floor(Math.random() * 1000)}`,
@@ -861,7 +884,7 @@ const addTask = (name, scene) => {
     scene: scene || 'UNKNOWN',
     progress: 0,
     status: 'running',
-    time: '刚刚',
+    createdAt: new Date().toISOString(),
     riskLevel: 'Unknown',
     findings: '正在初始化 Agent 工作流...'
   }
@@ -993,14 +1016,14 @@ const handleSubmit = async (overrideInput = null) => {
 
   const isNewSession = !activeSessionId.value
   const currentSessionId = activeSessionId.value || `sess_${Date.now()}`
-  const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const timestamp = new Date().toISOString()
 
   const userFiles = selectedFiles.value.map(f => ({ name: f.name }))
   const newUserMsg = {
     id: createMessageId('user'),
     role: 'user',
     content: textToProcess,
-    time: timestamp,
+    createdAt: timestamp,
     attachments: userFiles.length > 0 ? userFiles.map(f => f.name) : undefined
   }
 
@@ -1037,7 +1060,7 @@ const handleSubmit = async (overrideInput = null) => {
                 id: assistantId,
                 role: 'assistant',
                 content: 'Agent 正在执行深层编排工作流...',
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                createdAt: new Date().toISOString()
               }
             ]
           }
@@ -1056,14 +1079,14 @@ const handleSubmit = async (overrideInput = null) => {
           content: isLowRisk
             ? '我已经完成了对您上传文档的审查。本次共审查了 2 份文档，未发现保留的高风险命中，建议将结果作为低风险基线。详细报告已生成，请查看下方卡片。'
             : '审查已完成。系统在多份文件中发现了高度雷同的排版与语义特征，已判定为高风险。请务必查看详细报告并进行人工复核。',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          createdAt: new Date().toISOString(),
           result: {
             scene: scene,
             riskLevel: isLowRisk ? 'Low' : 'High',
             score: isLowRisk ? 0 : 87,
             docCount: 2,
             summary: isLowRisk
-              ? 'No retained high-risk hits after rule scan.'
+              ? '规则扫描后未保留高风险命中。'
               : '发现显著的语义及排版雷同，疑似存在围标行为。',
             managementSummary: [
               `本次共审查 2 份文档，综合风险等级为 ${isLowRisk ? 'LOW' : 'HIGH'}，融合分值为 ${isLowRisk ? 0 : 87}。`,
@@ -1106,7 +1129,7 @@ const handleSubmit = async (overrideInput = null) => {
           id: createMessageId('assistant'),
           role: 'agent',
           content: '解析时发生网络或模型错误，请稍后再试。',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          createdAt: new Date().toISOString()
         }
 
         sessions.value = sessions.value.map(s =>

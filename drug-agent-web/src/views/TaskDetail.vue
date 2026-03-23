@@ -177,7 +177,15 @@
         </div>
       </section>
 
-      <section v-else class="empty-panel">
+      <section class="evidence-section">
+        <EvidencePanel :evidences="evidenceItems" />
+      </section>
+
+      <section class="log-section">
+        <ExecutionLog :logs="executionLogs" @clear="clearExecutionLogs" />
+      </section>
+
+      <section v-if="documents.length === 0" class="empty-panel">
         <h2>暂无任务数据</h2>
         <p>当前任务未找到对应文档，请返回工作台重新创建任务。</p>
       </section>
@@ -190,9 +198,12 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import WorkspaceLayout from '../components/layout/WorkspaceLayout.vue'
+import EvidencePanel from '../components/EvidencePanel.vue'
+import ExecutionLog from '../components/ExecutionLog.vue'
 import { listTenderReviewCases, parseTenderDocument } from '../api/drug-agent'
 import {
   appendAuditLog,
+  getAuditLogs,
   getTenderParseResults,
   getTenderTasks,
   getUserPreferences,
@@ -324,6 +335,30 @@ const taskStatusLabel = computed(() => {
 })
 
 const isAutoRunning = computed(() => parsingDocIds.value.length > 0)
+
+const executionLogs = computed(() => {
+  const logs = getAuditLogs()
+  return logs
+    .filter(log => !log.caseId || log.caseId === caseId)
+    .slice(0, 20)
+})
+
+const evidenceItems = computed(() => {
+  if (!taskDetail.value?.report?.riskItems?.length) return []
+  return taskDetail.value.report.riskItems.map(item => ({
+    ruleName: item.title || '未知规则',
+    explanation: item.summary || item.reasonCodes?.join('；') || '该规则用于检测相关风险项。',
+    matchCount: 1,
+    matchDetails: item.reasonCodes?.map(code => ({
+      documentName: taskDetail.value.filenames?.[0] || '文档',
+      matchedText: code
+    })) || []
+  }))
+})
+
+const clearExecutionLogs = () => {
+  localStorage.removeItem('auditLogs')
+}
 
 const syncTaskStatus = () => {
   if (!taskDetail.value) return
@@ -700,6 +735,11 @@ h1 {
 
 .empty-panel {
   padding: 28px;
+}
+
+.evidence-section,
+.log-section {
+  margin-bottom: 28px;
 }
 
 @media (max-width: 1100px) {
