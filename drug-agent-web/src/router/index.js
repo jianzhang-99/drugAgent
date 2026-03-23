@@ -4,6 +4,7 @@ const routes = [
     { path: '/', redirect: '/workspace' },
     { path: '/workspace', name: 'Workspace', component: () => import('../views/WorkspaceView.vue') },
     { path: '/tasks', name: 'TaskBoard', component: () => import('../views/TaskBoardView.vue') },
+    { path: '/tasks/:caseId', name: 'TaskDetail', component: () => import('../views/TaskDetail.vue') },
     { path: '/knowledge', name: 'KnowledgeBase', component: () => import('../views/KnowledgeBaseView.vue') },
     { path: '/settings', name: 'Settings', component: () => import('../views/SettingsView.vue') }
     // [Deprecated] Legacy /agent routes - to be removed in future versions

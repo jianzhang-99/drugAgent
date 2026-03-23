@@ -698,11 +698,11 @@ const handleSend = async () => {
           })
         }
 
-        // 任务创建成功后跳转到任务看板
+        // 任务创建成功后跳转到任务详情
         if (response?.caseId) {
-          ElMessage.success('任务创建成功，正在跳转到任务看板...')
+          ElMessage.success('任务创建成功，正在跳转到任务详情...')
           setTimeout(() => {
-            router.push('/tasks')
+            router.push(`/tasks/${response.caseId}`)
           }, 1500)
         }
       } else if (response?.data) {
