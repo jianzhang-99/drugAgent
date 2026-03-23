@@ -1,5 +1,6 @@
 package com.liang.drugagent.agent.routing;
 
+import com.liang.drugagent.agent.util.CompletableFutureUtils;
 import com.liang.drugagent.config.RoutingProperties;
 import com.liang.drugagent.domain.req.DrugAgentReq;
 import com.liang.drugagent.domain.routing.WorkflowRouteDecision;
@@ -116,20 +117,9 @@ public class WorkflowRouteClassifier {
      * Calls model with timeout control.
      */
     private String callWithTimeout(String prompt, long timeoutMs) throws TimeoutException {
-        ThreadCompletableFuture<String> future = new ThreadCompletableFuture<>();
-        Thread thread = new Thread(() -> {
-            try {
-                future.complete(qwenService.chat(prompt));
-            } catch (Exception e) {
-                future.completeExceptionally(e);
-            }
-        });
-        thread.start();
-
         try {
-            return future.get(timeoutMs);
+            return CompletableFutureUtils.executeWithTimeout(() -> qwenService.chat(prompt), timeoutMs);
         } catch (java.util.concurrent.TimeoutException e) {
-            thread.interrupt();
             throw new TimeoutException("Call timeout");
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -170,41 +160,5 @@ public class WorkflowRouteClassifier {
         }
 
         return true;
-    }
-
-    /**
-     * Simple Future implementation for timeout control.
-     */
-    private static class ThreadCompletableFuture<T> {
-        private T result;
-        private Exception exception;
-        private boolean done = false;
-
-        public synchronized T get(long timeoutMs) throws Exception {
-            long start = System.currentTimeMillis();
-            while (!done) {
-                long remaining = timeoutMs - (System.currentTimeMillis() - start);
-                if (remaining <= 0) {
-                    throw new java.util.concurrent.TimeoutException();
-                }
-                wait(remaining);
-            }
-            if (exception != null) {
-                throw exception;
-            }
-            return result;
-        }
-
-        public synchronized void complete(T result) {
-            this.result = result;
-            this.done = true;
-            notifyAll();
-        }
-
-        public synchronized void completeExceptionally(Exception e) {
-            this.exception = e;
-            this.done = true;
-            notifyAll();
-        }
     }
 }

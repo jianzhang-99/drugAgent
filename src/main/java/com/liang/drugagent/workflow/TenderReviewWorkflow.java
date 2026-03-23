@@ -1,20 +1,15 @@
 package com.liang.drugagent.workflow;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.liang.drugagent.agent.AgentContext;
+import com.liang.drugagent.agent.context.AgentContext;
 import com.liang.drugagent.domain.tenderreview.*;
-import com.liang.drugagent.domain.workflow.EvidenceAssemblyResult;
 import com.liang.drugagent.domain.workflow.EvidenceItem;
 import com.liang.drugagent.domain.workflow.ReviewReport;
 import com.liang.drugagent.domain.workflow.WorkflowResult;
-import com.liang.drugagent.engine.TenderExemptionEngine;
-import com.liang.drugagent.engine.TenderRuleEngine;
 import com.liang.drugagent.enums.SceneEnum;
 import com.liang.drugagent.service.AgentChatService;
-import com.liang.drugagent.service.tenderreview.EvidenceAssemblerService;
-import com.liang.drugagent.service.tenderreview.ReportGenerationService;
-import com.liang.drugagent.service.tenderreview.RiskFusionService;
 import com.liang.drugagent.service.tenderreview.TenderReviewDataResolver;
+import com.liang.drugagent.workflow.tender.step.*;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -30,28 +25,28 @@ import java.util.Map;
 public class TenderReviewWorkflow implements SceneWorkflow {
 
     private final AgentChatService agentChatService;
-    private final TenderRuleEngine tenderRuleEngine;
-    private final TenderExemptionEngine tenderExemptionEngine;
-    private final RiskFusionService riskFusionService;
-    private final EvidenceAssemblerService evidenceAssemblerService;
-    private final ReportGenerationService reportGenerationService;
+    private final RuleExecutionStep ruleExecutionStep;
+    private final ExemptionStep exemptionStep;
+    private final RiskFusionStep riskFusionStep;
+    private final EvidenceAssemblyStep evidenceAssemblyStep;
+    private final ReportGenerationStep reportGenerationStep;
     private final ObjectMapper objectMapper;
     private final TenderReviewDataResolver tenderReviewDataResolver;
 
     public TenderReviewWorkflow(AgentChatService agentChatService,
-                                TenderRuleEngine tenderRuleEngine,
-                                TenderExemptionEngine tenderExemptionEngine,
-                                RiskFusionService riskFusionService,
-                                EvidenceAssemblerService evidenceAssemblerService,
-                                ReportGenerationService reportGenerationService,
+                                RuleExecutionStep ruleExecutionStep,
+                                ExemptionStep exemptionStep,
+                                RiskFusionStep riskFusionStep,
+                                EvidenceAssemblyStep evidenceAssemblyStep,
+                                ReportGenerationStep reportGenerationStep,
                                 ObjectMapper objectMapper,
                                 TenderReviewDataResolver tenderReviewDataResolver) {
         this.agentChatService = agentChatService;
-        this.tenderRuleEngine = tenderRuleEngine;
-        this.tenderExemptionEngine = tenderExemptionEngine;
-        this.riskFusionService = riskFusionService;
-        this.evidenceAssemblerService = evidenceAssemblerService;
-        this.reportGenerationService = reportGenerationService;
+        this.ruleExecutionStep = ruleExecutionStep;
+        this.exemptionStep = exemptionStep;
+        this.riskFusionStep = riskFusionStep;
+        this.evidenceAssemblyStep = evidenceAssemblyStep;
+        this.reportGenerationStep = reportGenerationStep;
         this.objectMapper = objectMapper;
         this.tenderReviewDataResolver = tenderReviewDataResolver;
     }
@@ -61,14 +56,6 @@ public class TenderReviewWorkflow implements SceneWorkflow {
         return SceneEnum.TENDER_REVIEW;
     }
 
-    /**
-     * 执行标书审查工作流。
-     * 如果上下文中存在标书审查数据，则执行结构化的规则流；
-     * 否则，回退到通用的场景对话模式。
-     *
-     * @param context 执行上下文
-     * @return 工作流执行结果
-     */
     @Override
     public WorkflowResult execute(AgentContext context) {
         TenderReviewData tenderReviewData = readTenderReviewData(context);
@@ -79,7 +66,7 @@ public class TenderReviewWorkflow implements SceneWorkflow {
         String answer = agentChatService.chatWithScene(context.getQuery(), "default", context.getSessionId());
         WorkflowResult result = WorkflowResult.of(SceneEnum.TENDER_REVIEW, answer);
         result.setRiskLevel("NONE");
-        result.setScore(0); // 默认分数
+        result.setScore(0);
         result.setSteps(List.of("场景路由", "通用审查"));
         result.setEvidenceList(List.of(
                 new EvidenceItem("system_note", "MVP fallback path is still using generic chat ability.", "system")
@@ -87,28 +74,21 @@ public class TenderReviewWorkflow implements SceneWorkflow {
         return result;
     }
 
-    /**
-     * 执行结构化的标书审查规则流。
-     * 包括规则引擎执行、免责逻辑触发、风险分值融合以及证据组装。
-     *
-     * @param tenderReviewData 标书审查数据
-     * @return 组装后的工作流结果
-     */
     private WorkflowResult executeRuleFlow(TenderReviewData tenderReviewData) {
-        RuleResult ruleResult = tenderRuleEngine.execute(tenderReviewData);
-        ExemptionResult exemptionResult = tenderExemptionEngine.apply(ruleResult.getHits(), tenderReviewData);
+        RuleResult ruleResult = ruleExecutionStep.execute(tenderReviewData);
+        ExemptionResult exemptionResult = exemptionStep.apply(ruleResult.getHits(), tenderReviewData);
         List<RuleHit> effectiveHits = exemptionResult.getEffectiveHits();
-        RiskFusionResult fusionResult = riskFusionService.fuse(
+        RiskFusionResult fusionResult = riskFusionStep.fuse(
                 tenderReviewData,
                 effectiveHits,
                 exemptionResult.getExemptionHits()
         );
-        EvidenceAssemblyResult evidenceAssemblyResult = evidenceAssemblerService.assemble(
+        var evidenceAssemblyResult = evidenceAssemblyStep.assemble(
                 effectiveHits,
                 exemptionResult.getExemptionHits(),
                 fusionResult
         );
-        ReviewReport report = reportGenerationService.generate(
+        ReviewReport report = reportGenerationStep.generate(
                 tenderReviewData,
                 ruleResult.getHits(),
                 effectiveHits,
@@ -119,7 +99,7 @@ public class TenderReviewWorkflow implements SceneWorkflow {
 
         WorkflowResult result = WorkflowResult.of(
                 SceneEnum.TENDER_REVIEW,
-                reportGenerationService.buildAnswer(report)
+                reportGenerationStep.buildAnswer(report)
         );
         result.setRiskLevel(fusionResult.getRiskLevel());
         result.setScore(fusionResult.getScore() != null ? fusionResult.getScore() : 0);
@@ -130,12 +110,6 @@ public class TenderReviewWorkflow implements SceneWorkflow {
         return result;
     }
 
-    /**
-     * 从上下文中提取并解析标书审查结构化数据。
-     *
-     * @param context 执行上下文
-     * @return 解析后的标书审查数据，若无则返回 null
-     */
     private TenderReviewData readTenderReviewData(AgentContext context) {
         TenderReviewData resolved = tenderReviewDataResolver.resolve(context);
         if (resolved != null) {

@@ -60,7 +60,7 @@ agent:
 
 # MiniMax模型配置
 minimax:
-  enabled: false
+  enabled: true
   api-key: ${MINIMAX_API_KEY:}
   base-url: https://api.minimaxi.com
   model: MiniMax-M2.7
@@ -71,7 +71,7 @@ minimax:
 
 # LLM统一配置
 llm:
-  default-provider: DASHSCOPE  # 默认Provider: DASHSCOPE 或 MINIMAX
-  routing-provider: DASHSCOPE   # 路由场景使用的Provider
-  chat-provider: DASHSCOPE      # 通用问答使用的Provider
-  report-provider: DASHSCOPE    # 报告生成使用的Provider
+  default-provider: MINIMAX  # 默认Provider: DASHSCOPE 或 MINIMAX
+  routing-provider: MINIMAX   # 路由场景使用的Provider
+  chat-provider: MINIMAX      # 通用问答使用的Provider
+  report-provider: MINIMAX    # 报告生成使用的Provider

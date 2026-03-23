@@ -1,6 +1,6 @@
 package com.liang.drugagent.service.rag;
 
-import com.liang.drugagent.agent.AgentContext;
+import com.liang.drugagent.agent.context.AgentContext;
 import com.liang.drugagent.domain.req.KnowledgeAskReq;
 import com.liang.drugagent.domain.resp.KnowledgeAskResp;
 import com.liang.drugagent.domain.workflow.EvidenceItem;

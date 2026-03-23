@@ -1,7 +1,7 @@
 package com.liang.drugagent.service.tenderreview;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.liang.drugagent.agent.AgentContext;
+import com.liang.drugagent.agent.context.AgentContext;
 import com.liang.drugagent.domain.tenderreview.Anchor;
 import com.liang.drugagent.domain.tenderreview.Block;
 import com.liang.drugagent.domain.tenderreview.CompareScope;

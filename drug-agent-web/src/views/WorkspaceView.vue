@@ -579,7 +579,19 @@ const handleSend = async () => {
   // Create new session if needed
   let sessionId = activeSession.value?.id
   if (!sessionId) {
-    const newSession = sessionStore.createSession('新对话')
+    const newSessionRes = await chatApi.createSession({
+      title: '新对话',
+      scene: 'general'
+    })
+    const newSession = newSessionRes.data
+    const existingSession = sessionStore.sessions.find(s => s.id === newSession.id)
+    if (!existingSession) {
+      sessionStore.sessions.unshift({
+        ...newSession,
+        messages: newSession.messages || []
+      })
+    }
+    sessionStore.setActiveSession(newSession.id)
     sessionId = newSession.id
   }
 
