@@ -15,13 +15,27 @@
             </svg>
             <strong>{{ evidence.ruleName }}</strong>
           </div>
-          <span class="match-badge">命中 {{ evidence.matchCount || 1 }} 次</span>
+          <span class="risk-level" :class="getRiskLevelClass(evidence.level)">
+            风险{{ getRiskLevelText(evidence.level) }}
+          </span>
         </div>
 
-        <div class="evidence-body">
+        <div class="evidence-content">
+          <div class="evidence-section matched-text-section">
+            <h4>匹配片段</h4>
+            <p class="matched-text">"{{ evidence.matchedText || evidence.matchDetails?.[0]?.matchedText || '未提供匹配文本' }}"</p>
+          </div>
+
           <div class="evidence-section">
-            <h4>规则解释</h4>
+            <h4>解释说明</h4>
             <p>{{ evidence.explanation || '该规则用于检测相关风险项。' }}</p>
+          </div>
+
+          <div v-if="evidence.sourceDocuments?.length" class="evidence-section source-docs">
+            <h4>来源文档</h4>
+            <div class="source-doc-list">
+              <span v-for="doc in evidence.sourceDocuments" :key="doc" class="source-doc-tag">{{ doc }}</span>
+            </div>
           </div>
 
           <div v-if="evidence.matchDetails?.length" class="evidence-section">
@@ -55,6 +69,26 @@ defineProps({
     default: () => []
   }
 })
+
+const getRiskLevelClass = (level) => {
+  const levelMap = {
+    HIGH: 'risk-high',
+    MEDIUM: 'risk-medium',
+    LOW: 'risk-low',
+    PENDING: 'risk-pending'
+  }
+  return levelMap[level] || 'risk-pending'
+}
+
+const getRiskLevelText = (level) => {
+  const textMap = {
+    HIGH: '高',
+    MEDIUM: '中',
+    LOW: '低',
+    PENDING: '待判定'
+  }
+  return textMap[level] || '待判定'
+}
 </script>
 
 <style scoped>
@@ -124,15 +158,33 @@ defineProps({
   color: var(--text-main);
 }
 
-.match-badge {
+.risk-level {
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 700;
-  background: #eef2ff;
-  color: #4f46e5;
+}
+
+.risk-high {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.risk-medium {
+  background: #fff7ed;
+  color: #b45309;
+}
+
+.risk-low {
+  background: #ecfdf3;
+  color: #15803d;
+}
+
+.risk-pending {
+  background: #f3f4f6;
+  color: #6b7280;
 }
 
 .evidence-body {
@@ -154,6 +206,38 @@ defineProps({
   margin: 0;
   color: var(--text-main);
   line-height: 1.7;
+}
+
+.matched-text-section .matched-text {
+  background: #fef9c3;
+  border: 1px solid #fef08a;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 14px;
+  color: #854d0e;
+  line-height: 1.6;
+  margin-top: 8px;
+}
+
+.source-docs h4 {
+  margin: 0 0 8px;
+}
+
+.source-doc-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.source-doc-tag {
+  display: inline-flex;
+  padding: 4px 10px;
+  background: #eef2ff;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4f46e5;
 }
 
 .match-list {

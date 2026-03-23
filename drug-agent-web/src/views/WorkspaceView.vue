@@ -16,10 +16,10 @@
             </div>
           </div>
           <h1 class="text-4xl font-bold text-slate-800 mb-4 tracking-tight">
-            有什么我可以帮您分析的？
+            上传标书文件，AI 将自动审查围标风险
           </h1>
           <p class="text-lg text-slate-500 max-w-xl mx-auto">
-            直接描述您的监管需求，AI Agent 将自动分发到对应的工作流
+            当前版本重点识别围标线索，完整语义查重能力持续建设中
           </p>
         </div>
 
@@ -545,24 +545,24 @@ const quickActions = [
   {
     icon: FileText,
     label: '标书审查',
-    description: '对比多份标书文件，检测雷同率和围标嫌疑',
-    prompt: '帮我对比新上传的这几份标书文件，检查是否有雷同或围标嫌疑。',
+    description: '上传标书文件，AI 自动筛查围标风险线索',
+    prompt: '帮我对比新上传的这几份标书文件，检查是否有围标嫌疑。',
     bgColor: 'bg-indigo-50',
     textColor: 'text-indigo-600'
   },
   {
     icon: Shield,
     label: '合同预审',
-    description: '基于合规知识库提取潜在风险条款',
-    prompt: '审查最新版本的采购合同，基于合规知识库提取潜在风险条款。',
+    description: '上传采购合同，AI 识别条款风险点',
+    prompt: '审查最新版本的采购合同，识别潜在风险条款。',
     bgColor: 'bg-emerald-50',
     textColor: 'text-emerald-600'
   },
   {
     icon: AlertTriangle,
     label: '合规预警',
-    description: '分析采购数据异常波动，生成预警报告',
-    prompt: '分析近3个月的骨科耗材采购数据，生成异常波动预警报告。',
+    description: '监控采购数据波动，识别异常风险信号',
+    prompt: '分析近3个月的骨科耗材采购数据，识别异常波动风险。',
     bgColor: 'bg-amber-50',
     textColor: 'text-amber-600'
   }

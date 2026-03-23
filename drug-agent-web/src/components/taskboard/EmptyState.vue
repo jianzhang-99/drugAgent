@@ -74,8 +74,8 @@ const icon = computed(() => {
 
 const defaultTitle = computed(() => {
   const titleMap = {
-    empty: '暂无任务',
-    'no-result': '没有找到任务',
+    empty: '暂无任务记录',
+    'no-result': '没有找到匹配的任务',
     error: '加载失败',
     loading: '加载中...'
   }
@@ -84,9 +84,9 @@ const defaultTitle = computed(() => {
 
 const defaultDescription = computed(() => {
   const descMap = {
-    empty: '开始一个新任务来体验 AI 审查流程',
-    'no-result': '请尝试调整筛选条件',
-    error: '请稍后重试或联系管理员',
+    empty: '暂无任务记录，请前往工作台发起新的审查任务',
+    'no-result': '没有找到匹配的任务，请尝试调整筛选条件',
+    error: '加载失败，请稍后重试或联系管理员',
     loading: '正在获取任务列表'
   }
   return descMap[props.type] || props.description

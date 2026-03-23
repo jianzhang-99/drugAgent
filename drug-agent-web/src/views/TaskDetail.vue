@@ -15,7 +15,30 @@
         </div>
       </header>
 
-      <!-- 阶段指示器 -->
+      <!-- 1. 任务概览 -->
+      <section v-if="taskDetail" class="overview-grid">
+        <article class="overview-card">
+          <span class="overview-label">任务 ID</span>
+          <strong>{{ taskDetail.caseId }}</strong>
+        </article>
+        <article class="overview-card">
+          <span class="overview-label">任务状态</span>
+          <div class="status-row">
+            <span class="status-dot" :class="taskStatusClass"></span>
+            <strong>{{ taskStatusText }}</strong>
+          </div>
+        </article>
+        <article class="overview-card">
+          <span class="overview-label">文档数量</span>
+          <strong>{{ documents.length }} 份</strong>
+        </article>
+        <article class="overview-card">
+          <span class="overview-label">提交人</span>
+          <strong>{{ taskDetail.submittedBy || 'anonymous' }}</strong>
+        </article>
+      </section>
+
+      <!-- 2. 阶段指示器 -->
       <section class="stage-indicator">
         <div class="stage" :class="{ active: parseStatus === 'parsing', completed: parseStatus === 'parsed', failed: parseStatus === 'failed' }">
           <span class="stage-icon">
@@ -38,122 +61,64 @@
         </div>
       </section>
 
-      <section v-if="taskDetail" class="overview-grid">
-        <article class="overview-card">
-          <span class="overview-label">任务 ID</span>
-          <strong>{{ taskDetail.caseId }}</strong>
-        </article>
-        <article class="overview-card">
-          <span class="overview-label">解析状态</span>
-          <div class="status-row">
-            <span class="status-dot" :class="parseStatusClass"></span>
-            <strong>{{ parseStatusText }}</strong>
-          </div>
-        </article>
-        <article class="overview-card">
-          <span class="overview-label">审查状态</span>
-          <div class="status-row">
-            <span class="status-dot" :class="reviewStatusClass"></span>
-            <strong>{{ reviewStatusText }}</strong>
-          </div>
-        </article>
-        <article class="overview-card">
-          <span class="overview-label">提交人</span>
-          <strong>{{ taskDetail.submittedBy || 'anonymous' }}</strong>
-        </article>
-      </section>
-
-      <section v-if="documents.length > 0" class="report-grid">
-        <article class="summary-panel">
+      <!-- 3. 风险总览 -->
+      <section v-if="taskDetail" class="risk-overview-section">
+        <article class="risk-overview-card">
           <div class="panel-head">
-            <h2>解析总览</h2>
-            <span class="panel-tip">解析结果会自动沉淀为任务摘要</span>
+            <h2>风险总览</h2>
+            <span class="risk-level-badge" :class="riskOverviewClass">{{ riskOverviewLabel }}</span>
           </div>
-          <div class="summary-metrics">
-            <div class="summary-tile">
-              <span>已解析文档</span>
-              <strong>{{ parsedDocCount }}/{{ documents.length }}</strong>
+
+          <div class="risk-summary">
+            <div class="risk-stat">
+              <span class="risk-stat-num" :class="highRiskClass">{{ riskStats.high }}</span>
+              <span class="risk-stat-label">高风险</span>
             </div>
-            <div class="summary-tile">
-              <span>段落块总数</span>
-              <strong>{{ aggregateStats.paragraphs }}</strong>
+            <div class="risk-stat">
+              <span class="risk-stat-num" :class="mediumRiskClass">{{ riskStats.medium }}</span>
+              <span class="risk-stat-label">中风险</span>
             </div>
-            <div class="summary-tile">
-              <span>表格块总数</span>
-              <strong>{{ aggregateStats.tables }}</strong>
+            <div class="risk-stat">
+              <span class="risk-stat-num" :class="lowRiskClass">{{ riskStats.low }}</span>
+              <span class="risk-stat-label">低风险</span>
             </div>
-            <div class="summary-tile">
-              <span>字段总数</span>
-              <strong>{{ aggregateStats.fields }}</strong>
+            <div class="risk-stat">
+              <span class="risk-stat-num">{{ riskStats.pending }}</span>
+              <span class="risk-stat-label">待判定</span>
             </div>
           </div>
 
           <div class="report-section">
-            <h3>关键字段分布</h3>
-            <div v-if="fieldTypeEntries.length > 0" class="chip-list">
-              <span v-for="[key, value] in fieldTypeEntries" :key="key" class="data-chip">
-                {{ key }} · {{ value }}
-              </span>
-            </div>
-            <p v-else class="muted-text">完成文档解析后，这里会显示联系方式、报价、团队成员等字段分布。</p>
-          </div>
-
-          <div class="report-section">
-            <h3>自动生成的审查结论</h3>
+            <h3>问题摘要</h3>
             <p class="report-summary">{{ generatedReport.summary }}</p>
           </div>
 
-          <div class="report-section">
+          <div class="report-section" v-if="generatedReport.risks.length > 0">
+            <h3>风险提示</h3>
+            <ul class="flat-list">
+              <li v-for="risk in generatedReport.risks" :key="risk">{{ risk }}</li>
+            </ul>
+          </div>
+
+          <div class="report-section" v-if="generatedReport.actions.length > 0">
             <h3>建议动作</h3>
             <ul class="flat-list">
               <li v-for="action in generatedReport.actions" :key="action">{{ action }}</li>
             </ul>
           </div>
-        </article>
 
-        <article class="summary-panel">
-          <div class="panel-head">
-            <h2>风险提示</h2>
-            <span class="risk-badge" :class="generatedReport.riskClass">{{ generatedReport.riskLabel }}</span>
+          <div class="report-section capability-note">
+            <p>当前版本重点识别围标线索，完整语义查重能力持续建设中。风险判定结果仅供参考，重大决策请结合人工复核。</p>
           </div>
-          <ul class="flat-list">
-            <li v-for="risk in generatedReport.risks" :key="risk">{{ risk }}</li>
-          </ul>
         </article>
       </section>
 
-      <section v-if="taskDetail?.report?.riskItems?.length || taskDetail?.report?.explanations" class="report-grid">
-        <article v-if="taskDetail?.report?.riskItems?.length" class="summary-panel">
-          <div class="panel-head">
-            <h2>重点风险主题</h2>
-            <span class="panel-tip">来自横渡智能监管系统的结构化报告</span>
-          </div>
-          <div class="risk-item-list">
-            <div v-for="item in taskDetail.report.riskItems" :key="`${item.title}-${item.riskType}`" class="risk-item-card">
-              <div class="risk-item-head">
-                <strong>{{ item.title }}</strong>
-                <span class="risk-badge" :class="item.riskLevel === 'HIGH' ? 'risk-review' : 'risk-safe'">{{ item.riskLevel }}</span>
-              </div>
-              <p>{{ item.summary }}</p>
-              <p v-if="item.reasonCodes?.length" class="muted-text">规则：{{ item.reasonCodes.join('、') }}</p>
-              <p v-if="item.recommendations?.length" class="muted-text">建议：{{ item.recommendations.join('；') }}</p>
-            </div>
-          </div>
-        </article>
-
-        <article v-if="taskDetail?.report?.explanations" class="summary-panel">
-          <div class="panel-head">
-            <h2>解释说明</h2>
-            <span class="panel-tip">便于继续追问与人工复核</span>
-          </div>
-          <ul class="flat-list">
-            <li v-for="(value, key) in taskDetail.report.explanations" :key="key">
-              <strong>{{ key }}：</strong>{{ value }}
-            </li>
-          </ul>
-        </article>
+      <!-- 4. 命中证据 -->
+      <section class="evidence-section">
+        <EvidencePanel :evidences="evidenceItems" />
       </section>
 
+      <!-- 5. 文档列表 -->
       <section v-if="documents.length > 0" class="doc-list-panel">
         <div class="panel-head">
           <h2>文档列表</h2>
@@ -209,17 +174,14 @@
         </div>
       </section>
 
-      <section class="evidence-section">
-        <EvidencePanel :evidences="evidenceItems" />
-      </section>
-
+      <!-- 6. 执行日志 -->
       <section class="log-section">
         <ExecutionLog :logs="executionLogs" @clear="clearExecutionLogs" />
       </section>
 
       <section v-if="documents.length === 0" class="empty-panel">
-        <h2>暂无任务数据</h2>
-        <p>当前任务未找到对应文档，请返回工作台重新创建任务。</p>
+        <h2>暂无文档数据</h2>
+        <p>当前任务正在处理中，请稍后刷新查看，或返回工作台发起新的审查任务。</p>
       </section>
     </section>
   </workspace-layout>
@@ -338,31 +300,31 @@ const generatedReport = computed(() => {
 
   if (fieldTypeMap.value['联系人电话'] || fieldTypeMap.value['contact_phone']) {
     risks.push('已提取联系方式相关字段，可重点比对不同投标文件中的电话号码和邮箱是否存在异常近邻或重复。')
-    actions.push('对联系方式字段做跨文档复核')
+    actions.push('建议人工复核联系方式跨文档异常')
   }
 
   if (fieldTypeMap.value['投标报价'] || fieldTypeMap.value['bid_price']) {
     risks.push('已提取报价字段，建议进一步关注报价梯度、分项价格差额和整体报价结构。')
-    actions.push('复核报价字段和报价梯度')
+    actions.push('建议人工复核报价梯度异常')
   }
 
   if (fieldTypeMap.value['团队成员'] || fieldTypeMap.value['team_member']) {
     risks.push('已提取团队成员字段，建议重点核查核心团队成员是否跨文档重合。')
-    actions.push('检查核心团队重合情况')
+    actions.push('建议重点核查联系人与团队成员交叉复用')
   }
 
   if (aggregateStats.value.fields === 0) {
     risks.push('文档已解析，但尚未提取出明显结构化字段，可能需要结合原文段落和表格人工复核。')
-    actions.push('人工查看原文段落和表格内容')
+    actions.push('建议补充第三方证明材料')
   }
 
   if (!risks.length) {
     risks.push('当前未发现明显高风险提示，但仍建议结合原文段落和规则引擎做进一步核验。')
-    actions.push('结合规则引擎做后续比对')
+    actions.push('建议结合规则引擎做后续比对')
   }
 
   return {
-    summary: `已完成 ${parsedDocCount.value} 份文档解析，累计提取 ${aggregateStats.value.fields} 个结构化字段，可为后续标书查重、团队重合分析和报价异常识别提供输入。`,
+    summary: `已完成 ${parsedDocCount.value} 份文档解析，累计提取 ${aggregateStats.value.fields} 个结构化字段，当前版本重点识别围标线索，完整语义查重能力持续建设中。`,
     actions,
     risks,
     riskLabel: aggregateStats.value.fields > 20 ? '需复核' : '初步完成',
@@ -374,6 +336,30 @@ const taskStatusLabel = computed(() => {
   if (parsingDocIds.value.length > 0) return 'PARSING'
   if (documents.value.length > 0 && parsedDocCount.value === documents.value.length) return 'PARSED'
   return taskDetail.value?.status || 'PENDING'
+})
+
+const taskStatusText = computed(() => {
+  const textMap = {
+    PENDING: '待处理',
+    PROCESSING: '处理中',
+    PARSING: '解析中',
+    PARSED: '已完成',
+    COMPLETED: '已完成',
+    FAILED: '失败'
+  }
+  return textMap[taskStatusLabel.value] || '待处理'
+})
+
+const taskStatusClass = computed(() => {
+  const classMap = {
+    PENDING: 'dot-pending',
+    PROCESSING: 'dot-parsing',
+    PARSING: 'dot-parsing',
+    PARSED: 'dot-success',
+    COMPLETED: 'dot-success',
+    FAILED: 'dot-failed'
+  }
+  return classMap[taskStatusLabel.value] || 'dot-pending'
 })
 
 // 解析状态
@@ -441,6 +427,41 @@ const reviewStatusClass = computed(() => {
   return classMap[reviewStatus.value] || 'dot-pending'
 })
 
+// 风险统计
+const riskStats = computed(() => {
+  const stats = { high: 0, medium: 0, low: 0, pending: 0 }
+  if (!taskDetail.value?.report?.riskItems?.length) return stats
+
+  taskDetail.value.report.riskItems.forEach(item => {
+    const level = item.riskLevel?.toUpperCase()
+    if (level === 'HIGH') stats.high++
+    else if (level === 'MEDIUM') stats.medium++
+    else if (level === 'LOW') stats.low++
+    else stats.pending++
+  })
+  return stats
+})
+
+const riskOverviewLabel = computed(() => {
+  const { high, medium, low } = riskStats.value
+  if (high > 0) return '高风险'
+  if (medium > 0) return '中风险'
+  if (low > 0) return '低风险'
+  return '待判定'
+})
+
+const riskOverviewClass = computed(() => {
+  const { high, medium, low } = riskStats.value
+  if (high > 0) return 'risk-high'
+  if (medium > 0) return 'risk-medium'
+  if (low > 0) return 'risk-low'
+  return 'risk-pending'
+})
+
+const highRiskClass = computed(() => riskStats.value.high > 0 ? 'risk-num-high' : '')
+const mediumRiskClass = computed(() => riskStats.value.medium > 0 ? 'risk-num-medium' : '')
+const lowRiskClass = computed(() => riskStats.value.low > 0 ? 'risk-num-low' : '')
+
 const isAutoRunning = computed(() => parsingDocIds.value.length > 0)
 
 const executionLogs = computed(() => {
@@ -454,8 +475,11 @@ const evidenceItems = computed(() => {
   if (!taskDetail.value?.report?.riskItems?.length) return []
   return taskDetail.value.report.riskItems.map(item => ({
     ruleName: item.title || '未知规则',
+    level: item.riskLevel?.toUpperCase() || 'PENDING',
+    matchedText: item.matchedText || item.reasonCodes?.[0] || '',
     explanation: item.summary || item.reasonCodes?.join('；') || '该规则用于检测相关风险项。',
     matchCount: 1,
+    sourceDocuments: taskDetail.value.filenames || [],
     matchDetails: item.reasonCodes?.map(code => ({
       documentName: taskDetail.value.filenames?.[0] || '文档',
       matchedText: code
@@ -838,11 +862,107 @@ h1 {
   color: #15803d;
 }
 
+/* 风险总览区块 */
+.risk-overview-section {
+  margin-bottom: 28px;
+}
+
+.risk-overview-card {
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 22px;
+}
+
+.risk-level-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.risk-level-badge.risk-high {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.risk-level-badge.risk-medium {
+  background: #fff7ed;
+  color: #b45309;
+}
+
+.risk-level-badge.risk-low {
+  background: #ecfdf3;
+  color: #15803d;
+}
+
+.risk-level-badge.risk-pending {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.risk-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border-light);
+  margin-bottom: 20px;
+}
+
+.risk-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.risk-stat-num {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.risk-stat-num.risk-num-high {
+  color: #dc2626;
+}
+
+.risk-stat-num.risk-num-medium {
+  color: #b45309;
+}
+
+.risk-stat-num.risk-num-low {
+  color: #15803d;
+}
+
+.risk-stat-label {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
 .flat-list {
   margin: 0;
   padding-left: 18px;
   color: var(--text-main);
   line-height: 1.8;
+}
+
+.capability-note {
+  margin-top: 20px;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+}
+
+.capability-note p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.6;
 }
 
 .risk-item-list {
@@ -960,14 +1080,15 @@ h1 {
   font-weight: 700;
 }
 
+/* 文档状态 - 统一状态体系 */
 .status-pending {
-  background: #eef2ff;
-  color: #4f46e5;
+  background: #f3f4f6;
+  color: #6b7280;
 }
 
 .status-parsing {
   background: #fff7ed;
-  color: #ea580c;
+  color: #b45309;
 }
 
 .status-success {
@@ -1006,7 +1127,8 @@ h1 {
   .overview-grid,
   .summary-metrics,
   .parse-result,
-  .report-grid {
+  .report-grid,
+  .risk-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1026,7 +1148,8 @@ h1 {
   .overview-grid,
   .summary-metrics,
   .parse-result,
-  .report-grid {
+  .report-grid,
+  .risk-summary {
     grid-template-columns: 1fr;
   }
 }
