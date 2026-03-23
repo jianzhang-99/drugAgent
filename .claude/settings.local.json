@@ -17,7 +17,9 @@
       "Bash(pkill -f drug-agent)",
       "Bash(curl -s \"http://localhost:8124/doc.html\")",
       "Bash(kill 63966)",
-      "Bash(xargs kill:*)"
+      "Bash(xargs kill:*)",
+      "mcp__chrome-devtools__new_page",
+      "mcp__chrome-devtools__list_pages"
     ]
   }
 }

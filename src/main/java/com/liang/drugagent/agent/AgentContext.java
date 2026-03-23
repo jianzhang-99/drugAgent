@@ -29,6 +29,8 @@ public class AgentContext {
     private final Map<String, Object> metadata;
     @Setter
     private SceneEnum sceneType;
+    @Setter
+    private IntentUnderstandingContext intentContext;
     private final Map<String, Object> attributes = new HashMap<>();
 
     private AgentContext(String traceId, String sessionId, String userId, String query, List<String> fileIds,

@@ -23,6 +23,8 @@ public class DrugAgentResp {
     private String traceId;
     private String scene;
     private String routeReason;
+    private String routeSource;
+    private Double confidence;
     private String summary;
     private String answer;
     private String riskLevel;
@@ -37,5 +39,7 @@ public class DrugAgentResp {
     private List<EvidenceGroup> evidenceGroups = new ArrayList<>();
     private List<String> steps = new ArrayList<>();
     private Map<String, Object> structuredData;
+    private boolean requiresClarification;
+    private String clarificationQuestion;
 
 }

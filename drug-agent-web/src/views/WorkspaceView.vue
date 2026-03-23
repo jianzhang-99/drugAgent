@@ -90,185 +90,90 @@
                 </div>
               </div>
             </div>
-            <!-- Agent Message - Normal -->
-            <div v-else class="flex gap-4 justify-start">
-              <div class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                DA
-              </div>
-              <div class="max-w-2xl bg-white border border-slate-200 rounded-xl rounded-bl-md px-5 py-3 shadow-sm">
-                <div
-                  v-if="isMarkdownContent(message.content)"
-                  class="text-sm text-slate-700 report-markdown"
-                  v-html="renderMarkdown(message.content)"
-                />
-                <p v-else class="text-sm text-slate-700">{{ message.content }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- AI Result Panel -->
-        <div v-if="aiResult" class="mt-6 animate-fadeIn">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <!-- Risk Header -->
-            <div class="px-6 py-5 bg-slate-50 border-b border-slate-200">
-              <div class="flex items-start justify-between gap-4">
-                <div class="flex items-center gap-4">
+            <!-- Agent Message - with optional result -->
+            <div v-else-if="message.role === 'assistant' || message.role === 'agent'" class="flex flex-col gap-4 justify-start">
+              <div class="flex gap-4">
+                <div class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                  DA
+                </div>
+                <div class="max-w-2xl bg-white border border-slate-200 rounded-xl rounded-bl-md px-5 py-3 shadow-sm">
                   <div
-                    class="px-3 py-1.5 rounded-full text-xs font-bold"
-                    :class="{
-                      'bg-red-100 text-red-700': isHighRisk(aiResult.riskLevel),
-                      'bg-amber-100 text-amber-700': isMediumRisk(aiResult.riskLevel),
-                      'bg-emerald-100 text-emerald-700': isLowRisk(aiResult.riskLevel)
-                    }"
-                  >
-                    <component :is="isHighRisk(aiResult.riskLevel) ? ShieldAlert : isMediumRisk(aiResult.riskLevel) ? AlertCircle : CheckCircle2" class="w-4 h-4 inline mr-1" />
-                    {{ translateRiskLabel(aiResult.riskLevel) }}
-                  </div>
-                  <div class="pt-1">
-                    <div class="text-xs text-slate-500">{{ getSceneLabel(aiResult.scene) }}</div>
-                    <div class="text-[11px] text-slate-400 font-mono mt-1">{{ aiResult.traceId }}</div>
-                  </div>
-                </div>
-
-                <div class="flex flex-wrap justify-end gap-2">
-                  <button
-                    v-if="fullReportMarkdown"
-                    class="px-3 py-1.5 text-xs font-medium rounded-lg border border-indigo-200 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors"
-                    @click="showFullReport = !showFullReport"
-                  >
-                    {{ showFullReport ? '收起完整报告' : '查看完整报告' }}
-                  </button>
-                  <button
-                    v-if="processTimeline.length"
-                    class="px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 transition-colors"
-                    @click="showProcessDetails = !showProcessDetails"
-                  >
-                    {{ showProcessDetails ? '收起处理过程' : '查看处理过程' }}
-                  </button>
+                    v-if="isMarkdownContent(message.content)"
+                    class="text-sm text-slate-700 report-markdown"
+                    v-html="renderMarkdown(message.content)"
+                  />
+                  <p v-else class="text-sm text-slate-700">{{ message.content }}</p>
                 </div>
               </div>
 
-              <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div
-                  v-for="metric in summaryMetrics"
-                  :key="metric.label"
-                  class="rounded-xl border border-slate-200 bg-white/80 px-4 py-3"
-                >
-                  <div class="text-[11px] text-slate-500">{{ metric.label }}</div>
-                  <div class="text-sm font-semibold text-slate-800 mt-1">{{ metric.value }}</div>
-                </div>
-              </div>
-            </div>
+              <!-- Message-bound Result Panel -->
+              <div v-if="message.result" class="ml-12 animate-fadeIn">
+                <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
+                  <!-- Risk Header -->
+                  <div class="px-6 py-5 bg-slate-50 border-b border-slate-200">
+                    <div class="flex items-start justify-between gap-4">
+                      <div class="flex items-center gap-4">
+                        <div
+                          class="px-3 py-1.5 rounded-full text-xs font-bold"
+                          :class="{
+                            'bg-red-100 text-red-700': isHighRisk(message.result.riskLevel),
+                            'bg-amber-100 text-amber-700': isMediumRisk(message.result.riskLevel),
+                            'bg-emerald-100 text-emerald-700': isLowRisk(message.result.riskLevel)
+                          }"
+                        >
+                          <component :is="isHighRisk(message.result.riskLevel) ? ShieldAlert : isMediumRisk(message.result.riskLevel) ? AlertCircle : CheckCircle2" class="w-4 h-4 inline mr-1" />
+                          {{ translateRiskLabel(message.result.riskLevel) }}
+                        </div>
+                        <div class="pt-1">
+                          <div class="text-xs text-slate-500">{{ getSceneLabel(message.result.scene) }}</div>
+                          <div class="text-[11px] text-slate-400 font-mono mt-1">{{ message.result.traceId }}</div>
+                        </div>
+                      </div>
 
-            <!-- Summary -->
-            <div class="px-6 py-4 border-b border-slate-100">
-              <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">结果摘要</h4>
-              <p class="text-sm text-slate-700 leading-7">{{ normalizedSummary }}</p>
-            </div>
-
-            <!-- Steps -->
-            <div v-if="aiResult.steps?.length" class="px-6 py-4 border-b border-slate-100">
-              <div class="flex items-center justify-between gap-3 mb-2">
-                <h4 class="text-xs font-bold text-slate-500 uppercase">执行步骤</h4>
-                <button
-                  v-if="processTimeline.length"
-                  class="text-xs text-indigo-600 hover:text-indigo-700"
-                  @click="showProcessDetails = !showProcessDetails"
-                >
-                  {{ showProcessDetails ? '收起详情' : '查看详情' }}
-                </button>
-              </div>
-              <div class="flex flex-wrap gap-2">
-                <span
-                  v-for="(step, idx) in aiResult.steps"
-                  :key="idx"
-                  class="px-2.5 py-1 bg-indigo-50 text-indigo-600 text-xs rounded-full"
-                >
-                  {{ idx + 1 }}. {{ translateStep(step) }}
-                </span>
-              </div>
-            </div>
-
-            <!-- Evidence List -->
-            <div v-if="previewEvidenceList.length" class="px-6 py-4">
-              <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">关键证据</h4>
-              <ul class="space-y-2">
-                <li
-                  v-for="(evidence, idx) in previewEvidenceList"
-                  :key="idx"
-                  class="flex gap-2 text-xs text-slate-600"
-                >
-                  <span class="text-indigo-400 flex-shrink-0">•</span>
-                  <span class="leading-relaxed">{{ formatEvidence(evidence) }}</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div v-if="showFullReport && fullReportMarkdown" class="mt-6 bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200">
-              <h3 class="text-sm font-bold text-slate-700">完整审核报告</h3>
-              <p class="text-xs text-slate-500 mt-1">按《标书审核报告模板》渲染的完整结构化内容</p>
-            </div>
-            <div class="px-6 py-6 report-markdown" v-html="renderMarkdown(fullReportMarkdown)" />
-          </div>
-
-          <div v-if="showProcessDetails && processTimeline.length" class="mt-6 bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
-            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200">
-              <h3 class="text-sm font-bold text-slate-700">处理过程详情</h3>
-              <p class="text-xs text-slate-500 mt-1">模拟系统逐步计算与汇总结论的过程，便于你观察每一步的产出</p>
-            </div>
-            <div class="px-6 py-4 space-y-4">
-              <div
-                v-for="(item, index) in animatedProcessTimeline"
-                :key="`${item.key}-${index}`"
-                class="rounded-xl border p-4 transition-all duration-300"
-                :class="item.status === 'running'
-                  ? 'border-indigo-200 bg-indigo-50/70 shadow-sm shadow-indigo-100'
-                  : item.status === 'completed'
-                    ? 'border-emerald-200 bg-emerald-50/50'
-                    : 'border-slate-200 bg-slate-50/70 opacity-75'"
-              >
-                <div class="flex items-center justify-between gap-4">
-                  <div class="flex items-center gap-3">
-                    <div
-                      class="w-7 h-7 rounded-full text-white text-xs font-bold flex items-center justify-center transition-colors"
-                      :class="item.status === 'running'
-                        ? 'bg-indigo-600 process-pulse'
-                        : item.status === 'completed'
-                          ? 'bg-emerald-600'
-                          : 'bg-slate-400'"
-                    >
-                      {{ index + 1 }}
+                      <div class="flex flex-wrap justify-end gap-2">
+                        <button
+                          v-if="getFullReportMarkdown(message.result)"
+                          class="px-3 py-1.5 text-xs font-medium rounded-lg border border-indigo-200 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors"
+                          @click="openReportDialog(message.result)"
+                        >
+                          查看完整报告
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                      <div class="text-sm font-semibold text-slate-800">{{ item.title }}</div>
-                      <div class="text-xs text-slate-500 mt-1">{{ item.description }}</div>
+
+                    <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div
+                        v-for="metric in getSummaryMetrics(message.result)"
+                        :key="metric.label"
+                        class="rounded-xl border border-slate-200 bg-white/80 px-4 py-3"
+                      >
+                        <div class="text-[11px] text-slate-500">{{ metric.label }}</div>
+                        <div class="text-sm font-semibold text-slate-800 mt-1">{{ metric.value }}</div>
+                      </div>
                     </div>
                   </div>
-                  <span
-                    class="text-[11px] px-2.5 py-1 rounded-full"
-                    :class="item.status === 'running'
-                      ? 'bg-indigo-100 text-indigo-700'
-                      : item.status === 'completed'
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-slate-100 text-slate-500'"
-                  >
-                    {{ item.status === 'running' ? '计算中' : item.status === 'completed' ? '已完成' : '等待中' }}
-                  </span>
-                </div>
 
-                <ul v-if="item.visibleHighlights?.length" class="mt-3 space-y-2">
-                  <li
-                    v-for="(highlight, hIdx) in item.visibleHighlights"
-                    :key="`${item.key}-h-${hIdx}`"
-                    class="text-sm text-slate-700 leading-relaxed flex gap-2 animate-fadeIn"
-                  >
-                    <span class="text-indigo-400 flex-shrink-0">•</span>
-                    <span>{{ highlight }}</span>
-                  </li>
-                </ul>
+                  <!-- Summary -->
+                  <div class="px-6 py-4 border-b border-slate-100">
+                    <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">结果摘要</h4>
+                    <p class="text-sm text-slate-700 leading-7">{{ normalizeSummary(message.result.summary) }}</p>
+                  </div>
+
+                  <!-- Evidence List -->
+                  <div v-if="getPreviewEvidenceList(message.result).length" class="px-6 py-4">
+                    <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">关键证据</h4>
+                    <ul class="space-y-2">
+                      <li
+                        v-for="(evidence, idx) in getPreviewEvidenceList(message.result)"
+                        :key="idx"
+                        class="flex gap-2 text-xs text-slate-600"
+                      >
+                        <span class="text-indigo-400 flex-shrink-0">•</span>
+                        <span class="leading-relaxed">{{ formatEvidence(evidence) }}</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -348,6 +253,24 @@
       </p>
     </div>
   </div>
+
+  <!-- 报告弹窗 -->
+  <el-dialog
+    v-model="reportDialogVisible"
+    title="标书审查报告"
+    width="800px"
+    :close-on-click-modal="true"
+    class="report-dialog"
+  >
+    <div class="report-content-wrapper">
+      <div
+        v-if="currentReportContent"
+        class="text-sm text-slate-700 report-markdown"
+        v-html="renderMarkdown(currentReportContent)"
+      />
+      <div v-else class="text-center text-slate-400 py-8">暂无报告内容</div>
+    </div>
+  </el-dialog>
 </template>
 
 <script setup>
@@ -381,10 +304,12 @@ const inputText = ref('')
 const selectedFiles = ref([])
 const fileInput = ref(null)
 const isLoading = ref(false)
-const showFullReport = ref(false)
-const showProcessDetails = ref(false)
-const processStepStates = ref([])
-const processPlaybackTimers = ref([])
+const expandedReports = ref({})
+const expandedProcess = ref({})
+const reportDialogVisible = ref(false)
+const currentReportContent = ref('')
+const processStepStates = ref({}) // { messageId: { stepIndex: { status, visibleHighlights } } }
+const processPlaybackTimers = ref({}) // { messageId: [] }
 
 // Get active session from store
 const activeSession = computed(() => {
@@ -403,20 +328,12 @@ const hasActiveSession = computed(() => {
   return messages.value.length > 0
 })
 
-// Get AI result from agent messages
-const aiResult = computed(() => {
-  const agentMsg = messages.value.find(m => m.role === 'agent' && m.result)
-  return agentMsg?.result || null
-})
+// Functions to compute result-related data from a message's result object
+const getFullReportMarkdown = (result) => {
+  return result?.report?.markdownContent || result?.answer || ''
+}
 
-const fullReportMarkdown = computed(() => {
-  return aiResult.value?.report?.markdownContent || aiResult.value?.answer || ''
-})
-
-const normalizedSummary = computed(() => normalizeSummary(aiResult.value?.summary))
-
-const summaryMetrics = computed(() => {
-  const result = aiResult.value
+const getSummaryMetrics = (result) => {
   if (!result) return []
   const overview = result.report?.overview || {}
   return [
@@ -425,14 +342,13 @@ const summaryMetrics = computed(() => {
     { label: '比对文件', value: `${overview.documentCount ?? result.docCount ?? 0} 份` },
     { label: '有效风险项', value: `${overview.effectiveHitCount ?? 0} 条` }
   ]
-})
+}
 
-const previewEvidenceList = computed(() => {
-  return (aiResult.value?.evidenceList || []).slice(0, 3)
-})
+const getPreviewEvidenceList = (result) => {
+  return (result?.evidenceList || []).slice(0, 3)
+}
 
-const processTimeline = computed(() => {
-  const result = aiResult.value
+const getProcessTimeline = (result) => {
   if (!result) return []
 
   const report = result.report || {}
@@ -447,6 +363,8 @@ const processTimeline = computed(() => {
   const topRiskTitles = riskItems.length
     ? riskItems.slice(0, 3).map(item => `${item.title}（${item.riskLevel}）`)
     : ['未发现保留的高风险命中']
+
+  const fullReportMarkdown = getFullReportMarkdown(result)
 
   return [
     {
@@ -505,37 +423,119 @@ const processTimeline = computed(() => {
       title: '报告生成',
       description: '按模板输出结构化审核报告，供页面展示和导出。',
       highlights: [
-        `报告章节：${fullReportMarkdown.value ? '已生成完整模板报告' : '仅生成摘要内容'}`,
+        `报告章节：${fullReportMarkdown ? '已生成完整模板报告' : '仅生成摘要内容'}`,
         explanationEntries.find(item => item.startsWith('证据说明')) || '证据说明：报告已纳入证据链与交叉印证内容。'
       ]
     }
   ]
-})
+}
 
-const animatedProcessTimeline = computed(() => {
-  return processTimeline.value.map((item, index) => {
-    const state = processStepStates.value[index] || { status: 'pending', visibleHighlights: 0 }
+const getAnimatedProcessTimeline = (result) => {
+  const timeline = getProcessTimeline(result)
+  const messageId = result?._msgId || 'default'
+  const states = processStepStates.value[messageId] || []
+  return timeline.map((item, index) => {
+    const state = states[index] || { status: 'pending', visibleHighlights: 0 }
     return {
       ...item,
       status: state.status,
       visibleHighlights: item.highlights.slice(0, state.visibleHighlights)
     }
   })
-})
+}
 
-watch(aiResult, () => {
-  showFullReport.value = false
-  showProcessDetails.value = false
-  resetProcessPlayback()
-})
+// Toggle functions for per-message expand/collapse
+const toggleFullReport = (messageId) => {
+  expandedReports.value[messageId] = !expandedReports.value[messageId]
+}
 
-watch(showProcessDetails, (visible) => {
-  if (visible) {
-    startProcessPlayback()
+const toggleProcessDetails = (messageId) => {
+  const current = expandedProcess.value[messageId]
+  expandedProcess.value[messageId] = !current
+  if (!current) {
+    // Starting to show process details, init playback state
+    startProcessPlayback(messageId)
   } else {
-    resetProcessPlayback()
+    resetProcessPlayback(messageId)
   }
-})
+}
+
+const clearProcessPlaybackTimers = () => {
+  Object.values(processPlaybackTimers.value).forEach(timers => {
+    timers.forEach(timer => clearTimeout(timer))
+  })
+  processPlaybackTimers.value = {}
+}
+
+const resetProcessPlayback = (messageId) => {
+  if (!messageId) return
+  // Clear only this message's timers
+  if (processPlaybackTimers.value[messageId]) {
+    processPlaybackTimers.value[messageId].forEach(timer => clearTimeout(timer))
+    delete processPlaybackTimers.value[messageId]
+  }
+  const timeline = getProcessTimeline(messages.value.find(m => m.id === messageId)?.result)
+  processStepStates.value[messageId] = timeline.map(() => ({
+    status: 'pending',
+    visibleHighlights: 0
+  }))
+}
+
+const startProcessPlayback = (messageId) => {
+  if (!messageId) return
+  const result = messages.value.find(m => m.id === messageId)?.result
+  if (!result) return
+
+  resetProcessPlayback(messageId)
+  const timeline = getProcessTimeline(result)
+  if (!timeline.length) return
+
+  // Initialize timers array for this message
+  if (!processPlaybackTimers.value[messageId]) {
+    processPlaybackTimers.value[messageId] = []
+  }
+
+  let elapsed = 0
+
+  timeline.forEach((step, stepIndex) => {
+    const startTimer = setTimeout(() => {
+      if (!processStepStates.value[messageId]) {
+        processStepStates.value[messageId] = []
+      }
+      processStepStates.value[messageId][stepIndex] = {
+        status: 'running',
+        visibleHighlights: 0
+      }
+    }, elapsed)
+    processPlaybackTimers.value[messageId].push(startTimer)
+
+    elapsed += 320
+
+    step.highlights.forEach((_, highlightIndex) => {
+      const highlightTimer = setTimeout(() => {
+        if (processStepStates.value[messageId]) {
+          processStepStates.value[messageId][stepIndex] = {
+            status: 'running',
+            visibleHighlights: highlightIndex + 1
+          }
+        }
+      }, elapsed)
+      processPlaybackTimers.value[messageId].push(highlightTimer)
+      elapsed += 240
+    })
+
+    const completeTimer = setTimeout(() => {
+      if (processStepStates.value[messageId]) {
+        processStepStates.value[messageId][stepIndex] = {
+          status: 'completed',
+          visibleHighlights: step.highlights.length
+        }
+      }
+    }, elapsed)
+    processPlaybackTimers.value[messageId].push(completeTimer)
+    elapsed += 180
+  })
+}
 
 onBeforeUnmount(() => {
   clearProcessPlaybackTimers()
@@ -825,56 +825,6 @@ const removeFile = (index) => {
   selectedFiles.value.splice(index, 1)
 }
 
-const clearProcessPlaybackTimers = () => {
-  processPlaybackTimers.value.forEach(timer => clearTimeout(timer))
-  processPlaybackTimers.value = []
-}
-
-const resetProcessPlayback = () => {
-  clearProcessPlaybackTimers()
-  processStepStates.value = processTimeline.value.map(() => ({
-    status: 'pending',
-    visibleHighlights: 0
-  }))
-}
-
-const startProcessPlayback = () => {
-  resetProcessPlayback()
-  let elapsed = 0
-
-  processTimeline.value.forEach((step, stepIndex) => {
-    const startTimer = setTimeout(() => {
-      processStepStates.value[stepIndex] = {
-        status: 'running',
-        visibleHighlights: 0
-      }
-    }, elapsed)
-    processPlaybackTimers.value.push(startTimer)
-
-    elapsed += 320
-
-    step.highlights.forEach((_, highlightIndex) => {
-      const highlightTimer = setTimeout(() => {
-        processStepStates.value[stepIndex] = {
-          status: 'running',
-          visibleHighlights: highlightIndex + 1
-        }
-      }, elapsed)
-      processPlaybackTimers.value.push(highlightTimer)
-      elapsed += 240
-    })
-
-    const completeTimer = setTimeout(() => {
-      processStepStates.value[stepIndex] = {
-        status: 'completed',
-        visibleHighlights: step.highlights.length
-      }
-    }, elapsed)
-    processPlaybackTimers.value.push(completeTimer)
-    elapsed += 180
-  })
-}
-
 const stepLabelMap = {
   scene_route: '场景路由',
   generic_review: '通用审查',
@@ -970,6 +920,11 @@ const getSceneLabel = (scene) => {
   if (scene === 'CONTRACT' || scene === 'CONTRACT_PRECHECK') return '合同预审'
   if (scene === 'RISK_ALERT') return '合规预警'
   return '智能审查'
+}
+
+const openReportDialog = (result) => {
+  currentReportContent.value = getFullReportMarkdown(result) || '暂无报告内容'
+  reportDialogVisible.value = true
 }
 </script>
 
@@ -1071,5 +1026,28 @@ const getSceneLabel = (scene) => {
   border: none;
   border-top: 1px solid #e2e8f0;
   margin: 1.25rem 0;
+}
+
+/* 报告弹窗样式 */
+.report-content-wrapper {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.report-dialog :deep(.el-dialog__header) {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 16px 20px;
+  margin-right: 0;
+}
+
+.report-dialog :deep(.el-dialog__title) {
+  font-weight: 700;
+  font-size: 16px;
+  color: #1f2937;
+}
+
+.report-dialog :deep(.el-dialog__body) {
+  padding: 20px;
 }
 </style>
