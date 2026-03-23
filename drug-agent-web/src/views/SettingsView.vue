@@ -168,16 +168,24 @@ const tabs = [
 
 const activeTab = ref('PROFILE')
 const models = [
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: '快速响应，适合日常审查任务' },
-  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: '深度推理，适合复杂合规分析' }
+  { id: 'gemini-2.5-flash', provider: 'gemini', name: 'Gemini 2.5 Flash', description: '快速响应，适合日常审查任务' },
+  { id: 'gemini-2.5-pro', provider: 'gemini', name: 'Gemini 2.5 Pro', description: '深度推理，适合复杂合规分析' },
+  { id: 'qwen-plus', provider: 'dashscope', name: '通义千问 Plus', description: '阿里云百炼，综合能力均衡' },
+  { id: 'qwen-max', provider: 'dashscope', name: '通义千问 Max', description: '阿里云百炼，旗舰版本' },
+  { id: 'MiniMax-M2.7', provider: 'minimax', name: 'MiniMax M2.7', description: 'MiniMax 最新模型' }
 ]
 const profile = ref({ name: '管理员', email: 'admin@example.com' })
 const settings = ref({
-  model: 'gemini-2.5-flash', rigor: 75, autoClean: true, logRetention: '90',
+  model: 'qwen-plus', provider: 'dashscope', rigor: 75, autoClean: true, logRetention: '90',
   showThinkGraph: true, highRiskAlert: false
 })
 
 function saveSettings() {
+  // 确保 provider 与选中模型一致
+  const selectedModel = models.find(m => m.id === settings.value.model)
+  if (selectedModel) {
+    settings.value.provider = selectedModel.provider
+  }
   localStorage.setItem('drug-agent-settings', JSON.stringify({ profile: profile.value, settings: settings.value }))
   alert('配置已保存')
 }

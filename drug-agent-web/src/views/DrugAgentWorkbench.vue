@@ -173,6 +173,25 @@
                 <el-icon><BookOpen /></el-icon>
                 <span>引用知识</span>
               </button>
+              <el-dropdown @command="handleModelChange" trigger="click">
+                <button class="action-btn model-selector">
+                  <el-icon><Cpu /></el-icon>
+                  <span>{{ currentModelName }}</span>
+                  <el-icon><ChevronDown /></el-icon>
+                </button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item v-for="model in availableModels" :key="model.id" :command="model.id">
+                      <div class="model-option">
+                        <span class="model-name">{{ model.name }}</span>
+                        <el-tag v-if="model.provider === 'dashscope'" type="success" size="small">百炼</el-tag>
+                        <el-tag v-if="model.provider === 'minimax'" type="warning" size="small">MiniMax</el-tag>
+                        <el-tag v-if="model.provider === 'gemini'" type="info" size="small">Gemini</el-tag>
+                      </div>
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
             </div>
 
             <button class="submit-btn" :disabled="loading" @click="handleSubmit">
@@ -421,7 +440,9 @@ import {
   User,
   Search,
   Document,
-  Clock
+  Clock,
+  Cpu,
+  ChevronDown
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import MessageBubble from '../components/MessageBubble.vue'
@@ -440,6 +461,25 @@ const isTaskPaneOpen = ref(false)
 const promptText = ref('')
 const selectedReport = ref(null)
 const messagesEndRef = ref(null)
+
+// 模型选择相关状态
+const availableModels = [
+  { id: 'qwen-plus', provider: 'dashscope', name: '通义千问 Plus' },
+  { id: 'qwen-max', provider: 'dashscope', name: '通义千问 Max' },
+  { id: 'MiniMax-M2.7', provider: 'minimax', name: 'MiniMax M2.7' }
+]
+const selectedModel = ref('qwen-plus')
+
+const currentModelName = computed(() => {
+  const model = availableModels.find(m => m.id === selectedModel.value)
+  return model ? model.name : '通义千问 Plus'
+})
+
+const handleModelChange = (modelId) => {
+  selectedModel.value = modelId
+  const model = availableModels.find(m => m.id === modelId)
+  console.log(`模型已切换: ${model?.name || modelId}, Provider: ${model?.provider}`)
+}
 
 // 知识库引用相关状态
 const showKnowledgeDialog = ref(false)
@@ -1637,6 +1677,22 @@ const quickActions = [
   background: #f8fafc;
   color: #1e293b;
   border-color: #e2e8f0;
+}
+
+.model-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.model-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.model-option .model-name {
+  flex: 1;
 }
 
 .submit-btn {

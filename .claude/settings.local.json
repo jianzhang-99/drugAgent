@@ -16,7 +16,8 @@
       "Bash(curl -s -X POST \"http://localhost:8124/api/chat/simple\" -H \"Content-Type: application/json\" -d '{\"\"\"\"message\"\"\"\":\"\"\"\"Hello\"\"\"\"}')",
       "Bash(pkill -f drug-agent)",
       "Bash(curl -s \"http://localhost:8124/doc.html\")",
-      "Bash(kill 63966)"
+      "Bash(kill 63966)",
+      "Bash(xargs kill:*)"
     ]
   }
 }
