@@ -57,3 +57,21 @@ agent:
     llm-timeout: 10000 # 百炼调用超时(ms)
     confidence-threshold: 0.75  # 采纳阈值
     confidence-low-threshold: 0.5  # 回退阈值
+
+# MiniMax模型配置
+minimax:
+  enabled: false
+  api-key: ${MINIMAX_API_KEY:}
+  base-url: https://api.minimaxi.com
+  model: MiniMax-M2.7
+  timeout: 60000
+  max-tokens: 8192
+  temperature: 0.7
+  stream: true
+
+# LLM统一配置
+llm:
+  default-provider: DASHSCOPE  # 默认Provider: DASHSCOPE 或 MINIMAX
+  routing-provider: DASHSCOPE   # 路由场景使用的Provider
+  chat-provider: DASHSCOPE      # 通用问答使用的Provider
+  report-provider: DASHSCOPE    # 报告生成使用的Provider

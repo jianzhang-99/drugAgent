@@ -8,7 +8,24 @@ spring:
       embedding:
         options:
           model: text-embedding-v3
+  datasource:
+    url: jdbc:mysql://118.195.198.44:3306/drug-agent-test
+    username: drug-agent-test
+    password: tony990708
+  sql:
+    init:
+      mode: never
 
 aliyun:
   dashscope:
     api-key: test-dummy-key-for-unit-tests
+
+# MiniMax测试配置
+minimax:
+  enabled: true
+  api-key: sk-cp-pp0lySoRcTbY72cTSzSyx6-bYCG1LDHziPMNYdd0F6_Eo5jhh9r_LMqLLSZiQTONH0cgfsLALgO7wgXVmdPvp85wyAb2RJN9y6IJcqtrAckSINmuZbVgPy4
+  base-url: https://api.minimaxi.com
+  model: MiniMax-M2.7
+  timeout: 60000
+  max-tokens: 8192
+  temperature: 0.7

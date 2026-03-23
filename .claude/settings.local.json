@@ -2,7 +2,21 @@
   "permissions": {
     "allow": [
       "WebFetch(domain:minimax-algeng-chat-tts.oss-cn-wulanchabu.aliyuncs.com)",
-      "Bash(./mvnw compile:*)"
+      "Bash(./mvnw compile:*)",
+      "mcp__chrome-devtools__navigate_page",
+      "mcp__chrome-devtools__take_snapshot",
+      "Bash(curl -s http://localhost:8124/api/task-board/statistics)",
+      "Bash(curl -s http://localhost:8124/api/sessions)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker compose:*)",
+      "Bash(nc -zv 118.195.198.44 3306)",
+      "Bash(curl -s http://localhost:8124/api/doc.html)",
+      "Bash(kill 54484)",
+      "Bash(./mvnw spring-boot:run -Dspring-boot.run.profiles=local)",
+      "Bash(curl -s -X POST \"http://localhost:8124/api/chat/simple\" -H \"Content-Type: application/json\" -d '{\"\"\"\"message\"\"\"\":\"\"\"\"Hello\"\"\"\"}')",
+      "Bash(pkill -f drug-agent)",
+      "Bash(curl -s \"http://localhost:8124/doc.html\")",
+      "Bash(kill 63966)"
     ]
   }
 }
