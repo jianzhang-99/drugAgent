@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useChatStore } from '@/stores/chatStore'
+import { useChatStore } from '@/module/agent/store/chatStore'
 import { ElInput, ElButton, ElDropdown, ElDropdownMenu, ElDropdownItem, ElEmpty, ElSpin } from 'element-plus'
 import { Search, Plus, MoreFilled, ChatDotRound, Delete, Edit } from '@element-plus/icons-vue'
 import { formatTime } from '@/utils/timeFormat'

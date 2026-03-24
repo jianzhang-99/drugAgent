@@ -1,4 +1,4 @@
-import request from './request'
+import request from '@/api/request'
 
 // ============================================================
 // 任务看板 API 模块

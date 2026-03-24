@@ -42,11 +42,11 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { RouterView, useRouter, useRoute } from 'vue-router'
-import AppSidebar from './components/layout/AppSidebar.vue'
-import AppHeader from './components/layout/AppHeader.vue'
-import TaskPane from './components/layout/TaskPane.vue'
-import { useSessionStore } from './stores/session'
-import { useTaskStore } from './stores/task'
+import AppSidebar from '../component/layout/AppSidebar.vue'
+import AppHeader from '../component/layout/AppHeader.vue'
+import TaskPane from '../component/layout/TaskPane.vue'
+import { useSessionStore } from '../module/agent/store/session'
+import { useTaskStore } from '../module/tender/store/task'
 
 const router = useRouter()
 const route = useRoute()

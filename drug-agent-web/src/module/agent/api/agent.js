@@ -1,4 +1,4 @@
-import request from './request'
+import request from '@/api/request'
 
 // ============================================================
 // 标书审查 API 模块

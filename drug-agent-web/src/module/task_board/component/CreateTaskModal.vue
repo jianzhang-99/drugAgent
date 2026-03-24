@@ -147,7 +147,7 @@
 <script setup>
 import { ref, reactive, watch } from 'vue'
 import { X, Loader } from 'lucide-vue-next'
-import { useTaskboardStore } from '@/stores/taskboard'
+import { useTaskboardStore } from '@/module/task_board/store/taskboard'
 
 const props = defineProps({
   visible: {

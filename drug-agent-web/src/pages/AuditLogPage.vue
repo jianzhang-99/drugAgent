@@ -29,7 +29,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import WorkspaceLayout from '../components/layout/WorkspaceLayout.vue'
+import WorkspaceLayout from '../component/layout/WorkspaceLayout.vue'
 import { getAuditLogs } from '../utils/local-state'
 import { formatTime } from '@/utils/timeFormat'
 

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { chatApi } from '@/services/chatApi'
+import { chatApi } from '@/module/agent/api/chatApi'
 
 /**
  * 会话状态管理

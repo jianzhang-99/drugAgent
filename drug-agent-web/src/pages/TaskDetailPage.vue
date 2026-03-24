@@ -191,10 +191,10 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import WorkspaceLayout from '../components/layout/WorkspaceLayout.vue'
-import EvidencePanel from '../components/EvidencePanel.vue'
-import ExecutionLog from '../components/ExecutionLog.vue'
-import { listTenderReviewCases, parseTenderDocument } from '../api/drug-agent'
+import WorkspaceLayout from '../component/layout/WorkspaceLayout.vue'
+import EvidencePanel from '../module/tender/component/EvidencePanel.vue'
+import ExecutionLog from '../module/agent/component/ExecutionLog.vue'
+import { listTenderReviewCases, parseTenderDocument } from '../module/agent/api/agent'
 import {
   appendAuditLog,
   getAuditLogs,

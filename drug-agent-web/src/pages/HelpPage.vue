@@ -32,7 +32,7 @@
 </template>
 
 <script setup>
-import WorkspaceLayout from '../components/layout/WorkspaceLayout.vue'
+import WorkspaceLayout from '../component/layout/WorkspaceLayout.vue'
 </script>
 
 <style scoped>

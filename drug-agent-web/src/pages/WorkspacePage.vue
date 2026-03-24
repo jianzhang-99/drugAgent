@@ -292,9 +292,9 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-vue-next'
-import { useSessionStore } from '@/stores/session'
-import { chatApi } from '@/services/chatApi'
-import { submitDrugAgentTask } from '@/api/drug-agent'
+import { useSessionStore } from '@/module/agent/store/session'
+import { chatApi } from '@/module/agent/api/chatApi'
+import { submitDrugAgentTask } from '@/module/agent/api/agent'
 
 const route = useRoute()
 const router = useRouter()

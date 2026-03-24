@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import * as taskboardApi from '@/api/taskboard'
+import * as taskboardApi from '@/module/task_board/api/taskboard'
 
 /**
  * 任务状态管理

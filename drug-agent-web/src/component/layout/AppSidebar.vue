@@ -128,7 +128,7 @@ import {
   ChevronRight,
   Trash2
 } from 'lucide-vue-next'
-import { useSessionStore } from '@/stores/session'
+import { useSessionStore } from '@/module/agent/store/session'
 
 const props = defineProps({
   collapsed: {

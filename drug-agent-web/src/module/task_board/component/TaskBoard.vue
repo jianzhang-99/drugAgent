@@ -130,7 +130,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { Loader, ChevronLeft, ChevronRight } from 'lucide-vue-next'
-import { useTaskboardStore } from '@/stores/taskboard'
+import { useTaskboardStore } from '@/module/task_board/store/taskboard'
 import TaskCard from './TaskCard.vue'
 import FilterBar from './FilterBar.vue'
 import StatsPanel from './StatsPanel.vue'

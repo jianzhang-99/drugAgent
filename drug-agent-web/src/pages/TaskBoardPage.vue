@@ -45,8 +45,8 @@
 <script setup>
 import { ref } from 'vue'
 import { Plus, BarChart3 } from 'lucide-vue-next'
-import TaskBoard from '@/components/taskboard/TaskBoard.vue'
-import CreateTaskModal from '@/components/taskboard/CreateTaskModal.vue'
+import TaskBoard from '@/module/task_board/component/TaskBoard.vue'
+import CreateTaskModal from '@/module/task_board/component/CreateTaskModal.vue'
 
 const showCreateModal = ref(false)
 const showExtendedStats = ref(false)
