@@ -1,6 +1,6 @@
 package com.liang.drugagent.controller.domain.response.tender_review;
 
-import com.liang.drugagent.scene.tender_review.model.TenderCaseStatus;
+import com.liang.drugagent.scene.tender_review.TenderCaseStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

@@ -2,13 +2,13 @@ package com.liang.drugagent.agent.route;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.liang.drugagent.agent.prompt.AgentPrompts;
+import com.liang.drugagent.agent.prompt.AgentPrompt;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.agent.chat.AgentChatContext;
 import com.liang.drugagent.controller.domain.request.agent.DrugAgentReq;
 import com.liang.drugagent.shared.domain.model.WorkflowRouteDecision;
-import com.liang.drugagent.shared.llm.LlmFacadeService;
-import com.liang.drugagent.shared.utils.CompletableFutureUtils;
+import com.liang.drugagent.shared.llm.LlmService;
+import com.liang.drugagent.agent.utils.CompletableFutureUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -37,12 +37,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AgentRouteService {
 
-    private static final String SYSTEM_PROMPT = AgentPrompts.SCENE_CLASSIFICATION;
+    private static final String SYSTEM_PROMPT = AgentPrompt.SCENE_CLASSIFICATION;
 
     private static final double HIGH_CONFIDENCE = 0.9;
     private static final double MEDIUM_CONFIDENCE = 0.7;
 
-    private final LlmFacadeService llmFacadeService;
+    private final LlmService llmService;
     private final RouteConfig routeConfig;
     private final ObjectMapper objectMapper;
 
@@ -325,7 +325,7 @@ public class AgentRouteService {
     private String callWithTimeout(String prompt, String systemPrompt, long timeoutMs) throws TimeoutException {
         try {
             return CompletableFutureUtils.executeWithTimeout(
-                    () -> llmFacadeService.chat(prompt, systemPrompt, "intent-routing"),
+                    () -> llmService.chat(prompt, systemPrompt, "intent-routing"),
                     timeoutMs
             );
         } catch (java.util.concurrent.TimeoutException e) {

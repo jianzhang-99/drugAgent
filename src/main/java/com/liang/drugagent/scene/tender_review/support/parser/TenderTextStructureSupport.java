@@ -1,50 +1,47 @@
 package com.liang.drugagent.scene.tender_review.support.parser;
 
+import com.liang.drugagent.tool.document.support.DocumentSectionRecognizer;
+import com.liang.drugagent.tool.document.support.DocumentTextNormalizer;
 import com.liang.drugagent.scene.tender_review.model.Block;
 import com.liang.drugagent.scene.tender_review.model.Field;
 import com.liang.drugagent.scene.tender_review.model.TenderDocumentParseResult;
 import com.liang.drugagent.scene.tender_review.model.TenderSectionNode;
+import com.liang.drugagent.scene.tender_review.support.extractor.TenderFieldExtractor;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
-/** 文本结构化支持（字段提取、规范化、章节识别）。 */
+/**
+ * 文本结构化支持（字段提取、规范化、章节识别）。
+ *
+ * <p>已重构：通用文本处理委托给 core/document 层，
+ * 招采领域字段抽取委托给 TenderFieldExtractor。</p>
+ *
+ * @author liangjiajian
+ */
 @Component
 public class TenderTextStructureSupport {
 
-    /** 中文数字（一～十）。 */
-    private static final Set<Character> CHINESE_NUMERALS = Set.of(
-            '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'
-    );
-    /** 章节分隔符。 */
-    private static final Set<Character> SECTION_SEPARATORS = Set.of('、', ' ', '\u3000');
-
-    private static final Pattern PHONE_PATTERN = Pattern.compile("1[3-9]\\d{9}");
-    private static final Pattern EMAIL_PATTERN =
-            Pattern.compile("[\\w.+\\-]+@[\\w\\-]+\\.[a-zA-Z]{2,}");
-    private static final Pattern PRICE_MULTI = Pattern.compile("报价|合计|金额");
-    private static final Pattern TEAM_KEYWORDS =
-            Pattern.compile("项目经理|技术负责人|成员|工程师");
-    private static final Pattern PRICE_NUMBER_PATTERN =
-            Pattern.compile("[¥￥]?[\\d,，]+(?:\\.\\d+)?\\s*(?:万?元|万)|[¥￥][\\d,，]+(?:\\.\\d+)?");
-    private static final Pattern TEAM_NAME_PATTERN =
-            Pattern.compile("(项目经理|技术负责人|工程师|成员)[：:：]\\s*([\\u4e00-\\u9fa5]{2,4})");
-
     static final String SCHEMA_VERSION = "tender-review-struct-v1";
-    static final String PARSER_VERSION = "v1.1.0";
+    static final String PARSER_VERSION = "v1.2.0";
+
+    private final DocumentTextNormalizer textNormalizer;
+    private final DocumentSectionRecognizer sectionRecognizer;
+    private final TenderFieldExtractor fieldExtractor;
+
+    public TenderTextStructureSupport(DocumentTextNormalizer textNormalizer,
+                                      DocumentSectionRecognizer sectionRecognizer,
+                                      TenderFieldExtractor fieldExtractor) {
+        this.textNormalizer = textNormalizer;
+        this.sectionRecognizer = sectionRecognizer;
+        this.fieldExtractor = fieldExtractor;
+    }
 
     /**
      * 从段落列表构建解析结果。
-     *
-     * @param paragraphs   段落列表
-     * @param docId        文档 ID
-     * @param parserVersion 解析器版本
-     * @return 解析结果
      */
     public TenderDocumentParseResult buildFromParagraphs(List<String> paragraphs, String docId, String parserVersion) {
         List<Block> paragraphBlocks = new ArrayList<>();
@@ -80,10 +77,10 @@ public class TenderTextStructureSupport {
                     .anchorParagraphIndex(i)
                     .anchorParagraphNo(i + 1)
                     .anchorTableIndex(-1)
-                    .featureTags(detectFieldTags(content))
+                    .featureTags(fieldExtractor.detectFieldTags(content))
                     .build();
             paragraphBlocks.add(block);
-            fields.addAll(extractFieldsFromBlock(block));
+            fields.addAll(convertToFields(fieldExtractor.extractFields(content, docId, block.getBlockId(), currentChapter[0]), block));
         }
 
         return TenderDocumentParseResult.builder()
@@ -98,89 +95,27 @@ public class TenderTextStructureSupport {
                 .build();
     }
 
-    /** 从 Block 中提取结构化字段（电话、邮箱、报价、团队成员）。 */
+    /**
+     * 从 Block 中提取结构化字段（委托给 TenderFieldExtractor）。
+     */
     public List<Field> extractFieldsFromBlock(Block block) {
-        List<Field> result = new ArrayList<>();
-        String content = block.getContent();
-        if (content == null || content.isBlank()) return result;
-
-        Matcher phoneMatcher = PHONE_PATTERN.matcher(content);
-        while (phoneMatcher.find()) {
-            String value = phoneMatcher.group();
-            result.add(buildField(block, "contact_phone", "联系电话", value,
-                    value, "phone:" + value, 0.99));
-        }
-
-        Matcher emailMatcher = EMAIL_PATTERN.matcher(content);
-        while (emailMatcher.find()) {
-            String value = emailMatcher.group();
-            result.add(buildField(block, "contact_email", "联系邮箱", value,
-                    value.toLowerCase(), "email:" + value.toLowerCase(), 0.99));
-        }
-
-        Matcher priceMatcher = PRICE_NUMBER_PATTERN.matcher(content);
-        while (priceMatcher.find()) {
-            String value = priceMatcher.group();
-            String normalized = value.replaceAll("[¥￥,，元万]", "").trim();
-            result.add(buildField(block, "bid_price", "投标报价", value,
-                    normalized, "quote_total:" + normalized, 0.85));
-        }
-        if (result.stream().noneMatch(f -> "bid_price".equals(f.getFieldType()))
-                && PRICE_MULTI.matcher(content).find()) {
-            result.add(buildField(block, "bid_price", "投标报价", content,
-                    "", "quote_total:", 0.60));
-        }
-
-        Matcher teamMatcher = TEAM_NAME_PATTERN.matcher(content);
-        while (teamMatcher.find()) {
-            String role = teamMatcher.group(1);
-            String name = teamMatcher.group(2);
-            result.add(buildField(block, "team_member", role, name,
-                    name, "person:" + name, 0.90));
-        }
-
-        return result;
+        return convertToFields(
+                fieldExtractor.extractFields(block.getContent(), block.getDocumentId(), block.getBlockId(), block.getChapterPath()),
+                block
+        );
     }
 
-    /** 规范化文本：去首尾空格，合并连续空白符。 */
-    public String normalizeText(String raw) {
-        if (raw == null) return "";
-        return raw.trim().replaceAll("\\s+", " ");
-    }
-
-    /** 判断是否为章节标题（如"一、xxx"）。 */
-    public boolean isSectionHeader(String content) {
-        if (content == null || content.length() < 2) return false;
-        char first = content.charAt(0);
-        char second = content.charAt(1);
-        return CHINESE_NUMERALS.contains(first) && SECTION_SEPARATORS.contains(second);
-    }
-
-    /** 检测内容中包含的字段类型标签。 */
-    public List<String> detectFieldTags(String content) {
-        List<String> tags = new ArrayList<>();
-        if (content == null || content.isBlank()) return tags;
-        if (PHONE_PATTERN.matcher(content).find()) tags.add("PHONE_FIELD");
-        if (EMAIL_PATTERN.matcher(content).find()) tags.add("EMAIL_FIELD");
-        if (PRICE_MULTI.matcher(content).find() || content.contains("元")) tags.add("PRICE_FIELD");
-        if (TEAM_KEYWORDS.matcher(content).find()) tags.add("TEAM_FIELD");
-        return tags;
-    }
-
-    /** 构建 Field 对象。 */
-    private Field buildField(Block block, String fieldType, String fieldName,
-                             String fieldValue, String normalizedValue,
-                             String normalizedKey, double confidence) {
-        return Field.builder()
-                .fieldId(UUID.randomUUID().toString())
-                .documentId(block.getDocumentId())
-                .blockId(block.getBlockId())
-                .fieldType(fieldType)
-                .fieldName(fieldName)
-                .fieldValue(fieldValue)
-                .normalizedValue(normalizedValue)
-                .normalizedKey(normalizedKey)
-                .chapterPath(block.getChapterPath())
+    private List<Field> convertToFields(List<TenderFieldExtractor.TenderField> tenderFields, Block block) {
+        return tenderFields.stream().map(tf -> Field.builder()
+                .fieldId(tf.getFieldId())
+                .documentId(tf.getDocumentId())
+                .blockId(tf.getBlockId())
+                .fieldType(tf.getFieldType())
+                .fieldName(tf.getFieldName())
+                .fieldValue(tf.getFieldValue())
+                .normalizedValue(tf.getNormalizedValue())
+                .normalizedKey(tf.getNormalizedKey())
+                .chapterPath(tf.getChapterPath())
                 .anchorChapterPath(block.getAnchorChapterPath())
                 .anchorParagraphIndex(block.getAnchorParagraphIndex())
                 .anchorTableIndex(block.getAnchorTableIndex())
@@ -188,11 +123,26 @@ public class TenderTextStructureSupport {
                 .anchorSectionNo(block.getAnchorSectionNo())
                 .anchorParagraphNo(block.getAnchorParagraphNo())
                 .anchorTableNo(block.getAnchorTableNo())
-                .confidence(confidence)
-                .build();
+                .confidence(tf.getConfidence())
+                .build())
+                .collect(Collectors.toList());
     }
 
-    /** null 返回空字符串。 */
+    /** 规范化文本。委托给 DocumentTextNormalizer。 */
+    public String normalizeText(String raw) {
+        return textNormalizer.normalize(raw);
+    }
+
+    /** 判断是否为章节标题。委托给 DocumentSectionRecognizer。 */
+    public boolean isSectionHeader(String content) {
+        return sectionRecognizer.isSectionHeader(content);
+    }
+
+    /** 检测字段类型标签。委托给 TenderFieldExtractor。 */
+    public List<String> detectFieldTags(String content) {
+        return fieldExtractor.detectFieldTags(content);
+    }
+
     private String defaultString(String value) {
         return value == null ? "" : value;
     }

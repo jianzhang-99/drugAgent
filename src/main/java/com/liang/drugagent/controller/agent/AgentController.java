@@ -3,11 +3,10 @@ package com.liang.drugagent.controller.agent;
 import com.liang.drugagent.agent.chat.AgentChatService;
 import com.liang.drugagent.controller.domain.request.agent.DrugAgentReq;
 import com.liang.drugagent.controller.domain.response.agent.DrugAgentResp;
-import com.liang.drugagent.scene.common.service.ChatMessageService;
-import com.liang.drugagent.scene.common.service.ChatSessionService;
+import com.liang.drugagent.scene.common.service.ChatMemoryService;
 import com.liang.drugagent.shared.domain.response.Result;
-import com.liang.drugagent.thirdparty.db.entity.ChatMessage;
-import com.liang.drugagent.thirdparty.db.entity.ChatSession;
+import com.liang.drugagent.scene.common.entity.ChatMessage;
+import com.liang.drugagent.scene.common.entity.ChatSession;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -44,8 +43,7 @@ public class AgentController {
     private static final String DEFAULT_USER_ID = "default_user";
 
     private final AgentChatService agentChatService;
-    private final ChatSessionService chatSessionService;
-    private final ChatMessageService chatMessageService;
+    private final ChatMemoryService chatMemoryService;
 
     // ==================== AI 对话接口 ====================
 
@@ -92,7 +90,7 @@ public class AgentController {
     @Operation(summary = "获取所有会话列表")
     @GetMapping("/sessions")
     public Result<List<ChatSession>> getAllSessions() {
-        List<ChatSession> sessions = chatSessionService.getSessionsByUserId(DEFAULT_USER_ID);
+        List<ChatSession> sessions = chatMemoryService.getSessionsByUserId(DEFAULT_USER_ID);
         return Result.success(sessions);
     }
 
@@ -100,7 +98,7 @@ public class AgentController {
     @GetMapping("/sessions/{id}")
     public Result<ChatSession> getSessionById(
             @Parameter(description = "会话ID") @PathVariable String id) {
-        ChatSession session = chatSessionService.getSessionWithMessages(id);
+        ChatSession session = chatMemoryService.getSessionWithMessages(id);
         if (session == null) {
             return Result.error("会话不存在");
         }
@@ -112,7 +110,7 @@ public class AgentController {
     public Result<ChatSession> createSession(@RequestBody Map<String, String> request) {
         String title = request.getOrDefault("title", "新对话");
         String scene = request.getOrDefault("scene", "general");
-        ChatSession session = chatSessionService.createSession(title, scene, DEFAULT_USER_ID);
+        ChatSession session = chatMemoryService.createSession(title, scene, DEFAULT_USER_ID);
         return Result.success(session);
     }
 
@@ -122,7 +120,7 @@ public class AgentController {
             @Parameter(description = "会话ID") @PathVariable String id,
             @RequestBody Map<String, String> request) {
         String title = request.get("title");
-        chatSessionService.updateSessionTitle(id, title);
+        chatMemoryService.updateSessionTitle(id, title);
         return Result.success(null);
     }
 
@@ -130,7 +128,7 @@ public class AgentController {
     @DeleteMapping("/sessions/{id}")
     public Result<Void> deleteSession(
             @Parameter(description = "会话ID") @PathVariable String id) {
-        chatSessionService.deleteSession(id);
+        chatMemoryService.deleteSession(id);
         return Result.success(null);
     }
 
@@ -138,7 +136,7 @@ public class AgentController {
     @GetMapping("/sessions/search")
     public Result<List<ChatSession>> searchSessions(
             @Parameter(description = "搜索关键词") @RequestParam String q) {
-        List<ChatSession> sessions = chatSessionService.searchSessions(DEFAULT_USER_ID, q);
+        List<ChatSession> sessions = chatMemoryService.searchSessions(DEFAULT_USER_ID, q);
         return Result.success(sessions);
     }
 
@@ -146,7 +144,7 @@ public class AgentController {
     @GetMapping("/sessions/{sessionId}/messages")
     public Result<List<ChatMessage>> getMessages(
             @Parameter(description = "会话ID") @PathVariable String sessionId) {
-        List<ChatMessage> messages = chatMessageService.getMessagesBySessionId(sessionId);
+        List<ChatMessage> messages = chatMemoryService.getMessagesBySessionId(sessionId);
         return Result.success(messages);
     }
 
@@ -159,7 +157,7 @@ public class AgentController {
         String content = request.get("content");
         String metadata = request.get("metadata");
 
-        chatMessageService.addMessage(sessionId, role, content, metadata);
+        chatMemoryService.addMessage(sessionId, role, content, metadata);
 
         DrugAgentResp aiResponse = null;
         if ("user".equals(role)) {
@@ -168,7 +166,7 @@ public class AgentController {
                     .query(content)
                     .build();
             aiResponse = agentChatService.handleChat(req);
-            chatMessageService.addMessage(sessionId, "assistant", aiResponse.getAnswer(), null);
+            chatMemoryService.addMessage(sessionId, "assistant", aiResponse.getAnswer(), null);
         }
 
         Map<String, Object> response = new java.util.LinkedHashMap<>();

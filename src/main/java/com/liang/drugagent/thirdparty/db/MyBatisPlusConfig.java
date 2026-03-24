@@ -12,7 +12,10 @@ import org.springframework.context.annotation.Configuration;
 import java.time.LocalDateTime;
 
 @Configuration
-@MapperScan("com.liang.drugagent.thirdparty.db")
+@MapperScan({
+        "com.liang.drugagent.thirdparty.db",
+        "com.liang.drugagent.scene.common.mapper"
+})
 public class MyBatisPlusConfig implements MetaObjectHandler {
 
     @Bean

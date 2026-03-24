@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.liang.drugagent.scene.common.mapper.TaskCardMapper">
+
+    <select id="countTodayNew" resultType="int">
+        SELECT COUNT(*)
+        FROM task_card
+        WHERE DATE(created_at) = CURDATE()
+          AND is_deleted = 0
+    </select>
+
+    <select id="countTodayCompleted" resultType="int">
+        SELECT COUNT(*)
+        FROM task_card
+        WHERE DATE(completed_at) = CURDATE()
+          AND status = 'COMPLETED'
+          AND is_deleted = 0
+    </select>
+
+    <select id="findTopHighRiskTasks"
+            resultType="com.liang.drugagent.scene.common.entity.TaskCard">
+        SELECT id,
+               case_id,
+               task_name,
+               task_type,
+               scene,
+               status,
+               progress,
+               current_step,
+               risk_level,
+               risk_tags,
+               submitted_by,
+               assigned_to,
+               priority,
+               deadline,
+               score,
+               summary,
+               hit_rules,
+               created_at,
+               updated_at,
+               started_at,
+               completed_at,
+               is_deleted,
+               delete_reason
+        FROM task_card
+        WHERE risk_level = 'HIGH'
+          AND status != 'COMPLETED'
+          AND is_deleted = 0
+        ORDER BY priority ASC, created_at DESC
+        LIMIT 5
+    </select>
+
+    <select id="findUpcomingDeadlineTasks"
+            resultType="com.liang.drugagent.scene.common.entity.TaskCard">
+        SELECT id,
+               case_id,
+               task_name,
+               task_type,
+               scene,
+               status,
+               progress,
+               current_step,
+               risk_level,
+               risk_tags,
+               submitted_by,
+               assigned_to,
+               priority,
+               deadline,
+               score,
+               summary,
+               hit_rules,
+               created_at,
+               updated_at,
+               started_at,
+               completed_at,
+               is_deleted,
+               delete_reason
+        FROM task_card
+        WHERE deadline IS NOT NULL
+          AND deadline &lt;= DATE_ADD(CURDATE(), INTERVAL 3 DAY)
+          AND deadline >= CURDATE()
+          AND status NOT IN ('COMPLETED', 'FAILED', 'CANCELLED')
+          AND is_deleted = 0
+        ORDER BY deadline ASC
+        LIMIT 5
+    </select>
+
+</mapper>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.liang.drugagent.scene.common.mapper.ChatMessageMapper">
+
+    <select id="findByConversationIdOrderByCreatedAtDesc"
+            resultType="com.liang.drugagent.scene.common.entity.ChatMessage">
+        SELECT id,
+               session_id,
+               role,
+               content,
+               metadata,
+               created_at
+        FROM chat_message
+        WHERE session_id = #{sessionId}
+        ORDER BY created_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <delete id="deleteByConversationId">
+        DELETE FROM chat_message
+        WHERE session_id = #{sessionId}
+    </delete>
+
+</mapper>

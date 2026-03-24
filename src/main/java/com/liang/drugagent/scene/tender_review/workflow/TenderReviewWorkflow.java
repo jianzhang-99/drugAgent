@@ -2,19 +2,21 @@ package com.liang.drugagent.scene.tender_review.workflow;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.liang.drugagent.agent.chat.AgentChatContext;
-import com.liang.drugagent.scene.SceneWorkflow;
-import com.liang.drugagent.scene.tender_review.model.*;
-import com.liang.drugagent.shared.domain.model.EvidenceItem;
-import com.liang.drugagent.shared.domain.model.ReviewReport;
-import com.liang.drugagent.shared.domain.model.WorkflowResult;
 import com.liang.drugagent.scene.SceneEnum;
-import com.liang.drugagent.scene.common.service.AgentChatService;
+import com.liang.drugagent.scene.SceneWorkflow;
+import com.liang.drugagent.scene.common.service.ChatService;
+import com.liang.drugagent.scene.tender_review.model.RiskFusionResult;
+import com.liang.drugagent.scene.tender_review.model.RuleHit;
+import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
 import com.liang.drugagent.scene.tender_review.service.EvidenceAssemblerService;
 import com.liang.drugagent.scene.tender_review.service.ReportGenerationService;
 import com.liang.drugagent.scene.tender_review.service.RiskFusionService;
 import com.liang.drugagent.scene.tender_review.support.TenderExemptionEngine;
 import com.liang.drugagent.scene.tender_review.support.TenderRuleEngine;
-import com.liang.drugagent.scene.tender_review.support.parser.TenderReviewDataResolver;
+import com.liang.drugagent.scene.tender_review.support.assembler.TenderReviewDataAssembler;
+import com.liang.drugagent.shared.domain.model.EvidenceItem;
+import com.liang.drugagent.shared.domain.model.ReviewReport;
+import com.liang.drugagent.shared.domain.model.WorkflowResult;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -29,24 +31,24 @@ import java.util.Map;
 @Component
 public class TenderReviewWorkflow implements SceneWorkflow {
 
-    private final AgentChatService agentChatService;
+    private final ChatService chatService;
     private final TenderRuleEngine tenderRuleEngine;
     private final TenderExemptionEngine tenderExemptionEngine;
     private final RiskFusionService riskFusionService;
     private final EvidenceAssemblerService evidenceAssemblerService;
     private final ReportGenerationService reportGenerationService;
     private final ObjectMapper objectMapper;
-    private final TenderReviewDataResolver tenderReviewDataResolver;
+    private final TenderReviewDataAssembler tenderReviewDataResolver;
 
-    public TenderReviewWorkflow(AgentChatService agentChatService,
+    public TenderReviewWorkflow(ChatService chatService,
                                 TenderRuleEngine tenderRuleEngine,
                                 TenderExemptionEngine tenderExemptionEngine,
                                 RiskFusionService riskFusionService,
                                 EvidenceAssemblerService evidenceAssemblerService,
                                 ReportGenerationService reportGenerationService,
                                 ObjectMapper objectMapper,
-                                TenderReviewDataResolver tenderReviewDataResolver) {
-        this.agentChatService = agentChatService;
+                                TenderReviewDataAssembler tenderReviewDataResolver) {
+        this.chatService = chatService;
         this.tenderRuleEngine = tenderRuleEngine;
         this.tenderExemptionEngine = tenderExemptionEngine;
         this.riskFusionService = riskFusionService;
@@ -86,7 +88,7 @@ public class TenderReviewWorkflow implements SceneWorkflow {
             return executeRuleFlow(tenderReviewData);
         }
 
-        String answer = agentChatService.chatWithScene(context.getQuery(), "default", context.getSessionId());
+        String answer = chatService.chatWithScene(context.getQuery(), "default", context.getSessionId());
         WorkflowResult result = WorkflowResult.of(SceneEnum.TENDER_REVIEW, answer);
         result.setRiskLevel("NONE");
         result.setScore(0);

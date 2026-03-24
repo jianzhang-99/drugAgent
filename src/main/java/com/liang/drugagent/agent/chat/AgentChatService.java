@@ -5,8 +5,7 @@ import com.liang.drugagent.controller.domain.request.agent.DrugAgentReq;
 import com.liang.drugagent.controller.domain.response.agent.DrugAgentResp;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.scene.SceneWorkflow;
-import com.liang.drugagent.scene.common.service.ChatMessageService;
-import com.liang.drugagent.scene.common.service.ChatSessionService;
+import com.liang.drugagent.scene.common.service.ChatMemoryService;
 import com.liang.drugagent.scene.tender_review.model.TenderDocument;
 import com.liang.drugagent.scene.tender_review.model.TenderCase;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
@@ -15,7 +14,7 @@ import com.liang.drugagent.scene.tender_review.model.CompareScope;
 import com.liang.drugagent.scene.tender_review.service.TenderCaseService;
 import com.liang.drugagent.scene.tender_review.service.TenderDocumentParseService;
 import com.liang.drugagent.controller.domain.request.tender_review.TenderCaseCreateReq;
-import com.liang.drugagent.thirdparty.db.entity.ChatSession;
+import com.liang.drugagent.scene.common.entity.ChatSession;
 import com.liang.drugagent.shared.domain.model.WorkflowRouteDecision;
 import com.liang.drugagent.shared.domain.model.WorkflowResult;
 import lombok.RequiredArgsConstructor;
@@ -44,8 +43,7 @@ public class AgentChatService {
 
     private final AgentRouteService agentRouteService;
     private final WorkflowRegistryService workflowRegistryService;
-    private final ChatSessionService chatSessionService;
-    private final ChatMessageService chatMessageService;
+    private final ChatMemoryService chatMemoryService;
     private final TenderCaseService tenderCaseService;
     private final TenderDocumentParseService tenderDocumentParseService;
 
@@ -152,7 +150,7 @@ public class AgentChatService {
         sessionId = chatSession.getId();
 
         String fileNamesJson = buildFileNamesJson(files);
-        chatMessageService.addMessage(sessionId, "user", query, fileNamesJson);
+        chatMemoryService.addMessage(sessionId, "user", query, fileNamesJson);
 
         DrugAgentReq req = buildDrugAgentReq(query, sceneHint, sessionId, userId, files);
 
@@ -167,7 +165,7 @@ public class AgentChatService {
 
             DrugAgentResp resp = executeWorkflow(context, decision);
 
-            chatMessageService.addMessage(sessionId, "assistant",
+            chatMemoryService.addMessage(sessionId, "assistant",
                     resp.getAnswer() != null ? resp.getAnswer() : resp.getSummary(), null);
 
             updateSessionTitle(sessionId, query, chatSession);
@@ -258,12 +256,12 @@ public class AgentChatService {
 
     private ChatSession getOrCreateSession(String sessionId, String sceneHint, String userId) {
         if (sessionId != null && !sessionId.isBlank()) {
-            ChatSession session = chatSessionService.getById(sessionId);
+            ChatSession session = chatMemoryService.getById(sessionId);
             if (session != null) {
                 return session;
             }
         }
-        return chatSessionService.createSession("新对话", sceneHint, userId);
+        return chatMemoryService.createSession("新对话", sceneHint, userId);
     }
 
     private String buildFileNamesJson(MultipartFile[] files) {
@@ -420,7 +418,7 @@ public class AgentChatService {
     private void updateSessionTitle(String sessionId, String query, ChatSession chatSession) {
         if (query != null && !query.isBlank() && chatSession.getTitle().equals("新对话")) {
             String title = query.length() > 20 ? query.substring(0, 20) + "..." : query;
-            chatSessionService.updateSessionTitle(sessionId, title);
+            chatMemoryService.updateSessionTitle(sessionId, title);
         }
     }
 

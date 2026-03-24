@@ -5,7 +5,7 @@ import com.liang.drugagent.scene.SceneWorkflow;
 import com.liang.drugagent.shared.domain.model.EvidenceItem;
 import com.liang.drugagent.shared.domain.model.WorkflowResult;
 import com.liang.drugagent.scene.SceneEnum;
-import com.liang.drugagent.scene.common.service.AgentChatService;
+import com.liang.drugagent.scene.common.service.ChatService;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -19,10 +19,10 @@ import java.util.List;
 @Component
 public class ContractPrecheckWorkflow implements SceneWorkflow {
 
-    private final AgentChatService agentChatService;
+    private final ChatService chatService;
 
-    public ContractPrecheckWorkflow(AgentChatService agentChatService) {
-        this.agentChatService = agentChatService;
+    public ContractPrecheckWorkflow(ChatService chatService) {
+        this.chatService = chatService;
     }
 
     /**
@@ -44,7 +44,7 @@ public class ContractPrecheckWorkflow implements SceneWorkflow {
      */
     @Override
     public WorkflowResult execute(AgentChatContext context) {
-        String answer = agentChatService.chatWithScene(
+        String answer = chatService.chatWithScene(
                 context.getQuery(),
                 "compliance_review",
                 context.getSessionId()
