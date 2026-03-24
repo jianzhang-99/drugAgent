@@ -1,14 +1,14 @@
 package com.liang.drugagent.scene.tender_review.workflow;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.liang.drugagent.agent.AgentContext;
-import com.liang.drugagent.agent.SceneWorkflow;
+import com.liang.drugagent.agent.chat.AgentChatContext;
+import com.liang.drugagent.scene.SceneWorkflow;
 import com.liang.drugagent.scene.tender_review.model.*;
 import com.liang.drugagent.shared.domain.model.EvidenceItem;
 import com.liang.drugagent.shared.domain.model.ReviewReport;
 import com.liang.drugagent.shared.domain.model.WorkflowResult;
-import com.liang.drugagent.agent.SceneEnum;
-import com.liang.drugagent.scene.qa.service.AgentChatService;
+import com.liang.drugagent.scene.SceneEnum;
+import com.liang.drugagent.scene.common.service.AgentChatService;
 import com.liang.drugagent.scene.tender_review.service.EvidenceAssemblerService;
 import com.liang.drugagent.scene.tender_review.service.ReportGenerationService;
 import com.liang.drugagent.scene.tender_review.service.RiskFusionService;
@@ -80,7 +80,7 @@ public class TenderReviewWorkflow implements SceneWorkflow {
      * @return 工作流执行结果
      */
     @Override
-    public WorkflowResult execute(AgentContext context) {
+    public WorkflowResult execute(AgentChatContext context) {
         TenderReviewData tenderReviewData = readTenderReviewData(context);
         if (tenderReviewData != null) {
             return executeRuleFlow(tenderReviewData);
@@ -105,32 +105,31 @@ public class TenderReviewWorkflow implements SceneWorkflow {
      */
     private WorkflowResult executeRuleFlow(TenderReviewData tenderReviewData) {
         // 规则执行
-        RuleResult ruleResult = tenderRuleEngine.execute(tenderReviewData);
+        List<RuleHit> allHits = tenderRuleEngine.execute(tenderReviewData);
 
         // 免责判定
-        ExemptionResult exemptionResult = tenderExemptionEngine.apply(ruleResult.getHits(), tenderReviewData);
-        List<RuleHit> effectiveHits = exemptionResult.getEffectiveHits();
+        var exemptionResult = tenderExemptionEngine.apply(allHits, tenderReviewData);
 
         // 风险融合
         RiskFusionResult fusionResult = riskFusionService.fuse(
                 tenderReviewData,
-                effectiveHits,
-                exemptionResult.getExemptionHits()
+                exemptionResult.effectiveHits(),
+                exemptionResult.exemptionHits()
         );
 
         // 证据组装
         var evidenceAssemblyResult = evidenceAssemblerService.assemble(
-                effectiveHits,
-                exemptionResult.getExemptionHits(),
+                exemptionResult.effectiveHits(),
+                exemptionResult.exemptionHits(),
                 fusionResult
         );
 
         // 报告生成
         ReviewReport report = reportGenerationService.generate(
                 tenderReviewData,
-                ruleResult.getHits(),
-                effectiveHits,
-                exemptionResult.getExemptionHits(),
+                allHits,
+                exemptionResult.effectiveHits(),
+                exemptionResult.exemptionHits(),
                 fusionResult,
                 evidenceAssemblyResult
         );
@@ -157,7 +156,7 @@ public class TenderReviewWorkflow implements SceneWorkflow {
      * @param context Agent 上下文
      * @return 标书审查数据（如果能获取到）
      */
-    private TenderReviewData readTenderReviewData(AgentContext context) {
+    private TenderReviewData readTenderReviewData(AgentChatContext context) {
         TenderReviewData resolved = tenderReviewDataResolver.resolve(context);
         if (resolved != null) {
             return resolved;

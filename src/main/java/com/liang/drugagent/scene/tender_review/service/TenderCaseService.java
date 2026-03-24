@@ -153,11 +153,7 @@ public class TenderCaseService {
         store.saveCase(tenderCase);
 
         // 调用规则引擎执行所有规则检查
-        RuleResult ruleResult = ruleEngine.execute(reviewData);
-        List<RuleHit> allHits = ruleResult.getHits();
-        if (allHits == null) {
-            allHits = new ArrayList<>();
-        }
+        List<RuleHit> allHits = ruleEngine.execute(reviewData);
 
         // 计算综合评分和风险等级
         int totalScore = 0;

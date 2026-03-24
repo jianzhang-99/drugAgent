@@ -1,10 +1,10 @@
 package com.liang.drugagent.controller.agent;
 
-import com.liang.drugagent.agent.AgentApplicationService;
+import com.liang.drugagent.agent.chat.AgentChatService;
 import com.liang.drugagent.controller.domain.request.agent.DrugAgentReq;
 import com.liang.drugagent.controller.domain.response.agent.DrugAgentResp;
-import com.liang.drugagent.scene.qa.service.ChatMessageService;
-import com.liang.drugagent.scene.qa.service.ChatSessionService;
+import com.liang.drugagent.scene.common.service.ChatMessageService;
+import com.liang.drugagent.scene.common.service.ChatSessionService;
 import com.liang.drugagent.shared.domain.response.Result;
 import com.liang.drugagent.thirdparty.db.entity.ChatMessage;
 import com.liang.drugagent.thirdparty.db.entity.ChatSession;
@@ -43,7 +43,7 @@ public class AgentController {
     private static final Logger log = LoggerFactory.getLogger(AgentController.class);
     private static final String DEFAULT_USER_ID = "default_user";
 
-    private final AgentApplicationService agentApplicationService;
+    private final AgentChatService agentChatService;
     private final ChatSessionService chatSessionService;
     private final ChatMessageService chatMessageService;
 
@@ -59,7 +59,7 @@ public class AgentController {
         }
         log.info("Receive sync chat request: sessionId={}, userId={}, queryLength={}",
                 req.getSessionId(), req.getUserId(), req.getQuery() == null ? 0 : req.getQuery().length());
-        return Result.success(agentApplicationService.handleChat(req));
+        return Result.success(agentChatService.handleChat(req));
     }
 
     @Operation(summary = "文件上传对话")
@@ -74,7 +74,7 @@ public class AgentController {
         if (files == null || files.length == 0) {
             return Result.error("请至少上传一个文件");
         }
-        return Result.success(agentApplicationService.handleFileUpload(query, sceneHint, sessionId, userId, submittedBy, files));
+        return Result.success(agentChatService.handleFileUpload(query, sceneHint, sessionId, userId, submittedBy, files));
     }
 
     @Operation(summary = "流式对话")
@@ -84,7 +84,7 @@ public class AgentController {
                 req == null ? null : req.getSessionId(),
                 req == null ? null : req.getUserId(),
                 req == null || req.getQuery() == null ? 0 : req.getQuery().length());
-        return agentApplicationService.handleStreamChat(req);
+        return agentChatService.handleStreamChat(req);
     }
 
     // ==================== 会话管理接口 ====================
@@ -167,7 +167,7 @@ public class AgentController {
                     .sessionId(sessionId)
                     .query(content)
                     .build();
-            aiResponse = agentApplicationService.handleChat(req);
+            aiResponse = agentChatService.handleChat(req);
             chatMessageService.addMessage(sessionId, "assistant", aiResponse.getAnswer(), null);
         }
 

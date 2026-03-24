@@ -43,7 +43,12 @@ public abstract class AbstractTenderExecutor implements TenderRuleExecutor {
         evidence.setBlockId(field.getBlockId());
         evidence.setMatchedValue(field.getNormalizedValue());
         evidence.setChapterPath(field.getChapterPath());
-        evidence.setAnchor(field.getAnchor());
+        evidence.setAnchorParagraphIndex(field.getAnchorParagraphIndex());
+        evidence.setAnchorTableIndex(field.getAnchorTableIndex());
+        evidence.setAnchorPageNo(field.getAnchorPageNo());
+        evidence.setAnchorSectionNo(field.getAnchorSectionNo());
+        evidence.setAnchorParagraphNo(field.getAnchorParagraphNo());
+        evidence.setAnchorTableNo(field.getAnchorTableNo());
         return evidence;
     }
 

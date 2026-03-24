@@ -1,7 +1,7 @@
 package com.liang.drugagent.shared.rag;
 
-import com.liang.drugagent.agent.AgentContext;
-import com.liang.drugagent.agent.SceneEnum;
+import com.liang.drugagent.agent.chat.AgentChatContext;
+import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.shared.domain.model.EvidenceItem;
 import com.liang.drugagent.shared.domain.model.RagOutcome;
 import com.liang.drugagent.controller.domain.request.knowledge.KnowledgeAskReq;
@@ -24,7 +24,7 @@ public class WorkflowRagAdapter {
         this.knowledgeRagService = knowledgeRagService;
     }
 
-    public RagOutcome ask(AgentContext context, SceneEnum sceneEnum) {
+    public RagOutcome ask(AgentChatContext context, SceneEnum sceneEnum) {
         KnowledgeAskReq req = new KnowledgeAskReq();
         req.setQuestion(context.getQuery());
         req.setScene(sceneEnum.name());
@@ -60,7 +60,7 @@ public class WorkflowRagAdapter {
         return evidence;
     }
 
-    private String resolveOrgId(AgentContext context) {
+    private String resolveOrgId(AgentChatContext context) {
         String fromMetadata = readMetadata(context, "orgId");
         if (fromMetadata != null && !fromMetadata.isBlank()) {
             return fromMetadata;
@@ -70,7 +70,7 @@ public class WorkflowRagAdapter {
                 : context.getUserId();
     }
 
-    private String readMetadata(AgentContext context, String key) {
+    private String readMetadata(AgentChatContext context, String key) {
         Object v = context.getMetadata() == null ? null : context.getMetadata().get(key);
         return v == null ? null : String.valueOf(v);
     }

@@ -30,8 +30,12 @@ public class TenderDocumentParseResult {
     /** 结构化字段列表（从段落/表格中提取） */
     private List<Field> fields;
 
-    /** 解析元信息 */
-    private ExtractionMeta extractionMeta;
+    /** 结构化数据 schema 版本。 */
+    private String schemaVersion;
+    /** 解析器版本。 */
+    private String parserVersion;
+    /** 本次解析是否成功。 */
+    private Boolean parseSuccess;
 
     public int getParagraphCount() {
         return paragraphBlocks == null ? 0 : paragraphBlocks.size();

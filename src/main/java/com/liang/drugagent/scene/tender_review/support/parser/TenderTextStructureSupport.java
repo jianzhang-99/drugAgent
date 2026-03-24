@@ -1,8 +1,6 @@
 package com.liang.drugagent.scene.tender_review.support.parser;
 
-import com.liang.drugagent.scene.tender_review.model.Anchor;
 import com.liang.drugagent.scene.tender_review.model.Block;
-import com.liang.drugagent.scene.tender_review.model.ExtractionMeta;
 import com.liang.drugagent.scene.tender_review.model.Field;
 import com.liang.drugagent.scene.tender_review.model.TenderDocumentParseResult;
 import com.liang.drugagent.scene.tender_review.model.TenderSectionNode;
@@ -15,12 +13,15 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/** 文本结构化支持（字段提取、规范化、章节识别）。 */
 @Component
 public class TenderTextStructureSupport {
 
+    /** 中文数字（一～十）。 */
     private static final Set<Character> CHINESE_NUMERALS = Set.of(
             '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'
     );
+    /** 章节分隔符。 */
     private static final Set<Character> SECTION_SEPARATORS = Set.of('、', ' ', '\u3000');
 
     private static final Pattern PHONE_PATTERN = Pattern.compile("1[3-9]\\d{9}");
@@ -37,6 +38,14 @@ public class TenderTextStructureSupport {
     static final String SCHEMA_VERSION = "tender-review-struct-v1";
     static final String PARSER_VERSION = "v1.1.0";
 
+    /**
+     * 从段落列表构建解析结果。
+     *
+     * @param paragraphs   段落列表
+     * @param docId        文档 ID
+     * @param parserVersion 解析器版本
+     * @return 解析结果
+     */
     public TenderDocumentParseResult buildFromParagraphs(List<String> paragraphs, String docId, String parserVersion) {
         List<Block> paragraphBlocks = new ArrayList<>();
         List<Block> tableBlocks = new ArrayList<>();
@@ -67,23 +76,15 @@ public class TenderTextStructureSupport {
                     .chapterPath(currentChapter[0])
                     .content(content)
                     .rawContent(raw)
-                    .anchor(Anchor.builder()
-                            .chapterPath(currentChapter[0])
-                            .paragraphIndex(i)
-                            .paragraphNo(i + 1)
-                            .tableIndex(-1)
-                            .build())
+                    .anchorChapterPath(currentChapter[0])
+                    .anchorParagraphIndex(i)
+                    .anchorParagraphNo(i + 1)
+                    .anchorTableIndex(-1)
                     .featureTags(detectFieldTags(content))
                     .build();
             paragraphBlocks.add(block);
             fields.addAll(extractFieldsFromBlock(block));
         }
-
-        ExtractionMeta meta = ExtractionMeta.builder()
-                .schemaVersion(SCHEMA_VERSION)
-                .parserVersion(parserVersion)
-                .parseSuccess(true)
-                .build();
 
         return TenderDocumentParseResult.builder()
                 .docId(docId)
@@ -91,10 +92,13 @@ public class TenderTextStructureSupport {
                 .paragraphBlocks(paragraphBlocks)
                 .tableBlocks(tableBlocks)
                 .fields(fields)
-                .extractionMeta(meta)
+                .schemaVersion(SCHEMA_VERSION)
+                .parserVersion(parserVersion)
+                .parseSuccess(true)
                 .build();
     }
 
+    /** 从 Block 中提取结构化字段（电话、邮箱、报价、团队成员）。 */
     public List<Field> extractFieldsFromBlock(Block block) {
         List<Field> result = new ArrayList<>();
         String content = block.getContent();
@@ -138,11 +142,13 @@ public class TenderTextStructureSupport {
         return result;
     }
 
+    /** 规范化文本：去首尾空格，合并连续空白符。 */
     public String normalizeText(String raw) {
         if (raw == null) return "";
         return raw.trim().replaceAll("\\s+", " ");
     }
 
+    /** 判断是否为章节标题（如"一、xxx"）。 */
     public boolean isSectionHeader(String content) {
         if (content == null || content.length() < 2) return false;
         char first = content.charAt(0);
@@ -150,6 +156,7 @@ public class TenderTextStructureSupport {
         return CHINESE_NUMERALS.contains(first) && SECTION_SEPARATORS.contains(second);
     }
 
+    /** 检测内容中包含的字段类型标签。 */
     public List<String> detectFieldTags(String content) {
         List<String> tags = new ArrayList<>();
         if (content == null || content.isBlank()) return tags;
@@ -160,6 +167,7 @@ public class TenderTextStructureSupport {
         return tags;
     }
 
+    /** 构建 Field 对象。 */
     private Field buildField(Block block, String fieldType, String fieldName,
                              String fieldValue, String normalizedValue,
                              String normalizedKey, double confidence) {
@@ -173,11 +181,18 @@ public class TenderTextStructureSupport {
                 .normalizedValue(normalizedValue)
                 .normalizedKey(normalizedKey)
                 .chapterPath(block.getChapterPath())
-                .anchor(block.getAnchor())
+                .anchorChapterPath(block.getAnchorChapterPath())
+                .anchorParagraphIndex(block.getAnchorParagraphIndex())
+                .anchorTableIndex(block.getAnchorTableIndex())
+                .anchorPageNo(block.getAnchorPageNo())
+                .anchorSectionNo(block.getAnchorSectionNo())
+                .anchorParagraphNo(block.getAnchorParagraphNo())
+                .anchorTableNo(block.getAnchorTableNo())
                 .confidence(confidence)
                 .build();
     }
 
+    /** null 返回空字符串。 */
     private String defaultString(String value) {
         return value == null ? "" : value;
     }

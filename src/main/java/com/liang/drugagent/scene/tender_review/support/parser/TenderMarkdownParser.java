@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 
+/** Markdown 格式解析器。 */
 @Component
 public class TenderMarkdownParser {
 
@@ -20,6 +21,14 @@ public class TenderMarkdownParser {
         this.textStructureSupport = textStructureSupport;
     }
 
+    /**
+     * 解析 Markdown 文件流。
+     *
+     * @param inputStream Markdown 文件流
+     * @param docId       文档 ID
+     * @return 解析结果
+     * @throws IOException 读取失败时抛出
+     */
     public TenderDocumentParseResult parse(InputStream inputStream, String docId) throws IOException {
         String rawText = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
         List<String> paragraphs = Arrays.stream(rawText.split("\\R\\R+|\\R"))

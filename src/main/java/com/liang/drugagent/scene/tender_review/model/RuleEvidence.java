@@ -22,6 +22,18 @@ public class RuleEvidence {
     private String matchedValue;
     /** 证据所在章节路径。 */
     private String chapterPath;
-    /** 证据定位锚点。 */
-    private Anchor anchor;
+
+    // === Inline Anchor fields ===
+    /** 段落在文档中的顺序索引，表格块为 -1。 */
+    private Integer anchorParagraphIndex;
+    /** 表格在文档中的顺序索引，段落块为 -1。 */
+    private Integer anchorTableIndex;
+    /** 页码。 */
+    private Integer anchorPageNo;
+    /** 章节编号，例如 3.2。 */
+    private String anchorSectionNo;
+    /** 段落序号。 */
+    private Integer anchorParagraphNo;
+    /** 表格序号。 */
+    private Integer anchorTableNo;
 }

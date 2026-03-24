@@ -1,11 +1,11 @@
 package com.liang.drugagent.scene.contract.workflow;
 
-import com.liang.drugagent.agent.AgentContext;
-import com.liang.drugagent.agent.SceneWorkflow;
+import com.liang.drugagent.agent.chat.AgentChatContext;
+import com.liang.drugagent.scene.SceneWorkflow;
 import com.liang.drugagent.shared.domain.model.EvidenceItem;
 import com.liang.drugagent.shared.domain.model.WorkflowResult;
-import com.liang.drugagent.agent.SceneEnum;
-import com.liang.drugagent.scene.qa.service.AgentChatService;
+import com.liang.drugagent.scene.SceneEnum;
+import com.liang.drugagent.scene.common.service.AgentChatService;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -43,7 +43,7 @@ public class ContractPrecheckWorkflow implements SceneWorkflow {
      * @return 包含预审意见、风险级别和审查证据的统一结果对象
      */
     @Override
-    public WorkflowResult execute(AgentContext context) {
+    public WorkflowResult execute(AgentChatContext context) {
         String answer = agentChatService.chatWithScene(
                 context.getQuery(),
                 "compliance_review",

@@ -1,8 +1,7 @@
 package com.liang.drugagent.scene.tender_review.support.parser;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.liang.drugagent.agent.AgentContext;
-import com.liang.drugagent.scene.tender_review.model.Anchor;
+import com.liang.drugagent.agent.chat.AgentChatContext;
 import com.liang.drugagent.scene.tender_review.model.Block;
 import com.liang.drugagent.scene.tender_review.model.CompareScope;
 import com.liang.drugagent.scene.tender_review.model.ExtractionMeta;
@@ -45,7 +44,7 @@ public class TenderReviewDataResolver {
         this.objectMapper = objectMapper;
     }
 
-    public TenderReviewData resolve(AgentContext context) {
+    public TenderReviewData resolve(AgentChatContext context) {
         if (context == null) {
             return null;
         }
@@ -72,6 +71,7 @@ public class TenderReviewDataResolver {
         return buildFromDocuments(metadataDocuments, metadata, traceId);
     }
 
+    /** 从 metadata 中读取文档列表。 */
     private List<MetadataDocument> readMetadataDocuments(Map<String, Object> metadata) {
         Object rawDocuments = metadata.get("documents");
         if (rawDocuments == null) {
@@ -98,6 +98,7 @@ public class TenderReviewDataResolver {
         return documents;
     }
 
+    /** 从文档列表构建完整的 TenderReviewData。 */
     private TenderReviewData buildFromDocuments(List<MetadataDocument> metadataDocuments,
                                                 Map<String, Object> metadata,
                                                 String traceId) {
@@ -123,6 +124,7 @@ public class TenderReviewDataResolver {
         return data;
     }
 
+    /** 构建 TenderCase 对象。 */
     private TenderCase buildCase(Map<String, Object> metadata, String traceId) {
         TenderCase tenderCase = new TenderCase();
         tenderCase.setCaseId(defaultString(asString(metadata.get("caseId")), traceId));
@@ -130,6 +132,7 @@ public class TenderReviewDataResolver {
         return tenderCase;
     }
 
+    /** 转换为 TenderDocument。 */
     private TenderDocument toTenderDocument(MetadataDocument metadataDocument) {
         TenderDocument document = new TenderDocument();
         document.setDocumentId(metadataDocument.documentId());
@@ -138,6 +141,7 @@ public class TenderReviewDataResolver {
         return document;
     }
 
+    /** 构建文档比对范围。 */
     private List<CompareScope> buildCompareScopes(List<TenderDocument> documents) {
         if (documents == null || documents.size() < 2) {
             return List.of();
@@ -149,6 +153,7 @@ public class TenderReviewDataResolver {
         return List.of(scope);
     }
 
+    /** 构建元数据提取信息。 */
     private ExtractionMeta buildExtractionMeta() {
         ExtractionMeta meta = new ExtractionMeta();
         meta.setSchemaVersion("tender-review-v1");
@@ -157,6 +162,7 @@ public class TenderReviewDataResolver {
         return meta;
     }
 
+    /** 解析 Markdown 文档内容，提取 Block 和 Field。 */
     private DocumentParseResult parseDocument(MetadataDocument document) {
         List<Block> blocks = new ArrayList<>();
         List<Field> fields = new ArrayList<>();
@@ -253,6 +259,7 @@ public class TenderReviewDataResolver {
         return new DocumentParseResult(blocks, fields);
     }
 
+    /** 添加段落 Block 并提取字段。 */
     private void addParagraphBlock(MetadataDocument document,
                                    String chapterPath,
                                    int paragraphNo,
@@ -265,6 +272,7 @@ public class TenderReviewDataResolver {
         extractParagraphFields(document, block, fields);
     }
 
+    /** 添加表格 Block 并提取字段。 */
     private void addTableBlock(MetadataDocument document,
                                String chapterPath,
                                int tableNo,
@@ -278,6 +286,7 @@ public class TenderReviewDataResolver {
         extractTableFields(document, block, rawLines, fields);
     }
 
+    /** 构建 Block 对象。 */
     private Block buildBlock(String documentId,
                              String blockType,
                              String chapterPath,
@@ -292,19 +301,14 @@ public class TenderReviewDataResolver {
         block.setChapterPath(chapterPath);
         block.setContent(content);
         block.setRawContent(rawContent);
-        block.setAnchor(buildAnchor(chapterPath, paragraphNo, tableNo));
+        block.setAnchorSectionNo(extractSectionNo(chapterPath));
+        block.setAnchorParagraphNo(paragraphNo);
+        block.setAnchorTableNo(tableNo);
+        block.setAnchorPageNo(1);
         return block;
     }
 
-    private Anchor buildAnchor(String chapterPath, Integer paragraphNo, Integer tableNo) {
-        Anchor anchor = new Anchor();
-        anchor.setSectionNo(extractSectionNo(chapterPath));
-        anchor.setParagraphNo(paragraphNo);
-        anchor.setTableNo(tableNo);
-        anchor.setPageNo(1);
-        return anchor;
-    }
-
+    /** 从段落 Block 中提取字段（联系人、电话、技术方案、实施阶段等）。 */
     private void extractParagraphFields(MetadataDocument document, Block block, List<Field> fields) {
         String chapter = safeLower(block.getChapterPath());
         String content = block.getContent();
@@ -385,6 +389,7 @@ public class TenderReviewDataResolver {
         }
     }
 
+    /** 从表格 Block 中提取字段（联系人、电话、团队成员、报价项、风险等）。 */
     private void extractTableFields(MetadataDocument document, Block block, List<String> rawLines, List<Field> fields) {
         List<List<String>> rows = parseMarkdownTable(rawLines);
         if (rows.size() < 2) {
@@ -475,6 +480,7 @@ public class TenderReviewDataResolver {
         }
     }
 
+    /** 添加简单字段（仅当值非空时）。 */
     private void addSimpleFieldIfPresent(String documentId,
                                          Block block,
                                          List<Field> fields,
@@ -489,6 +495,7 @@ public class TenderReviewDataResolver {
         fields.add(buildField(documentId, block, fieldType, fieldName, fieldValue, normalizedValue, normalizedKey));
     }
 
+    /** 构建 Field 对象。 */
     private Field buildField(String documentId,
                              Block block,
                              String fieldType,
@@ -506,11 +513,18 @@ public class TenderReviewDataResolver {
         field.setNormalizedValue(normalizedValue);
         field.setNormalizedKey(normalizedKey);
         field.setChapterPath(block.getChapterPath());
-        field.setAnchor(block.getAnchor());
+        field.setAnchorChapterPath(block.getAnchorChapterPath());
+        field.setAnchorParagraphIndex(block.getAnchorParagraphIndex());
+        field.setAnchorTableIndex(block.getAnchorTableIndex());
+        field.setAnchorPageNo(block.getAnchorPageNo());
+        field.setAnchorSectionNo(block.getAnchorSectionNo());
+        field.setAnchorParagraphNo(block.getAnchorParagraphNo());
+        field.setAnchorTableNo(block.getAnchorTableNo());
         field.setConfidence(0.90);
         return field;
     }
 
+    /** 解析 Markdown 表格。 */
     private List<List<String>> parseMarkdownTable(List<String> rawLines) {
         List<List<String>> rows = new ArrayList<>();
         for (String line : rawLines) {
@@ -527,6 +541,7 @@ public class TenderReviewDataResolver {
         return rows;
     }
 
+    /** 分割表格行。 */
     private List<String> splitTableRow(String line) {
         String working = line;
         if (working.startsWith("|")) {
@@ -543,6 +558,7 @@ public class TenderReviewDataResolver {
         return result;
     }
 
+    /** 将表头与行数据映射为键值对。 */
     private Map<String, String> mapRow(List<String> header, List<String> row) {
         Map<String, String> mapped = new LinkedHashMap<>();
         for (int i = 0; i < header.size(); i++) {
@@ -551,6 +567,7 @@ public class TenderReviewDataResolver {
         return mapped;
     }
 
+    /** 检查表头是否包含任一关键字。 */
     private boolean containsHeader(List<String> header, String... keywords) {
         for (String head : header) {
             for (String keyword : keywords) {
@@ -562,6 +579,7 @@ public class TenderReviewDataResolver {
         return false;
     }
 
+    /** 返回第一个匹配的键值。 */
     private String firstValue(Map<String, String> row, String... keys) {
         for (String key : keys) {
             for (Map.Entry<String, String> entry : row.entrySet()) {
@@ -573,6 +591,7 @@ public class TenderReviewDataResolver {
         return null;
     }
 
+    /** 提取有序阶段列表。 */
     private List<String> extractOrderedStages(String content) {
         List<String> stages = new ArrayList<>();
         Matcher matcher = Pattern.compile("(?:\\d+[.、]|[一二三四五六七八九十]+[、.])\\s*([^：:\n]+)").matcher(content);
@@ -582,6 +601,7 @@ public class TenderReviewDataResolver {
         return stages;
     }
 
+    /** 提取章节编号。 */
     private String extractSectionNo(String chapterPath) {
         if (isBlank(chapterPath)) {
             return null;
@@ -590,6 +610,7 @@ public class TenderReviewDataResolver {
         return matcher.find() ? matcher.group(1) : null;
     }
 
+    /** 截断字段名（超长时）。 */
     private String trimFieldName(String source, String fallback) {
         if (isBlank(source)) {
             return fallback;
@@ -597,6 +618,7 @@ public class TenderReviewDataResolver {
         return source.length() > 40 ? source.substring(0, 40) : source;
     }
 
+    /** 规范化句子：去除 Markdown 标记、空白符。 */
     private String normalizeSentence(String value) {
         if (isBlank(value)) {
             return null;
@@ -610,6 +632,7 @@ public class TenderReviewDataResolver {
                 .trim();
     }
 
+    /** 规范化文本：统一换行符。 */
     private String normalizeText(String value) {
         if (value == null) {
             return "";
@@ -617,16 +640,19 @@ public class TenderReviewDataResolver {
         return value.replace("\r\n", "\n").replace('\r', '\n');
     }
 
+    /** 规范化人名：去除非中英文字符。 */
     private String normalizePersonName(String value) {
         String normalized = normalizeSentence(value);
         return normalized == null ? null : normalized.replaceAll("[^\\u4e00-\\u9fa5A-Za-z]", "");
     }
 
+    /** 规范化电话：去除非数字字符。 */
     private String normalizePhone(String value) {
         String normalized = normalizeSentence(value);
         return normalized == null ? null : normalized.replaceAll("[^0-9]", "");
     }
 
+    /** 规范化金额：提取数字部分。 */
     private String normalizeAmount(String value) {
         String normalized = normalizeSentence(value);
         if (normalized == null) {
@@ -643,11 +669,13 @@ public class TenderReviewDataResolver {
         }
     }
 
+    /** 从章节路径生成规范化的 key。 */
     private String normalizeKeyFromChapter(String chapterPath) {
         String normalized = normalizeSentence(chapterPath);
         return normalized == null ? "text" : normalized.toLowerCase(Locale.ROOT);
     }
 
+    /** 用分隔符合并非空字符串。 */
     private String joinNonBlank(String delimiter, String... values) {
         List<String> nonBlank = new ArrayList<>();
         for (String value : values) {
@@ -659,25 +687,31 @@ public class TenderReviewDataResolver {
         return String.join(delimiter, nonBlank);
     }
 
+    /** null 返回默认值。 */
     private String defaultString(String value, String fallback) {
         return isBlank(value) ? fallback : value;
     }
 
+    /** 转为字符串。 */
     private String asString(Object value) {
         return value == null ? null : String.valueOf(value);
     }
 
+    /** 安全转小写（null 返回空字符串）。 */
     private String safeLower(String value) {
         return value == null ? "" : value.toLowerCase(Locale.ROOT);
     }
 
+    /** 判断是否为空。 */
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
     }
 
+    /** 元数据文档记录。 */
     private record MetadataDocument(String documentId, String documentName, String fileType, String content) {
     }
 
+    /** 文档解析结果。 */
     private record DocumentParseResult(List<Block> blocks, List<Field> fields) {
     }
 }

@@ -1,7 +1,9 @@
 package com.liang.drugagent.scene.tender_review.support.executor;
 
-import com.liang.drugagent.scene.tender_review.model.RuleResult;
+import com.liang.drugagent.scene.tender_review.model.RuleHit;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
+
+import java.util.List;
 
 /**
  * 标书审查规则执行器接口。
@@ -15,7 +17,7 @@ public interface TenderRuleExecutor {
      * 执行规则计算。
      *
      * @param data 标书审查结构化输入
-     * @return 当前执行器产出的规则命中结果
+     * @return 当前执行器产出的规则命中结果列表
      */
-    RuleResult execute(TenderReviewData data);
+    List<RuleHit> execute(TenderReviewData data);
 }

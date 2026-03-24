@@ -4,7 +4,7 @@ import com.liang.drugagent.shared.domain.response.Result;
 import com.liang.drugagent.controller.domain.request.knowledge.KnowledgeAskReq;
 import com.liang.drugagent.controller.domain.request.knowledge.KnowledgeIngestTextReq;
 import com.liang.drugagent.controller.domain.response.knowledge.KnowledgeAskResp;
-import com.liang.drugagent.agent.SceneEnum;
+import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.shared.rag.KnowledgeIngestService;
 import com.liang.drugagent.shared.rag.KnowledgeRagService;
 import io.swagger.v3.oas.annotations.Operation;

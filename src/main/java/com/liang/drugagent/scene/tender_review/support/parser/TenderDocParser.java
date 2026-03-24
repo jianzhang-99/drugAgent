@@ -10,6 +10,7 @@ import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
 
+/** DOC 格式解析器（老版 .doc）。 */
 @Component
 public class TenderDocParser {
 
@@ -21,6 +22,14 @@ public class TenderDocParser {
         this.textStructureSupport = textStructureSupport;
     }
 
+    /**
+     * 解析 DOC 文件流。
+     *
+     * @param inputStream DOC 文件流
+     * @param docId       文档 ID
+     * @return 解析结果
+     * @throws IOException 读取失败时抛出
+     */
     public TenderDocumentParseResult parse(InputStream inputStream, String docId) throws IOException {
         try (HWPFDocument document = new HWPFDocument(inputStream);
              WordExtractor extractor = new WordExtractor(document)) {

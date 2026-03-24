@@ -3,7 +3,6 @@ package com.liang.drugagent.scene.tender_review.support.executor;
 import com.liang.drugagent.scene.tender_review.model.CompareScope;
 import com.liang.drugagent.scene.tender_review.model.Field;
 import com.liang.drugagent.scene.tender_review.model.RuleHit;
-import com.liang.drugagent.scene.tender_review.model.RuleResult;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
 import org.springframework.stereotype.Component;
 
@@ -40,18 +39,16 @@ public class ServiceCommitmentExecutor extends AbstractTenderExecutor {
     private static final String VERSION = "v1";
 
     @Override
-    public RuleResult execute(TenderReviewData data) {
-        RuleResult result = new RuleResult();
+    public List<RuleHit> execute(TenderReviewData data) {
         if (data == null || data.getCompareScopes() == null || data.getFields() == null) {
-            return result;
+            return List.of();
         }
 
         List<RuleHit> hits = new ArrayList<>();
         for (CompareScope scope : data.getCompareScopes()) {
             hits.addAll(detectInScope(scope, data.getFields()));
         }
-        result.setHits(hits);
-        return result;
+        return hits;
     }
 
     private List<RuleHit> detectInScope(CompareScope scope, List<Field> fields) {

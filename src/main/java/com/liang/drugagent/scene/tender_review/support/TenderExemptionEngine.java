@@ -1,7 +1,6 @@
 package com.liang.drugagent.scene.tender_review.support;
 
 import com.liang.drugagent.scene.tender_review.model.ExemptionHit;
-import com.liang.drugagent.scene.tender_review.model.ExemptionResult;
 import com.liang.drugagent.scene.tender_review.model.RuleEvidence;
 import com.liang.drugagent.scene.tender_review.model.RuleHit;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
@@ -15,7 +14,7 @@ import java.util.Optional;
 
 /**
  * 标书审查免责引擎。
- * 负责对规则引擎命中的初始风险点进行多维度的“误报免责”处理，防止逻辑僵化和过度触发。
+ * 负责对规则引擎命中的初始风险点进行多维度的"误报免责"处理，防止逻辑僵化和过度触发。
  *
  * @author liangjiajian
  */
@@ -37,12 +36,11 @@ public class TenderExemptionEngine {
      *
      * @param hits 规则引擎识别出的原始命中项
      * @param data 完整的审查输入数据（包含上下文和豁免配置）
-     * @return 包含有效命中项和被免责项的结果集
+     * @return 免责结果（包含有效命中项和被免责项）
      */
     public ExemptionResult apply(List<RuleHit> hits, TenderReviewData data) {
-        ExemptionResult result = new ExemptionResult();
         if (hits == null || hits.isEmpty()) {
-            return result;
+            return new ExemptionResult(List.of(), List.of());
         }
 
         List<RuleHit> effectiveHits = new ArrayList<>();
@@ -75,9 +73,7 @@ public class TenderExemptionEngine {
         effectiveHits.sort(Comparator.comparing(RuleHit::getAdjustedWeight, Comparator.nullsLast(Comparator.reverseOrder()))
                 .thenComparing(RuleHit::getRuleCode, Comparator.nullsLast(String::compareTo))
                 .thenComparing(RuleHit::getRuleName, Comparator.nullsLast(String::compareTo)));
-        result.setEffectiveHits(effectiveHits);
-        result.setExemptionHits(exemptionHits);
-        return result;
+        return new ExemptionResult(effectiveHits, exemptionHits);
     }
 
     private String mergeReason(String existing, String next) {
@@ -87,7 +83,7 @@ public class TenderExemptionEngine {
         if (next == null || next.isBlank() || existing.contains(next)) {
             return existing;
         }
-        return existing + "；" + next;
+        return existing + ";" + next;
     }
 
     private RuleHit copy(RuleHit source) {
@@ -121,9 +117,19 @@ public class TenderExemptionEngine {
             item.setBlockId(evidence.getBlockId());
             item.setMatchedValue(evidence.getMatchedValue());
             item.setChapterPath(evidence.getChapterPath());
-            item.setAnchor(evidence.getAnchor());
+            item.setAnchorParagraphIndex(evidence.getAnchorParagraphIndex());
+            item.setAnchorTableIndex(evidence.getAnchorTableIndex());
+            item.setAnchorPageNo(evidence.getAnchorPageNo());
+            item.setAnchorSectionNo(evidence.getAnchorSectionNo());
+            item.setAnchorParagraphNo(evidence.getAnchorParagraphNo());
+            item.setAnchorTableNo(evidence.getAnchorTableNo());
             copied.add(item);
         }
         return copied;
     }
+
+    /**
+     * 免责结果。
+     */
+    public record ExemptionResult(List<RuleHit> effectiveHits, List<ExemptionHit> exemptionHits) {}
 }

@@ -1,12 +1,10 @@
 package com.liang.drugagent.scene.tender_review.support;
 
 import com.liang.drugagent.scene.tender_review.model.RuleHit;
-import com.liang.drugagent.scene.tender_review.model.RuleResult;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
 import com.liang.drugagent.scene.tender_review.support.executor.TenderRuleExecutor;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -30,27 +28,25 @@ public class TenderRuleEngine {
      * 执行所有已注册的规则执行器。
      *
      * @param data 标书审查结构化输入
-     * @return 汇总后的规则命中结果
+     * @return 汇总后的规则命中结果列表
      */
-    public RuleResult execute(TenderReviewData data) {
-        RuleResult result = new RuleResult();
+    public List<RuleHit> execute(TenderReviewData data) {
         if (data == null || executors == null || executors.isEmpty()) {
-            return result;
+            return List.of();
         }
 
-        List<RuleHit> allHits = new ArrayList<>();
+        List<RuleHit> allHits = new java.util.ArrayList<>();
         for (TenderRuleExecutor executor : executors) {
-            RuleResult partialResult = executor.execute(data);
-            if (partialResult == null || partialResult.getHits() == null || partialResult.getHits().isEmpty()) {
+            List<RuleHit> partialResult = executor.execute(data);
+            if (partialResult == null || partialResult.isEmpty()) {
                 continue;
             }
-            allHits.addAll(partialResult.getHits());
+            allHits.addAll(partialResult);
         }
 
         allHits.sort(Comparator.comparing(RuleHit::getWeight, Comparator.nullsLast(Comparator.reverseOrder()))
                 .thenComparing(RuleHit::getRuleCode, Comparator.nullsLast(String::compareTo))
                 .thenComparing(RuleHit::getRuleName, Comparator.nullsLast(String::compareTo)));
-        result.setHits(allHits.stream().filter(Objects::nonNull).toList());
-        return result;
+        return allHits.stream().filter(Objects::nonNull).toList();
     }
 }

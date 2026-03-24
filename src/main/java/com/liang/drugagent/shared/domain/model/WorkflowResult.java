@@ -1,6 +1,6 @@
 package com.liang.drugagent.shared.domain.model;
 
-import com.liang.drugagent.agent.SceneEnum;
+import com.liang.drugagent.scene.SceneEnum;
 import lombok.Getter;
 import lombok.Setter;
 

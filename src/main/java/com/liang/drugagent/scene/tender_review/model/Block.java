@@ -32,8 +32,22 @@ public class Block {
     private String content;
     /** 保留原始格式的内容。 */
     private String rawContent;
-    /** 原文定位锚点。 */
-    private Anchor anchor;
     /** 规则与解析使用的特征标签。 */
     private List<String> featureTags;
+
+    // === Inline Anchor fields ===
+    /** 当前段落/表格所属的章节路径。 */
+    private String anchorChapterPath;
+    /** 段落在文档中的顺序索引，表格块为 -1。 */
+    private Integer anchorParagraphIndex;
+    /** 表格在文档中的顺序索引，段落块为 -1。 */
+    private Integer anchorTableIndex;
+    /** 页码。 */
+    private Integer anchorPageNo;
+    /** 章节编号，例如 3.2。 */
+    private String anchorSectionNo;
+    /** 段落序号。 */
+    private Integer anchorParagraphNo;
+    /** 表格序号。 */
+    private Integer anchorTableNo;
 }

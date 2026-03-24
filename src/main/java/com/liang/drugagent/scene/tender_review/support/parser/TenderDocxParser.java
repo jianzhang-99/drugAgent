@@ -1,6 +1,5 @@
 package com.liang.drugagent.scene.tender_review.support.parser;
 
-import com.liang.drugagent.scene.tender_review.model.Anchor;
 import com.liang.drugagent.scene.tender_review.model.Block;
 import com.liang.drugagent.scene.tender_review.model.TenderDocumentParseResult;
 import org.apache.poi.xwpf.usermodel.IBodyElement;
@@ -17,10 +16,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/** DOCX 格式解析器。 */
 @Component
 public class TenderDocxParser {
     /** 沿用 TenderTextStructureSupport 的 schema 版本，供外部（含测试）引用。 */
     public static final String SCHEMA_VERSION = TenderTextStructureSupport.SCHEMA_VERSION;
+    /** 解析器版本。 */
     public static final String PARSER_VERSION = TenderTextStructureSupport.PARSER_VERSION;
 
     private final TenderTextStructureSupport textStructureSupport;
@@ -31,10 +32,13 @@ public class TenderDocxParser {
 
     // ---- delegate helpers for backward-compat ----
 
+    /** 委托文本规范化。 */
     public String normalizeText(String raw) { return textStructureSupport.normalizeText(raw); }
 
+    /** 委托章节标题判断。 */
     public boolean isSectionHeader(String content) { return textStructureSupport.isSectionHeader(content); }
 
+    /** 委托字段标签检测。 */
     public List<String> detectFieldTags(String content) { return textStructureSupport.detectFieldTags(content); }
 
     /**
@@ -72,12 +76,10 @@ public class TenderDocxParser {
                             .chapterPath(currentChapter[0])
                             .content(tableContent)
                             .rawContent(tableContent)
-                            .anchor(Anchor.builder()
-                                    .chapterPath(currentChapter[0])
-                                    .paragraphIndex(-1)
-                                    .tableIndex(tIdx)
-                                    .tableNo(tIdx + 1)
-                                    .build())
+                            .anchorChapterPath(currentChapter[0])
+                            .anchorParagraphIndex(-1)
+                            .anchorTableIndex(tIdx)
+                            .anchorTableNo(tIdx + 1)
                             .featureTags(textStructureSupport.detectFieldTags(tableContent))
                             .build();
                     tableBlocks.add(tableBlock);
@@ -98,19 +100,15 @@ public class TenderDocxParser {
             parseSuccess = true;
         }
 
-        com.liang.drugagent.scene.tender_review.model.ExtractionMeta meta = com.liang.drugagent.scene.tender_review.model.ExtractionMeta.builder()
-                .schemaVersion(TenderTextStructureSupport.SCHEMA_VERSION)
-                .parserVersion(PARSER_VERSION)
-                .parseSuccess(parseSuccess)
-                .build();
-
         return TenderDocumentParseResult.builder()
                 .docId(docId)
                 .sectionTree(sectionTree)
                 .paragraphBlocks(paragraphBlocks)
                 .tableBlocks(tableBlocks)
                 .fields(fields)
-                .extractionMeta(meta)
+                .schemaVersion(TenderTextStructureSupport.SCHEMA_VERSION)
+                .parserVersion(PARSER_VERSION)
+                .parseSuccess(parseSuccess)
                 .build();
     }
 
@@ -137,12 +135,10 @@ public class TenderDocxParser {
                 .chapterPath(currentChapter[0])
                 .content(content)
                 .rawContent(raw)
-                .anchor(Anchor.builder()
-                        .chapterPath(currentChapter[0])
-                        .paragraphIndex(pIdx)
-                        .paragraphNo(pIdx + 1)
-                        .tableIndex(-1)
-                        .build())
+                .anchorChapterPath(currentChapter[0])
+                .anchorParagraphIndex(pIdx)
+                .anchorParagraphNo(pIdx + 1)
+                .anchorTableIndex(-1)
                 .featureTags(textStructureSupport.detectFieldTags(content))
                 .build();
 
