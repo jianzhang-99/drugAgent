@@ -1,4 +1,4 @@
-package com.liang.drugagent.app.config;
+package com.liang.drugagent.config;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -16,6 +16,7 @@ import java.util.UUID;
 
 /**
  * 统一记录 HTTP 请求链路日志，并为整个请求注入 traceId。
+ * @author liangjiajian
  */
 @Component
 public class RequestTraceFilter extends OncePerRequestFilter {

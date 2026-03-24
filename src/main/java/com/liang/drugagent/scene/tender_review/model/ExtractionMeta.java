@@ -1,0 +1,27 @@
+package com.liang.drugagent.scene.tender_review.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+/**
+ * 结构化提取元信息。
+ *
+ * @author liangjiajian
+ */
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ExtractionMeta {
+
+    /** 结构化数据 schema 版本。 */
+    private String schemaVersion;
+    /** 解析器版本。 */
+    private String parserVersion;
+    /** 本次解析是否成功。 */
+    private Boolean parseSuccess;
+}
