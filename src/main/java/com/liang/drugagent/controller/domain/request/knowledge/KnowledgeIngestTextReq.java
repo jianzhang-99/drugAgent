@@ -1,4 +1,4 @@
-package com.liang.drugagent.controller.request.knowledge;
+package com.liang.drugagent.controller.domain.request.knowledge;
 
 import lombok.Getter;
 import lombok.Setter;

@@ -1,4 +1,4 @@
-package com.liang.drugagent.controller.request.task_board;
+package com.liang.drugagent.controller.domain.request.task_board;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;

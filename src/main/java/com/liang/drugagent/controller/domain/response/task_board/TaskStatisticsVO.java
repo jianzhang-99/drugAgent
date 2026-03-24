@@ -1,4 +1,4 @@
-package com.liang.drugagent.controller.response.task_board;
+package com.liang.drugagent.controller.domain.response.task_board;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

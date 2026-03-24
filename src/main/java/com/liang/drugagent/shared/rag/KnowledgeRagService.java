@@ -1,7 +1,7 @@
 package com.liang.drugagent.shared.rag;
 
-import com.liang.drugagent.controller.request.knowledge.KnowledgeAskReq;
-import com.liang.drugagent.controller.response.knowledge.KnowledgeAskResp;
+import com.liang.drugagent.controller.domain.request.knowledge.KnowledgeAskReq;
+import com.liang.drugagent.controller.domain.response.knowledge.KnowledgeAskResp;
 import com.liang.drugagent.agent.SceneEnum;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingResponse;

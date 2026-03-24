@@ -1,7 +1,7 @@
 package com.liang.drugagent.agent;
 
-import com.liang.drugagent.controller.request.agent.DrugAgentReq;
-import com.liang.drugagent.controller.response.agent.DrugAgentResp;
+import com.liang.drugagent.controller.domain.request.agent.DrugAgentReq;
+import com.liang.drugagent.controller.domain.response.agent.DrugAgentResp;
 import com.liang.drugagent.shared.domain.model.WorkflowRouteDecision;
 import com.liang.drugagent.shared.domain.model.WorkflowResult;
 import com.liang.drugagent.agent.routing.ClarificationPolicy;

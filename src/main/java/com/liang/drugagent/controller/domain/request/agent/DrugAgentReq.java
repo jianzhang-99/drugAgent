@@ -1,4 +1,4 @@
-package com.liang.drugagent.controller.request.agent;
+package com.liang.drugagent.controller.domain.request.agent;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

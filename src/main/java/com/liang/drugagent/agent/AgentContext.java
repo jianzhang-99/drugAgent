@@ -1,6 +1,6 @@
 package com.liang.drugagent.agent;
 
-import com.liang.drugagent.controller.request.agent.DrugAgentReq;
+import com.liang.drugagent.controller.domain.request.agent.DrugAgentReq;
 import com.liang.drugagent.agent.routing.IntentUnderstandingContext;
 import lombok.Getter;
 import lombok.Setter;

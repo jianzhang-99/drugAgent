@@ -1,7 +1,7 @@
 package com.liang.drugagent.agent.routing;
 
 import com.liang.drugagent.agent.AgentContext;
-import com.liang.drugagent.controller.request.agent.DrugAgentReq;
+import com.liang.drugagent.controller.domain.request.agent.DrugAgentReq;
 
 /**
  * 上下文补充器接口。

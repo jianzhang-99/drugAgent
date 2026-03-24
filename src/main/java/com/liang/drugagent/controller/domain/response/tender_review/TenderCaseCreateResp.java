@@ -1,4 +1,4 @@
-package com.liang.drugagent.controller.response.tender_review;
+package com.liang.drugagent.controller.domain.response.tender_review;
 
 import com.liang.drugagent.scene.tender_review.model.TenderCaseStatus;
 import lombok.AllArgsConstructor;

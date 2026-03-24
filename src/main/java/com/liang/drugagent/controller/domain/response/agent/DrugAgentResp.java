@@ -1,4 +1,4 @@
-package com.liang.drugagent.controller.response.agent;
+package com.liang.drugagent.controller.domain.response.agent;
 
 import com.liang.drugagent.shared.domain.model.EvidenceItem;
 import com.liang.drugagent.shared.domain.model.EvidenceGroup;

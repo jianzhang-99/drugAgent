@@ -1,6 +1,6 @@
 package com.liang.drugagent.shared.rag;
 
-import com.liang.drugagent.controller.request.knowledge.KnowledgeIngestTextReq;
+import com.liang.drugagent.controller.domain.request.knowledge.KnowledgeIngestTextReq;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingResponse;

@@ -1,9 +1,9 @@
 package com.liang.drugagent.controller.knowledge;
 
 import com.liang.drugagent.shared.domain.response.Result;
-import com.liang.drugagent.controller.request.knowledge.KnowledgeAskReq;
-import com.liang.drugagent.controller.request.knowledge.KnowledgeIngestTextReq;
-import com.liang.drugagent.controller.response.knowledge.KnowledgeAskResp;
+import com.liang.drugagent.controller.domain.request.knowledge.KnowledgeAskReq;
+import com.liang.drugagent.controller.domain.request.knowledge.KnowledgeIngestTextReq;
+import com.liang.drugagent.controller.domain.response.knowledge.KnowledgeAskResp;
 import com.liang.drugagent.agent.SceneEnum;
 import com.liang.drugagent.shared.rag.KnowledgeIngestService;
 import com.liang.drugagent.shared.rag.KnowledgeRagService;
@@ -18,7 +18,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 统一 RAG 能力接口。
+ * 知识库相关接口
  *
  * <p>提供知识库的统一问答和入库能力：
  * <ul>

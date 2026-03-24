@@ -1,4 +1,4 @@
-package com.liang.drugagent.controller.request.tender_review;
+package com.liang.drugagent.controller.domain.request.tender_review;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

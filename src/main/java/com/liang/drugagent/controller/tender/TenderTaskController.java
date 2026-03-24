@@ -1,7 +1,7 @@
-package com.liang.drugagent.controller.controller.tender_review;
+package com.liang.drugagent.controller.tender;
 
-import com.liang.drugagent.controller.request.tender_review.TenderCaseCreateReq;
-import com.liang.drugagent.controller.response.tender_review.TenderCaseCreateResp;
+import com.liang.drugagent.controller.domain.request.tender_review.TenderCaseCreateReq;
+import com.liang.drugagent.controller.domain.response.tender_review.TenderCaseCreateResp;
 import com.liang.drugagent.scene.tender_review.model.TenderCase;
 import com.liang.drugagent.scene.tender_review.model.TenderDocument;
 import com.liang.drugagent.scene.tender_review.model.TenderDocumentParseResult;

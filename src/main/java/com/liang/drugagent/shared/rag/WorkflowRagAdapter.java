@@ -4,8 +4,8 @@ import com.liang.drugagent.agent.AgentContext;
 import com.liang.drugagent.agent.SceneEnum;
 import com.liang.drugagent.shared.domain.model.EvidenceItem;
 import com.liang.drugagent.shared.domain.model.RagOutcome;
-import com.liang.drugagent.controller.request.knowledge.KnowledgeAskReq;
-import com.liang.drugagent.controller.response.knowledge.KnowledgeAskResp;
+import com.liang.drugagent.controller.domain.request.knowledge.KnowledgeAskReq;
+import com.liang.drugagent.controller.domain.response.knowledge.KnowledgeAskResp;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;

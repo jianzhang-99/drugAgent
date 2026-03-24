@@ -1,11 +1,9 @@
 package com.liang.drugagent.agent;
 
-import com.liang.drugagent.agent.AgentContext;
-import com.liang.drugagent.agent.UpperAgentOrchestrator;
-import com.liang.drugagent.agent.SceneEnum;
+import com.liang.drugagent.controller.domain.request.tender_review.TenderCaseCreateReq;
 import com.liang.drugagent.thirdparty.db.entity.ChatSession;
-import com.liang.drugagent.controller.request.agent.DrugAgentReq;
-import com.liang.drugagent.controller.response.agent.DrugAgentResp;
+import com.liang.drugagent.controller.domain.request.agent.DrugAgentReq;
+import com.liang.drugagent.controller.domain.response.agent.DrugAgentResp;
 import com.liang.drugagent.scene.qa.service.ChatMessageService;
 import com.liang.drugagent.scene.qa.service.ChatSessionService;
 import com.liang.drugagent.scene.tender_review.service.TenderCaseService;
@@ -165,7 +163,7 @@ public class AgentApplicationService {
         }
 
         var caseResp = tenderCaseService.createCase(
-                com.liang.drugagent.controller.request.tender_review.TenderCaseCreateReq.builder()
+                TenderCaseCreateReq.builder()
                         .filenames(filenames)
                         .submittedBy(submittedBy)
                         .build());

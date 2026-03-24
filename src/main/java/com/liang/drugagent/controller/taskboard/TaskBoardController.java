@@ -1,12 +1,12 @@
-package com.liang.drugagent.controller.controller.task_board;
+package com.liang.drugagent.controller.taskboard;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.liang.drugagent.shared.domain.model.TaskStatusEnum;
 import com.liang.drugagent.thirdparty.db.entity.TaskCard;
-import com.liang.drugagent.controller.request.task_board.TaskCardQueryReq;
-import com.liang.drugagent.controller.request.task_board.TaskCardReq;
-import com.liang.drugagent.controller.response.task_board.TaskCardVO;
-import com.liang.drugagent.controller.response.task_board.TaskStatisticsVO;
+import com.liang.drugagent.controller.domain.request.task_board.TaskCardQueryReq;
+import com.liang.drugagent.controller.domain.request.task_board.TaskCardReq;
+import com.liang.drugagent.controller.domain.response.task_board.TaskCardVO;
+import com.liang.drugagent.controller.domain.response.task_board.TaskStatisticsVO;
 import com.liang.drugagent.scene.tender_review.service.TaskCardService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
