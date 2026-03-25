@@ -5,6 +5,7 @@ import com.liang.drugagent.agent.route.AgentRouteService;
 import com.liang.drugagent.controller.domain.request.agent.DrugAgentReq;
 import com.liang.drugagent.controller.domain.response.agent.DrugAgentResp;
 import com.liang.drugagent.scene.SceneEnum;
+import com.liang.drugagent.scene.common.MessageTypeEnum;
 import com.liang.drugagent.shared.llm.LlmService;
 import com.liang.drugagent.scene.SceneWorkflow;
 import com.liang.drugagent.scene.common.service.ChatMemoryService;
@@ -232,8 +233,9 @@ public class AgentChatService {
                     hydrateTenderMetadata(req, submittedBy, files);
                 }
                 DrugAgentResp resp = executeWorkflow(context, decision);
+                String messageType = determineMessageType(resp);
                 chatMemoryService.addMessage(sessionId, "assistant",
-                        resp.getAnswer() != null ? resp.getAnswer() : resp.getSummary(), null);
+                        resp.getAnswer() != null ? resp.getAnswer() : resp.getSummary(), null, messageType);
                 updateSessionTitle(sessionId, query, chatSession);
                 resp.setSessionId(sessionId);
                 return resp;
@@ -241,8 +243,9 @@ public class AgentChatService {
 
             // 5. 未识别到特定场景，走通用对话
             DrugAgentResp resp = handleGeneralChat(context, decision);
+            String messageType = determineMessageType(resp);
             chatMemoryService.addMessage(sessionId, "assistant",
-                    resp.getAnswer() != null ? resp.getAnswer() : resp.getSummary(), null);
+                    resp.getAnswer() != null ? resp.getAnswer() : resp.getSummary(), null, messageType);
             updateSessionTitle(sessionId, query, chatSession);
             resp.setSessionId(sessionId);
             return resp;
@@ -639,6 +642,32 @@ public class AgentChatService {
             return result.getReport().getOverview().getSummary();
         }
         return result.getAnswer();
+    }
+
+    /**
+     * 根据响应结果确定消息类型。
+     *
+     * <p>判断逻辑：
+     * <ul>
+     *   <li>如果 requiresClarification=true → assistant_clarify</li>
+     *   <li>如果有结构化报告 → assistant_result_card</li>
+     *   <li>否则 → assistant_text</li>
+     * </ul>
+     *
+     * @param resp AI 响应结果
+     * @return 消息类型代码
+     */
+    private String determineMessageType(DrugAgentResp resp) {
+        if (resp == null) {
+            return MessageTypeEnum.ASSISTANT_TEXT.getCode();
+        }
+        if (resp.isRequiresClarification()) {
+            return MessageTypeEnum.ASSISTANT_CLARIFY.getCode();
+        }
+        if (resp.getReport() != null) {
+            return MessageTypeEnum.ASSISTANT_RESULT_CARD.getCode();
+        }
+        return MessageTypeEnum.ASSISTANT_TEXT.getCode();
     }
 
     /**

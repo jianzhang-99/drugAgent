@@ -1,10 +1,23 @@
 /**
  * Mock Service - 本地 Mock 驱动完整对话流程
  * 用于阶段一原型演示，不接真实后端
+ *
+ * 阶段三改动：
+ * - 增加 USE_REAL_API 开关，默认 false（使用 mock）
+ * - 当 USE_REAL_API 为 true 时，导出真实 API 方法供 fallback 使用
  */
 
 import { ref } from 'vue'
-import type { SessionSummary, SessionDetail, ChatMessage, TaskItem, ReportSummary } from '@/store/agent/types'
+import type { SessionSummary, SessionDetail, ChatMessage, TaskItem, ReportSummary, ReportDetail } from '@/store/agent/types'
+
+// ==================== 配置开关 ====================
+
+/**
+ * 是否使用真实 API
+ * true: 调用真实后端接口（需要后端服务运行）
+ * false: 使用本地 mock 数据（默认，用于演示）
+ */
+export const USE_REAL_API = false
 
 // ==================== Mock 数据 ====================
 
@@ -270,6 +283,13 @@ export function getReportDetail(traceId: string): ReportDetail | null {
   return null
 }
 
+// ==================== 导出方法供 fallback 使用 ====================
+
+/**
+ * 保留 simulateAIResponse 作为 fallback
+ * 当真实 API 调用失败时，agentStore 会回退到此方法
+ */
+
 export const mockService = {
   getSessions,
   getSession,
@@ -278,7 +298,10 @@ export const mockService = {
   addTask,
   updateTaskProgress,
   simulateAIResponse,
-  getReportDetail
+  getReportDetail,
+
+  // 标记是否为真实 API 模式
+  isRealApi: USE_REAL_API
 }
 
 export default mockService

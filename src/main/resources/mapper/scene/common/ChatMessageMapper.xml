@@ -11,6 +11,7 @@
                role,
                content,
                metadata,
+               type,
                created_at
         FROM chat_message
         WHERE session_id = #{sessionId}

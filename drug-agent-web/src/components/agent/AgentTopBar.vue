@@ -20,6 +20,7 @@
         @toggle="$emit('toggle-task-center')"
         @close="$emit('close-task-center')"
         @select-task="$emit('select-task', $event)"
+        @clear-completed="$emit('clear-completed')"
       />
 
       <!-- User Avatar -->
@@ -47,6 +48,7 @@ defineEmits<{
   'toggle-task-center': []
   'close-task-center': []
   'select-task': [task: TaskItem]
+  'clear-completed': []
 }>()
 
 const activeViewLabel = computed(() => {

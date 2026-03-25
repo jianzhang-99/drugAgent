@@ -143,11 +143,26 @@ public class ChatMemoryService extends ServiceImpl<ChatSessionMapper, ChatSessio
      * @return 创建的消息实例
      */
     public ChatMessage addMessage(String sessionId, String role, String content, String metadata) {
+        return addMessage(sessionId, role, content, metadata, null);
+    }
+
+    /**
+     * 添加消息到会话（带消息类型）。
+     *
+     * @param sessionId 会话ID
+     * @param role 消息角色（user/assistant/system）
+     * @param content 消息内容
+     * @param metadata 扩展信息（JSON格式，可为空）
+     * @param type 消息类型（如 assistant_text, assistant_clarify, assistant_result_card）
+     * @return 创建的消息实例
+     */
+    public ChatMessage addMessage(String sessionId, String role, String content, String metadata, String type) {
         ChatMessage message = ChatMessage.builder()
                 .sessionId(sessionId)
                 .role(role)
                 .content(content)
                 .metadata(metadata)
+                .type(type)
                 .createdAt(LocalDateTime.now())
                 .build();
         chatMessageMapper.insert(message);

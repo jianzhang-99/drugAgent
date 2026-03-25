@@ -3,7 +3,7 @@
     <!-- Main Content Area -->
     <main
       :class="[
-        'flex-1 flex flex-col relative bg-white z-30',
+        'flex-1 flex flex-col relative bg-white z-30 transition-all duration-300',
         agentStore.isReportDrawerOpen ? 'w-2/3' : 'w-full'
       ]"
     >
@@ -16,6 +16,7 @@
         @toggle-task-center="agentStore.toggleTaskCenter"
         @close-task-center="agentStore.closeTaskCenter"
         @select-task="handleSelectTask"
+        @clear-completed="agentStore.clearCompletedTasks"
       />
 
       <!-- Chat Area -->
@@ -25,8 +26,11 @@
           :messages="agentStore.messages"
           :has-active-session="agentStore.hasActiveSession"
           :selected-report="agentStore.selectedReport"
+          :error="agentStore.error"
           @quick-action="handleQuickAction"
           @select-report="handleSelectReport"
+          @quick-reply="handleQuickReply"
+          @retry="handleRetry"
         />
       </div>
 
@@ -46,7 +50,7 @@
       <ReportDrawer
         v-if="agentStore.isReportDrawerOpen"
         :report="agentStore.selectedReport"
-        @close="agentStore.closeReportDrawer"
+        @close="handleCloseReportDrawer"
       />
     </main>
   </div>
@@ -83,7 +87,8 @@ const handleNewChat = () => {
 }
 
 const handleSelectSession = (session: { id: string }) => {
-  // 通过 agentStore 加载会话详情
+  // 保存当前滚动位置并切换会话
+  chatTimelineRef.value?.scrollToTop()
   agentStore.fetchSession(session.id)
   agentStore.closeReportDrawer()
   activeView.value = 'WORKSPACE'
@@ -91,18 +96,38 @@ const handleSelectSession = (session: { id: string }) => {
 
 const handleSelectTask = (task: TaskItem) => {
   agentStore.closeTaskCenter()
-  // TODO: 定位到对应消息或报告
+  // 如果任务有关联的 traceId，尝试定位到对应报告
+  if (task.traceId) {
+    const message = agentStore.messages.find(
+      m => m.type === 'assistant_result_card' && m.result?.traceId === task.traceId
+    )
+    if (message && message.result) {
+      agentStore.openReportDrawer(message.result)
+    }
+  }
 }
 
 const handleSelectReport = (result: ReportSummary) => {
+  // 保存滚动位置后再打开抽屉
+  chatTimelineRef.value?.saveScrollPosition()
   agentStore.openReportDrawer(result)
+}
+
+const handleCloseReportDrawer = () => {
+  // 恢复滚动位置
+  chatTimelineRef.value?.restoreScrollPosition()
+  agentStore.closeReportDrawer()
 }
 
 const handleQuickAction = async (prompt: string) => {
   await handleSubmit(prompt)
 }
 
-const handleSubmit = async (text: string) => {
+const handleQuickReply = async (reply: string) => {
+  await handleSubmit(reply)
+}
+
+const handleSubmit = async (text: string, attachments?: string[]) => {
   if (!text.trim() || agentStore.isLoading) return
 
   agentStore.closeReportDrawer()
@@ -113,11 +138,24 @@ const handleSubmit = async (text: string) => {
   }
 
   try {
-    await agentStore.sendMessage(text)
+    await agentStore.sendMessage(text, attachments)
     // 滚动到底部
     chatTimelineRef.value?.scrollToBottom()
   } catch (error) {
     console.error('Failed to send message:', error)
+  }
+}
+
+const handleRetry = async () => {
+  // 重试最后一次发送的消息
+  const lastUserMessage = agentStore.messages.filter(m => m.type === 'user_text').pop()
+  if (lastUserMessage) {
+    try {
+      await agentStore.sendMessage(lastUserMessage.content)
+      chatTimelineRef.value?.scrollToBottom()
+    } catch (error) {
+      console.error('Retry failed:', error)
+    }
   }
 }
 
@@ -146,6 +184,7 @@ watch(
   () => route.query.sessionId,
   async (sessionId) => {
     if (typeof sessionId === 'string' && sessionId) {
+      chatTimelineRef.value?.scrollToTop()
       await agentStore.fetchSession(sessionId)
       activeView.value = 'WORKSPACE'
     }
@@ -156,6 +195,7 @@ watch(
   () => route.query.history,
   async (historyId) => {
     if (typeof historyId === 'string' && historyId) {
+      chatTimelineRef.value?.scrollToTop()
       await agentStore.fetchSession(historyId)
       activeView.value = 'WORKSPACE'
     }

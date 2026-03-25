@@ -19,6 +19,7 @@ CREATE TABLE chat_message (
     role VARCHAR(20) NOT NULL COMMENT '角色：user/assistant/system',
     content LONGTEXT COMMENT '消息内容',
     metadata JSON COMMENT '扩展信息（AgentResult等）',
+    type VARCHAR(30) COMMENT '消息类型：assistant_text/assistant_clarify/assistant_result_card',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     INDEX idx_session_id (session_id),
     INDEX idx_created_at (created_at),

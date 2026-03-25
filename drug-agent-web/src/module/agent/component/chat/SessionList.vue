@@ -146,9 +146,17 @@ function handleDeleteSession(session) {
           </div>
 
           <!-- 空状态 -->
-          <el-empty v-if="chatStore.sessions.length === 0" description="暂无会话记录">
-            <el-button type="primary" @click="handleCreateSession">创建第一个会话</el-button>
-          </el-empty>
+          <div v-if="chatStore.sessions.length === 0" class="flex flex-col items-center justify-center py-12 text-center">
+            <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg mb-4">
+              <ChatDotRound class="text-white" size="28" />
+            </div>
+            <h3 class="text-sm font-bold text-slate-700 mb-1">还没有任何会话</h3>
+            <p class="text-xs text-slate-400 mb-4">开始一个新会话，体验 AI 智能审查</p>
+            <el-button type="primary" size="small" @click="handleCreateSession">
+              <Plus class="mr-1" size="14" />
+              创建第一个会话
+            </el-button>
+          </div>
         </template>
       </template>
     </div>

@@ -1,0 +1,84 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6] [cursor=pointer]:
+        - img [ref=e8]
+        - generic [ref=e10]: 横渡智能系统
+      - button "新建会话" [ref=e11] [cursor=pointer]:
+        - img [ref=e12]
+    - navigation [ref=e15]:
+      - generic [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+        - generic [ref=e20]: 任务调度看板
+      - generic [ref=e21] [cursor=pointer]:
+        - img [ref=e22]
+        - generic [ref=e25]: 合规知识库
+    - generic [ref=e27]: 历史审查会话
+    - generic [ref=e28]:
+      - generic [ref=e29] [cursor=pointer]:
+        - img [ref=e30]
+        - generic [ref=e33]: 偏好与系统配置
+      - button "收起侧边栏" [ref=e34] [cursor=pointer]:
+        - img [ref=e35]
+        - generic [ref=e37]: 收起侧边栏
+  - generic [ref=e38]:
+    - banner [ref=e39]:
+      - generic [ref=e40]:
+        - generic [ref=e41]: 横渡智能系统
+        - img [ref=e42]
+        - generic [ref=e44]: 智能审查工作台
+      - generic [ref=e45]:
+        - button "任务中心" [ref=e46] [cursor=pointer]:
+          - img [ref=e48]
+          - generic [ref=e50]: 任务中心
+        - generic [ref=e51] [cursor=pointer]: DA
+    - main [ref=e52]:
+      - main [ref=e54]:
+        - generic [ref=e55]:
+          - generic [ref=e56]:
+            - generic [ref=e57]: Agent 审查工作台
+            - img [ref=e58]
+            - generic [ref=e60]: 审查标书文件...
+          - generic [ref=e61]:
+            - button "任务中心" [ref=e63] [cursor=pointer]:
+              - img [ref=e64]
+              - generic [ref=e66]: 任务中心
+            - generic [ref=e67]: DA
+        - generic [ref=e69]:
+          - generic [ref=e70]:
+            - generic [ref=e71]:
+              - generic [ref=e72]: 您 · 03:03 PM
+              - generic [ref=e73]: 审查标书文件
+            - generic [ref=e74]: U
+          - generic [ref=e75]:
+            - img [ref=e77]
+            - generic [ref=e80]:
+              - generic [ref=e81]: Drug-Agent · 03:03 PM
+              - generic [ref=e82]:
+                - generic [ref=e83]:
+                  - img [ref=e84]
+                  - generic [ref=e87]: 需要澄清
+                - paragraph [ref=e88]: 为了更准确地完成分析，请确认以下几点： 1. 您要对比的标书是否已经排版完成？ 2. 是否需要按照特定的评分标准进行比对？ 3. 发现疑似雷同时，您希望系统自动标记还是仅做提示？
+                - generic [ref=e89]:
+                  - button "已排版完成，请继续" [ref=e90] [cursor=pointer]
+                  - button "请按标准评分比对" [ref=e91] [cursor=pointer]
+                  - button "自动标记疑似雷同" [ref=e92] [cursor=pointer]
+        - generic [ref=e93]:
+          - generic [ref=e94]:
+            - textbox "向 Agent 追加要求或提供更多材料..." [ref=e95]
+            - generic [ref=e96]:
+              - generic [ref=e97]:
+                - button "上传材料" [ref=e98] [cursor=pointer]:
+                  - img [ref=e99]
+                  - generic [ref=e102]: 上传材料
+                - button "引用知识" [ref=e103] [cursor=pointer]:
+                  - img [ref=e104]
+                  - generic [ref=e107]: 引用知识
+              - button "发送任务" [disabled] [ref=e108]:
+                - img [ref=e109]
+                - generic [ref=e112]: 发送任务
+          - generic [ref=e113]: AI 生成内容仅供参考，重大决策请人工复核 (Drug-Agent Core v0.3)
+```

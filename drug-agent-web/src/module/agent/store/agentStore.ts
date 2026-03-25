@@ -13,9 +13,10 @@ import type {
 } from '@/store/agent/types'
 import type {
   AssistantProgressMessage,
-  UserMessage
+  UserTextMessage
 } from '@/store/agent/types'
-import { mockService } from '@/components/agent/mockService'
+import { apiAgent } from '@/services/agent/apiAgent'
+import { mockService, simulateAIResponse, USE_REAL_API } from '@/components/agent/mockService'
 
 // 消息 ID 生成器
 let msgIdCounter = 10000
@@ -180,10 +181,19 @@ export const useAgentStore = defineStore('agent', () => {
     isLoading.value = true
     error.value = null
     try {
-      const sessionList = mockService.getSessions()
-      // 加载每个会话的详情
-      const details = sessionList.map(s => mockService.getSession(s.id)).filter(Boolean) as SessionDetail[]
-      sessions.value = details
+      // Mock 模式下直接使用 mockService
+      if (!USE_REAL_API) {
+        const mockList = mockService.getSessions()
+        const details = mockList.map(s => mockService.getSession(s.id)).filter(Boolean) as SessionDetail[]
+        sessions.value = details
+      } else {
+        // 真实 API 模式
+        const sessionList = await apiAgent.getSessions()
+        const details = await Promise.all(
+          sessionList.map(s => apiAgent.getSession(s.id).catch(() => null))
+        )
+        sessions.value = details.filter(Boolean) as SessionDetail[]
+      }
     } catch (e) {
       error.value = e instanceof Error ? e.message : '获取会话列表失败'
       console.error('Failed to fetch sessions:', e)
@@ -199,7 +209,16 @@ export const useAgentStore = defineStore('agent', () => {
     isLoading.value = true
     error.value = null
     try {
-      const detail = mockService.getSession(sessionId)
+      let detail: SessionDetail | null = null
+
+      if (!USE_REAL_API) {
+        // Mock 模式
+        detail = mockService.getSession(sessionId)
+      } else {
+        // 真实 API 模式
+        detail = await apiAgent.getSession(sessionId)
+      }
+
       if (detail) {
         // 更新 sessions 列表
         const index = sessions.value.findIndex(s => s.id === sessionId)
@@ -227,9 +246,20 @@ export const useAgentStore = defineStore('agent', () => {
     isLoading.value = true
     error.value = null
     try {
-      const newSession = mockService.createSession(title, scene)
-      sessions.value.unshift(newSession)
-      activeSession.value = newSession
+      let newSession: SessionDetail | null = null
+
+      if (!USE_REAL_API) {
+        // Mock 模式
+        newSession = mockService.createSession(title, scene)
+      } else {
+        // 真实 API 模式
+        newSession = await apiAgent.createSession({ title, scene })
+      }
+
+      if (newSession) {
+        sessions.value.unshift(newSession)
+        activeSession.value = newSession
+      }
       return newSession
     } catch (e) {
       error.value = e instanceof Error ? e.message : '创建会话失败'
@@ -243,6 +273,10 @@ export const useAgentStore = defineStore('agent', () => {
    * 发送消息（核心方法）
    * 1. 先插入 assistant_progress 消息
    * 2. 收到响应后用最终消息替换
+   *
+   * 阶段三改动：
+   * - 当 USE_REAL_API 为 true 时调用真实 API
+   * - API 失败时回退到 mockService.simulateAIResponse
    */
   async function sendMessage(content: string, attachments?: string[]) {
     if (!activeSession.value) return
@@ -254,7 +288,7 @@ export const useAgentStore = defineStore('agent', () => {
     const sessionId = activeSession.value.id
 
     // 1. 创建用户消息
-    const userMsg: UserMessage = {
+    const userMsg: UserTextMessage = {
       id: `msg_${++msgIdCounter}`,
       role: 'user',
       type: 'user_text',
@@ -279,24 +313,51 @@ export const useAgentStore = defineStore('agent', () => {
     // 4. 添加进度消息
     addMessage(progressMsg)
 
-    // 5. 创建任务
-    const task = mockService.addTask(content.substring(0, 20) + '...', 'TENDER')
-    addTask(task)
+    // 5. 创建任务（mock 模式先用，真实 API 会返回真实 task）
+    const mockTask = mockService.addTask(content.substring(0, 20) + '...', 'TENDER')
+    addTask(mockTask)
 
     try {
-      // 6. 模拟 AI 响应（不再操作 session.messages）
-      const finalMsg = await mockService.simulateAIResponse(sessionId, content)
+      if (USE_REAL_API) {
+        // 真实 API 模式
+        const response = await apiAgent.sendMessage(sessionId, { content, attachments })
 
-      // 7. 用最终消息替换进度消息
-      replaceProgressMessage(finalMsg)
+        // 7. 用最终消息替换进度消息
+        if (response.message) {
+          replaceProgressMessage(response.message)
+        }
 
-      // 8. 更新任务状态
-      updateTask(task.id, { status: 'completed', progress: 100 })
+        // 8. 更新任务状态（使用真实返回的 task 或 mock task）
+        const finalTaskId = response.task?.id || mockTask.id
+        updateTask(finalTaskId, { status: 'completed', progress: 100 })
+      } else {
+        // Mock 模式 - 使用 simulateAIResponse
+        const finalMsg = await simulateAIResponse(sessionId, content)
+
+        // 7. 用最终消息替换进度消息
+        replaceProgressMessage(finalMsg)
+
+        // 8. 更新任务状态
+        updateTask(mockTask.id, { status: 'completed', progress: 100 })
+      }
 
     } catch (e) {
       error.value = e instanceof Error ? e.message : '发送消息失败'
       console.error('Failed to send message:', e)
-      // 如果出错，也移除进度消息
+
+      // 失败时尝试回退到 mock
+      if (USE_REAL_API) {
+        try {
+          const finalMsg = await simulateAIResponse(sessionId, content)
+          replaceProgressMessage(finalMsg)
+          updateTask(mockTask.id, { status: 'completed', progress: 100 })
+          error.value = null // 恢复后清除错误
+        } catch {
+          // 回退也失败，保持错误状态
+        }
+      }
+
+      // 如果出错，移除进度消息
       const progressIndex = activeSession.value.messages.findIndex(
         msg => msg.type === 'assistant_progress'
       )
@@ -311,10 +372,20 @@ export const useAgentStore = defineStore('agent', () => {
   // ==================== 任务 Actions ====================
 
   /**
-   * 获取任务列表
+   * 获取活跃任务列表
    */
-  function fetchTasks() {
-    tasks.value = mockService.getTasks()
+  async function fetchTasks() {
+    try {
+      if (USE_REAL_API) {
+        tasks.value = await apiAgent.getActiveTasks()
+      } else {
+        tasks.value = mockService.getTasks()
+      }
+    } catch (e) {
+      console.error('Failed to fetch tasks:', e)
+      // 失败时使用 mock
+      tasks.value = mockService.getTasks()
+    }
   }
 
   // ==================== 任务 Actions ====================

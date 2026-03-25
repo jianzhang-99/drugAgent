@@ -3,6 +3,7 @@ package com.liang.drugagent.controller;
 import com.liang.drugagent.agent.chat.AgentChatService;
 import com.liang.drugagent.controller.domain.request.agent.DrugAgentReq;
 import com.liang.drugagent.controller.domain.response.agent.DrugAgentResp;
+import com.liang.drugagent.scene.common.MessageTypeEnum;
 import com.liang.drugagent.scene.common.service.ChatMemoryService;
 import com.liang.drugagent.shared.domain.response.Result;
 import com.liang.drugagent.scene.common.entity.ChatMessage;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -157,21 +159,30 @@ public class AgentController {
         String content = request.get("content");
         String metadata = request.get("metadata");
 
-        chatMemoryService.addMessage(sessionId, role, content, metadata);
+        // 保存用户消息
+        ChatMessage userMsg = chatMemoryService.addMessage(sessionId, role, content, metadata, null);
 
         DrugAgentResp aiResponse = null;
+        ChatMessage aiMsg = null;
         if ("user".equals(role)) {
             DrugAgentReq req = DrugAgentReq.builder()
                     .sessionId(sessionId)
                     .query(content)
                     .build();
             aiResponse = agentChatService.handleChat(req);
-            chatMemoryService.addMessage(sessionId, "assistant", aiResponse.getAnswer(), null);
+
+            // 根据AI响应确定消息类型
+            String messageType = determineMessageType(aiResponse);
+            aiMsg = chatMemoryService.addMessage(sessionId, "assistant",
+                    aiResponse.getAnswer() != null ? aiResponse.getAnswer() : aiResponse.getSummary(),
+                    null, messageType);
         }
 
-        Map<String, Object> response = new java.util.LinkedHashMap<>();
+        Map<String, Object> response = new LinkedHashMap<>();
         response.put("userMessage", content);
+        response.put("userMessageType", userMsg.getType());
         response.put("aiResponse", aiResponse != null ? aiResponse.getAnswer() : "");
+        response.put("aiMessageType", aiMsg != null ? aiMsg.getType() : null);
         response.put("traceId", aiResponse != null ? aiResponse.getTraceId() : null);
         response.put("scene", aiResponse != null ? aiResponse.getScene() : null);
         response.put("routeSource", aiResponse != null ? aiResponse.getRouteSource() : null);
@@ -179,5 +190,21 @@ public class AgentController {
         response.put("confidence", aiResponse != null ? aiResponse.getConfidence() : null);
 
         return Result.success(response);
+    }
+
+    /**
+     * 根据AI响应确定消息类型。
+     */
+    private String determineMessageType(DrugAgentResp resp) {
+        if (resp == null) {
+            return MessageTypeEnum.ASSISTANT_TEXT.getCode();
+        }
+        if (resp.isRequiresClarification()) {
+            return MessageTypeEnum.ASSISTANT_CLARIFY.getCode();
+        }
+        if (resp.getReport() != null) {
+            return MessageTypeEnum.ASSISTANT_RESULT_CARD.getCode();
+        }
+        return MessageTypeEnum.ASSISTANT_TEXT.getCode();
     }
 }

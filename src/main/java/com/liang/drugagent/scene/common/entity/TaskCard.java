@@ -43,6 +43,11 @@ public class TaskCard {
     private String caseId;
 
     /**
+     * 链路追踪ID
+     */
+    private String traceId;
+
+    /**
      * 任务名称
      */
     private String taskName;

@@ -11,6 +11,7 @@
 CREATE TABLE IF NOT EXISTS task_card (
     id VARCHAR(36) PRIMARY KEY COMMENT '任务卡片唯一标识(UUID)',
     case_id VARCHAR(36) COMMENT '关联的标书审查Case ID',
+    trace_id VARCHAR(36) COMMENT '链路追踪ID',
     task_name VARCHAR(255) NOT NULL COMMENT '任务名称',
     task_type VARCHAR(50) NOT NULL DEFAULT 'TENDER_REVIEW' COMMENT '任务类型: TENDER_REVIEW/CONTRACT_CHECK/COMPLIANCE_ALERT',
     scene VARCHAR(50) COMMENT '场景标识',
@@ -47,6 +48,7 @@ CREATE TABLE IF NOT EXISTS task_card (
 
     -- 索引
     INDEX idx_case_id (case_id),
+    INDEX idx_trace_id (trace_id),
     INDEX idx_status (status),
     INDEX idx_risk_level (risk_level),
     INDEX idx_priority (priority),

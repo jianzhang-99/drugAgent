@@ -280,6 +280,30 @@ public class TaskCardService {
     }
 
     /**
+     * 获取所有任务卡片（不分页）
+     */
+    public List<TaskCard> getAllTaskCards() {
+        LambdaQueryWrapper<TaskCard> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(TaskCard::getIsDeleted, 0)
+                .orderByDesc(TaskCard::getUpdatedAt);
+        return taskCardMapper.selectList(wrapper);
+    }
+
+    /**
+     * 根据traceId获取任务卡片
+     */
+    public TaskCard getTaskCardByTraceId(String traceId) {
+        if (traceId == null || traceId.isBlank()) {
+            return null;
+        }
+        LambdaQueryWrapper<TaskCard> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(TaskCard::getTraceId, traceId)
+                .eq(TaskCard::getIsDeleted, 0);
+        List<TaskCard> tasks = taskCardMapper.selectList(wrapper);
+        return tasks.isEmpty() ? null : tasks.get(0);
+    }
+
+    /**
      * 实体转VO
      */
     private TaskCardVO convertToVO(TaskCard task) {

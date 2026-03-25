@@ -4,6 +4,7 @@
     :message="message"
     :is-selected="isSelected"
     @click-card="$emit('click-card', $event)"
+    @quick-reply="$emit('quick-reply', $event)"
   />
 </template>
 
@@ -25,6 +26,7 @@ const props = defineProps<{
 
 defineEmits<{
   'click-card': [result: ReportSummary]
+  'quick-reply': [reply: string]
 }>()
 
 const componentMap = {
