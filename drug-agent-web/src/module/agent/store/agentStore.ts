@@ -1,0 +1,387 @@
+/**
+ * Agent Store
+ * 管理 sessions, activeSessionId, messagesBySession, loading, sending, uploading, currentResult
+ */
+
+import { defineStore } from 'pinia';
+import { ref, computed } from 'vue';
+import type {
+  Session,
+  Message,
+  DrugAgentResp,
+  CreateSessionRequest,
+  Attachment,
+} from '../types/agent';
+import * as agentApi from '../api/agentApi';
+import {
+  mapChatMessageToMessage,
+  mapResponseToMessage,
+  createUserMessage,
+  createErrorMessage,
+  createUploadingMessage,
+} from '../utils/messageMapper';
+
+export const useAgentStore = defineStore('agent', () => {
+  // ==================== 状态定义 ====================
+
+  /** 会话列表 */
+  const sessions = ref<Session[]>([]);
+
+  /** 当前激活的会话 ID */
+  const activeSessionId = ref<string | null>(null);
+
+  /** 按会话 ID 存储的消息映射 */
+  const messagesBySession = ref<Record<string, Message[]>>({});
+
+  /** 全局加载状态 */
+  const loading = ref(false);
+
+  /** 发送消息状态 */
+  const sending = ref(false);
+
+  /** 上传文件状态 */
+  const uploading = ref(false);
+
+  /** 当前结果数据（用于详情抽屉） */
+  const currentResult = ref<DrugAgentResp | null>(null);
+
+  /** 当前上传的文件列表 */
+  const pendingFiles = ref<Attachment[]>([]);
+
+  // ==================== 计算属性 ====================
+
+  /** 当前会话 */
+  const activeSession = computed(() => {
+    return sessions.value.find((s) => s.id === activeSessionId.value) || null;
+  });
+
+  /** 当前会话的消息列表 */
+  const activeMessages = computed(() => {
+    if (!activeSessionId.value) return [];
+    return messagesBySession.value[activeSessionId.value] || [];
+  });
+
+  // ==================== Actions ====================
+
+  /**
+   * 加载所有会话
+   */
+  async function loadSessions() {
+    loading.value = true;
+    try {
+      const res = await agentApi.getSessions();
+      if (res.data.code === 200 || res.data.code === 0) {
+        sessions.value = res.data.data || [];
+        // 如果有会话但没有选中的，自动选中第一个
+        if (sessions.value.length > 0 && !activeSessionId.value) {
+          await selectSession(sessions.value[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('加载会话列表失败:', error);
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
+   * 创建新会话
+   */
+  async function createSession(data?: CreateSessionRequest) {
+    loading.value = true;
+    try {
+      const res = await agentApi.createSession({
+        title: data?.title || '新对话',
+        scene: data?.scene || 'general',
+      });
+      if (res.data.code === 200 || res.data.code === 0) {
+        const newSession = res.data.data;
+        if (newSession) {
+          sessions.value.unshift(newSession);
+          await selectSession(newSession.id);
+          return newSession;
+        }
+      }
+    } catch (error) {
+      console.error('创建会话失败:', error);
+    } finally {
+      loading.value = false;
+    }
+    return null;
+  }
+
+  /**
+   * 选择会话
+   */
+  async function selectSession(sessionId: string) {
+    activeSessionId.value = sessionId;
+
+    // 如果没有该会话的消息，则加载
+    if (!messagesBySession.value[sessionId]) {
+      await loadMessages(sessionId);
+    }
+  }
+
+  /**
+   * 加载指定会话的消息
+   */
+  async function loadMessages(sessionId: string) {
+    try {
+      const res = await agentApi.getSessionById(sessionId);
+      if (res.data.code === 200 || res.data.code === 0) {
+        const session = res.data.data;
+        if (session?.messages) {
+          messagesBySession.value[sessionId] = session.messages.map(
+            mapChatMessageToMessage
+          );
+        }
+      }
+    } catch (error) {
+      console.error('加载消息失败:', error);
+    }
+  }
+
+  /**
+   * 删除会话
+   */
+  async function removeSession(sessionId: string) {
+    try {
+      const res = await agentApi.deleteSession(sessionId);
+      if (res.data.code === 200 || res.data.code === 0) {
+        // 从列表中移除
+        sessions.value = sessions.value.filter((s) => s.id !== sessionId);
+        // 清除消息
+        delete messagesBySession.value[sessionId];
+        // 如果删除的是当前会话，选中第一个
+        if (activeSessionId.value === sessionId) {
+          activeSessionId.value = sessions.value[0]?.id || null;
+        }
+      }
+    } catch (error) {
+      console.error('删除会话失败:', error);
+    }
+  }
+
+  /**
+   * 更新会话标题
+   */
+  async function updateSessionTitle(sessionId: string, title: string) {
+    try {
+      const res = await agentApi.updateSessionTitle(sessionId, { title });
+      if (res.data.code === 200 || res.data.code === 0) {
+        const session = sessions.value.find((s) => s.id === sessionId);
+        if (session) {
+          session.title = title;
+        }
+      }
+    } catch (error) {
+      console.error('更新会话标题失败:', error);
+    }
+  }
+
+  /**
+   * 发送文本消息
+   */
+  async function sendMessage(content: string) {
+    if (!activeSessionId.value) {
+      // 如果没有活动会话，先创建一个
+      await createSession();
+    }
+
+    if (!activeSessionId.value) return;
+
+    sending.value = true;
+
+    // 添加用户消息
+    const userMsg = createUserMessage(content);
+    addMessage(userMsg);
+
+    try {
+      const res = await agentApi.chat({
+        query: content,
+        sessionId: activeSessionId.value,
+        userId: 'default_user',
+        sceneHint: activeSession.value?.scene,
+      });
+
+      if (res.data.code === 200 || res.data.code === 0) {
+        const aiMsg = mapResponseToMessage(res.data.data);
+        addMessage(aiMsg);
+
+        // 如果是澄清消息，设置澄清问题
+        if (aiMsg.type === 'assistant_clarify') {
+          // 澄清消息已包含内容
+        }
+      } else {
+        const errorMsg = createErrorMessage(res.data.message || '请求失败');
+        addMessage(errorMsg);
+      }
+    } catch (error: any) {
+      console.error('发送消息失败:', error);
+      const errorMsg = createErrorMessage(
+        error?.message || '网络错误，请稍后重试'
+      );
+      addMessage(errorMsg);
+    } finally {
+      sending.value = false;
+    }
+  }
+
+  /**
+   * 上传文件
+   */
+  async function uploadFiles(
+    files: File[],
+    query?: string,
+    submittedBy: string = 'anonymous'
+  ) {
+    if (!activeSessionId.value) {
+      await createSession();
+    }
+
+    if (!activeSessionId.value || files.length === 0) return;
+
+    uploading.value = true;
+
+    // 添加上传中消息
+    const uploadingMsg = createUploadingMessage(
+      files.map((f) => ({
+        id: `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        name: f.name,
+        size: f.size,
+        type: f.type,
+      }))
+    );
+    addMessage(uploadingMsg);
+
+    try {
+      const res = await agentApi.submit(
+        query,
+        activeSession.value?.scene,
+        activeSessionId.value,
+        'default_user',
+        submittedBy,
+        files
+      );
+
+      if (res.data.code === 200 || res.data.code === 0) {
+        // 移除上传中消息
+        removeMessage(uploadingMsg.id);
+
+        // 添加助手消息
+        const aiMsg = mapResponseToMessage(res.data.data);
+        addMessage(aiMsg);
+
+        // 设置当前结果
+        if (aiMsg.result) {
+          currentResult.value = res.data.data;
+        }
+
+        return res.data.data;
+      } else {
+        // 移除上传中消息，添加错误消息
+        removeMessage(uploadingMsg.id);
+        const errorMsg = createErrorMessage(res.data.message || '上传失败');
+        addMessage(errorMsg);
+      }
+    } catch (error: any) {
+      console.error('上传文件失败:', error);
+      removeMessage(uploadingMsg.id);
+      const errorMsg = createErrorMessage(
+        error?.message || '网络错误，请稍后重试'
+      );
+      addMessage(errorMsg);
+    } finally {
+      uploading.value = false;
+      pendingFiles.value = [];
+    }
+    return null;
+  }
+
+  /**
+   * 添加消息到当前会话
+   */
+  function addMessage(message: Message) {
+    if (!activeSessionId.value) return;
+
+    if (!messagesBySession.value[activeSessionId.value]) {
+      messagesBySession.value[activeSessionId.value] = [];
+    }
+    messagesBySession.value[activeSessionId.value].push(message);
+  }
+
+  /**
+   * 移除消息
+   */
+  function removeMessage(messageId: string) {
+    if (!activeSessionId.value) return;
+
+    const messages = messagesBySession.value[activeSessionId.value];
+    if (messages) {
+      const index = messages.findIndex((m) => m.id === messageId);
+      if (index > -1) {
+        messages.splice(index, 1);
+      }
+    }
+  }
+
+  /**
+   * 设置当前结果
+   */
+  function setCurrentResult(result: DrugAgentResp | null) {
+    currentResult.value = result;
+  }
+
+  /**
+   * 添加上传文件到列表
+   */
+  function addUploadFile(file: Attachment) {
+    pendingFiles.value.push(file);
+  }
+
+  /**
+   * 移除上传文件
+   */
+  function removeUploadFile(fileId: string) {
+    pendingFiles.value = pendingFiles.value.filter((f) => f.id !== fileId);
+  }
+
+  /**
+   * 清空上传文件列表
+   */
+  function clearUploadFiles() {
+    pendingFiles.value = [];
+  }
+
+  return {
+    // 状态
+    sessions,
+    activeSessionId,
+    messagesBySession,
+    loading,
+    sending,
+    uploading,
+    currentResult,
+    pendingFiles,
+
+    // 计算属性
+    activeSession,
+    activeMessages,
+
+    // Actions
+    loadSessions,
+    createSession,
+    selectSession,
+    loadMessages,
+    removeSession,
+    updateSessionTitle,
+    sendMessage,
+    uploadFiles,
+    addMessage,
+    removeMessage,
+    setCurrentResult,
+    addUploadFile,
+    removeUploadFile,
+    clearUploadFiles,
+  };
+});
