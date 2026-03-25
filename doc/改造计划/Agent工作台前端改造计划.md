@@ -13,6 +13,11 @@
 3. 工作台的主线应该是“会话时间线 + 任务中心 + 右侧结果抽屉”
 4. 前端必须先形成稳定的消息模型，再去接真实后端
 
+本计划额外遵循两个落地约束：
+
+1. 尽量遵循当前 `drug-agent-web/src` 目录结构推进，不做大规模目录搬迁
+2. 尽量少增文件，优先在已有页面、布局、store、api 文件中收口改造
+
 ---
 
 ## 2. 前端目标
@@ -35,6 +40,7 @@
 6. 点击结果卡可以打开右侧报告抽屉
 7. 顶部任务中心能展示后台任务状态
 8. 页面视觉和交互节奏与原型基本一致
+9. 在实现上述目标时尽量压缩文件数量，避免为抽象而抽象
 
 ---
 
@@ -219,40 +225,59 @@ type ReportDetail = ReportSummary & {
 }
 ```
 
+### 4.5 轻量化实现原则
+
+虽然状态模型需要先定义清楚，但不代表要额外拆出很多类型文件。
+
+建议做法：
+
+1. 模型定义优先放在现有 `store/session.js` 或 `WorkspacePage.vue` 附近的注释与转换方法中
+2. 在演示版阶段，不单独为每个 message type 建一个文件
+3. 只有当某块视图复杂到明显影响可读性时，再拆成局部组件
+
+也就是说：
+
+**先保证模型清楚，再决定要不要拆文件，而不是先拆文件再找模型。**
+
 ---
 
 ## 5. 组件拆分方案
 
-建议本次前端不要继续把大量逻辑堆在 `WorkspacePage.vue`，而是按工作台结构拆分组件。
+建议本次前端不要继续把大量逻辑堆在 `WorkspacePage.vue`，但拆分方式应保持轻量，尽量复用当前目录。
 
 ### 5.1 一级组件
 
-建议新增或重构为：
+建议优先基于现有文件改造：
 
-1. `AgentWorkbenchPage`
-2. `AgentSidebar`
-3. `AgentTopBar`
-4. `TaskCenterPopover`
-5. `ChatTimeline`
-6. `ComposerBar`
-7. `ReportDrawer`
+1. 继续以 `src/pages/WorkspacePage.vue` 作为工作台主页面
+2. 继续复用 `src/component/layout/AppSidebar.vue`
+3. 继续复用 `src/component/layout/AppHeader.vue`
+4. 将顶部任务中心保留在现有 `App.vue` 与 `TaskPane.vue` 体系内演进
+5. 将右侧报告抽屉优先收敛在 `WorkspacePage.vue` 内
+
+换句话说，本阶段不建议新建一个全新的 `AgentWorkbenchPage` 去替换现有页面，而是：
+
+1. 用现有 `WorkspacePage.vue` 承接原型主逻辑
+2. 用现有 layout 目录承接 shell 结构
+3. 用尽量少的新文件完成原型收敛
 
 ### 5.2 二级组件
 
-建议继续拆分：
+建议拆分遵循“必须拆才拆”的原则。
 
-1. `SessionHistoryGroup`
-2. `QuickActionGrid`
-3. `MessageRenderer`
-4. `UserMessageBubble`
-5. `AssistantTextMessage`
-6. `AssistantClarifyMessage`
-7. `AssistantProgressMessage`
-8. `AssistantResultCard`
-9. `TaskProgressItem`
-10. `ReportSummarySection`
-11. `ReportActionSection`
-12. `ExecutionTraceSection`
+第一阶段最多只建议增加 2 到 4 个前端文件，优先顺序如下：
+
+1. `MessageRenderer.vue`
+2. `ResultCard.vue`
+3. `ReportDrawer.vue`
+4. `TaskCenterPopover.vue`
+
+如果当前 `WorkspacePage.vue` 仍可读，则可以进一步压缩为：
+
+1. `MessageRenderer.vue`
+2. `ReportDrawer.vue`
+
+其余部分优先作为 `WorkspacePage.vue` 内部局部方法和局部模板块存在。
 
 ### 5.3 渲染原则
 
@@ -263,6 +288,8 @@ type ReportDetail = ReportSummary & {
 ```
 
 不要在页面层继续散落多层 `v-if / v-else-if / result / isLoading` 判断。
+
+但这个“单一渲染入口”不要求一定拆成很多文件，也可以先在 `WorkspacePage.vue` 中通过单一方法分派实现。
 
 ---
 
@@ -330,17 +357,18 @@ type ReportDetail = ReportSummary & {
 
 任务：
 
-1. 搭建 `AgentWorkbenchPage`
-2. 重建左侧导航和历史会话区域
-3. 重建顶部任务中心
-4. 重建聊天时间线
-5. 重建结果卡与右侧抽屉
-6. 使用本地 mock service 驱动完整对话流程
+1. 基于 `src/pages/WorkspacePage.vue` 收敛原型主布局
+2. 基于 `src/component/layout/AppSidebar.vue` 收敛历史会话表现
+3. 基于现有 `App.vue + TaskPane.vue` 收敛任务中心表现
+4. 在当前页面中重建聊天时间线
+5. 在当前页面中重建结果卡与右侧抽屉
+6. 使用现有 `src/module/agent/store/session.js` 驱动 mock 对话流程
 
 完成标准：
 
 1. 原型核心布局还原度达到 85% 以上
 2. 演示链路可稳定连续执行
+3. 新增文件数控制在最小范围内
 
 ### 阶段二：状态收敛版
 
@@ -351,10 +379,10 @@ type ReportDetail = ReportSummary & {
 
 任务：
 
-1. 建立新的消息模型
-2. 建立新的 store
-3. 建立消息替换机制
-4. 建立右侧抽屉状态管理
+1. 在现有 `session.js` 中收敛消息模型
+2. 在现有 `WorkspacePage.vue` 中收敛消息替换机制
+3. 在现有页面中收敛右侧抽屉状态
+4. 清理当前页面中重复的 loading 和结果分支
 
 完成标准：
 
@@ -370,12 +398,12 @@ type ReportDetail = ReportSummary & {
 
 任务：
 
-1. 增加 adapter 层
-2. 接入会话摘要接口
-3. 接入会话详情接口
-4. 接入发送消息接口
-5. 接入任务接口
-6. 接入报告详情接口
+1. 优先在现有 `src/module/agent/api/chatApi.js` 中增加契约映射方法
+2. 优先在现有 `session.js` 中完成前端 message schema 转换
+3. 接入会话摘要接口
+4. 接入会话详情接口
+5. 接入发送消息接口
+6. 视需要接入任务接口和报告详情接口
 
 完成标准：
 
@@ -404,7 +432,7 @@ type ReportDetail = ReportSummary & {
 
 ## 8. 前端任务拆分建议
 
-为了便于并行推进，建议拆成以下任务：
+为了便于推进，建议按职责拆任务，但不要求每个任务都新建独立文件。
 
 ### 任务 A：工作台骨架与布局
 
@@ -437,17 +465,17 @@ type ReportDetail = ReportSummary & {
 
 包含：
 
-1. mock 会话接口
-2. mock 消息接口
-3. mock 任务接口
-4. mock 报告接口
+1. 基于现有 store 做 mock 会话数据
+2. 基于现有页面做 mock 消息返回
+3. 基于现有任务面板做 mock 任务数据
+4. 基于现有抽屉做 mock 报告数据
 
 ### 任务 E：联调与自动化
 
 包含：
 
-1. adapter 层
-2. 接口映射
+1. 现有 api 文件中的轻量映射
+2. 接口联调
 3. Playwright 冒烟测试
 
 ---
@@ -506,4 +534,4 @@ type ReportDetail = ReportSummary & {
 
 一句话总结：
 
-**先把 Agent 工作台做成，再让后端去适配这个工作台，而不是反过来。**
+**先在当前目录内，把 Agent 工作台做成一个轻量、稳定、少文件的版本，再让后端去适配这个工作台。**

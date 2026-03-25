@@ -16,6 +16,11 @@
 2. 后端分阶段补充契约接口
 3. 在演示期优先保证接口稳定和结构清晰
 
+本计划额外遵循两个约束：
+
+1. 保持当前后端目录结构，不做大规模目录迁移
+2. 尽量减少新增类文件，优先在现有 controller、service、response 结构中轻量扩展
+
 ---
 
 ## 2. 后端目标
@@ -35,6 +40,7 @@
 3. 前端发送消息后，能收到明确的消息类型
 4. 顶部任务中心可以读取后台任务状态
 5. 点击结果卡后可以拉取或展示结构化报告详情
+6. 在满足上述目标时尽量压缩新增类数量
 
 ---
 
@@ -76,6 +82,14 @@
 
 - 路由、工作流、报告生成继续返回业务对象
 - 最后新增 adapter，将业务对象转换为前端消息协议
+
+这里的“适配层”不代表一定新建一整套目录。
+
+在当前项目里，建议优先采用轻量做法：
+
+1. 先在现有 `AgentChatService` 内新增少量私有转换方法
+2. 先在现有 response DTO 上轻量补字段
+3. 只有当转换逻辑明显膨胀时，再考虑抽成单独 assembler
 
 ---
 
@@ -320,20 +334,19 @@ POST /api/files/upload
 
 ### 5.1 增加前端消息适配层
 
-建议新增一个统一适配层，例如：
+建议优先不新增独立 assembler 文件。
 
-1. `AgentMessageAssembler`
-2. `SessionViewAssembler`
-3. `TaskViewAssembler`
-4. `ReportViewAssembler`
+更符合当前项目的轻量方案是：
 
-职责：
+1. 在 `AgentChatService` 中增加 `buildAssistantMessageView(...)`
+2. 在 `AgentController` 中增加最少量的接口 DTO 组装
+3. 在 `TaskBoardController` 或现有任务相关 service 中返回前端需要的任务视图
 
-1. 将 `DrugAgentResp` 转为 `ChatMessageView`
-2. 将 `WorkflowResult` 转为 `ReportSummaryView`
-3. 将任务状态实体转为 `TaskItemView`
+只有当以下条件满足时，才建议新增独立 assembler 文件：
 
-这样可以避免 Controller 里直接拼字段，也避免前端依赖后端内部业务对象。
+1. 单个类中转换逻辑超过 150 行
+2. 多个 controller 开始重复拼装同类结构
+3. 一个视图协议被多个场景重复使用
 
 ### 5.2 将会话消息持久化结构标准化
 
@@ -345,6 +358,11 @@ POST /api/files/upload
 2. `trace_id`
 3. `result_snapshot`
 4. `attachments_snapshot`
+
+如果当前演示周期不允许改表，也可以采用过渡方案：
+
+1. 短期先把 `result_snapshot` 放到现有 metadata/json 字段中
+2. 中期再补正式字段或新表结构
 
 这样历史会话恢复时就能稳定还原前端表现。
 
@@ -361,6 +379,8 @@ POST /api/files/upload
 - `UNKNOWN + requiresClarification=true` -> `assistant_clarify`
 - `scene明确但无结构化结果` -> `assistant_text`
 - `scene明确且有结构化结果` -> `assistant_result_card`
+
+这一层建议优先放在现有 `AgentChatService` 中完成，不额外新增“消息路由服务”之类的文件。
 
 ### 5.4 任务中心不要依赖前端本地推导
 
@@ -386,10 +406,10 @@ POST /api/files/upload
 
 任务：
 
-1. 补齐会话摘要 DTO
-2. 补齐消息视图 DTO
-3. 补齐任务视图 DTO
-4. 补齐报告详情 DTO
+1. 在现有 DTO 上补齐工作台所需字段
+2. 明确消息类型字段
+3. 明确报告摘要字段
+4. 明确任务中心字段
 
 完成标准：
 
@@ -408,6 +428,12 @@ POST /api/files/upload
 2. 增加任务接口
 3. 增加报告详情接口
 4. 增加文件上传接口
+
+这里建议优先保持现有 controller 数量不变，先在已有 controller 中扩展：
+
+1. `AgentController`
+2. `TaskBoardController`
+3. 必要时复用现有 `TenderTaskController`
 
 完成标准：
 
@@ -519,4 +545,4 @@ POST /api/files/upload
 
 一句话总结：
 
-**后端先做前端工作台的稳定供给层，再做更深层的业务架构升级。**
+**后端先在当前目录结构内，做一个轻量、稳定、少文件的工作台供给层，再逐步演进。**
