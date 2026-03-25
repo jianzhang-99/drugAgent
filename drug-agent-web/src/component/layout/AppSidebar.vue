@@ -24,6 +24,7 @@
         v-if="!collapsed"
         class="w-8 h-8 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 flex items-center justify-center transition-colors"
         title="新建会话"
+        data-testid="new-chat-button"
         @click="$emit('new-chat')"
       >
         <SquarePen class="w-4 h-4" />
@@ -70,6 +71,7 @@
                   : 'text-slate-500 hover:bg-slate-100'
               ]"
               :title="collapsed ? session.title : ''"
+              :data-testid="`history-session-${session.id}`"
               @click="$emit('load-session', session.id)"
             >
               <MessageSquare class="w-4 h-4 flex-shrink-0" />
@@ -115,7 +117,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Sparkles,
@@ -145,6 +147,12 @@ const sessionStore = useSessionStore()
 
 const sessions = computed(() => sessionStore.sessions)
 const activeSessionId = computed(() => sessionStore.activeSessionId)
+
+onMounted(() => {
+  if (!sessionStore.sessions.length) {
+    sessionStore.fetchSessions()
+  }
+})
 
 const navItems = [
   { route: '/tasks', label: '任务调度看板', icon: LayoutList },

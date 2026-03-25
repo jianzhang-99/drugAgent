@@ -213,6 +213,7 @@
         <textarea
           v-model="inputText"
           :placeholder="hasActiveSession ? '向 Agent 追加要求或提供更多材料...' : '描述您的监管需求，例如：检测这两份标书文件是否雷同...'"
+          data-testid="chat-input"
           class="w-full min-h-[48px] max-h-36 border-0 resize-none outline-none text-sm text-slate-800 placeholder:text-slate-400"
           rows="1"
           @keydown.enter.exact.prevent="handleSend"
@@ -239,6 +240,7 @@
 
           <button
             class="flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            data-testid="send-button"
             :disabled="!inputText.trim() && selectedFiles.length === 0"
             @click="handleSend"
           >
@@ -274,7 +276,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { marked } from 'marked'
@@ -327,6 +329,25 @@ const messages = computed(() => {
 const hasActiveSession = computed(() => {
   return messages.value.length > 0
 })
+
+const syncSessionFromRoute = async (sessionId) => {
+  if (!sessionId) {
+    sessionStore.setActiveSession(null)
+    return
+  }
+
+  const localSession = sessionStore.sessions.find(s => s.id === sessionId)
+  if (localSession?.messages) {
+    sessionStore.setActiveSession(localSession)
+    return
+  }
+
+  try {
+    await sessionStore.fetchSession(sessionId)
+  } catch (error) {
+    console.warn('Failed to sync session from route:', error)
+  }
+}
 
 // Functions to compute result-related data from a message's result object
 const getFullReportMarkdown = (result) => {
@@ -541,6 +562,20 @@ onBeforeUnmount(() => {
   clearProcessPlaybackTimers()
 })
 
+onMounted(async () => {
+  if (!sessionStore.sessions.length) {
+    await sessionStore.fetchSessions()
+  }
+  await syncSessionFromRoute(route.query.sessionId)
+})
+
+watch(
+  () => route.query.sessionId,
+  async (sessionId) => {
+    await syncSessionFromRoute(sessionId)
+  }
+)
+
 const quickActions = [
   {
     icon: FileText,
@@ -579,11 +614,11 @@ const handleSend = async () => {
   // Create new session if needed
   let sessionId = activeSession.value?.id
   if (!sessionId) {
-    const newSessionRes = await chatApi.createSession({
+    const newSession = await chatApi.createSession({
       title: '新对话',
       scene: 'general'
     })
-    const newSession = newSessionRes.data
+    // 拦截器已返回 res.data，直接使用
     const existingSession = sessionStore.sessions.find(s => s.id === newSession.id)
     if (!existingSession) {
       sessionStore.sessions.unshift({
@@ -591,7 +626,9 @@ const handleSend = async () => {
         messages: newSession.messages || []
       })
     }
-    sessionStore.setActiveSession(newSession.id)
+    const createdSession = sessionStore.sessions.find(s => s.id === newSession.id) || newSession
+    sessionStore.setActiveSession(createdSession)
+    router.replace({ path: '/workspace', query: { sessionId: newSession.id } })
     sessionId = newSession.id
   }
 
@@ -635,11 +672,11 @@ const handleSend = async () => {
         files: files
       })
     } else {
-      // 无文件时，调用普通聊天接口
-      response = await chatApi.sendMessage(sessionId, {
-        role: 'user',
-        content: userContent,
-        metadata: null
+      // 无文件时，调用同步对话接口 /agent/chat
+      response = await chatApi.chat({
+        query: userContent,
+        sessionId: sessionId,
+        userId: 'user'
       })
     }
 
@@ -654,9 +691,9 @@ const handleSend = async () => {
     // 如果找不到 session（后端创建的新 session），从后端拉取会话数据
     if (!session && response?.sessionId) {
       try {
-        const sessionRes = await chatApi.getSession(response.sessionId)
-        if (sessionRes?.data) {
-          const backendSessionData = sessionRes.data
+        const backendSessionData = await chatApi.getSession(response.sessionId)
+        // 拦截器已返回 res.data，直接使用
+        if (backendSessionData) {
           // 使用后端返回的 session 数据更新或创建本地 session
           const existingIdx = sessionStore.sessions.findIndex(s => s.id === response.sessionId)
           if (existingIdx !== -1) {
@@ -665,7 +702,7 @@ const handleSend = async () => {
             sessionStore.sessions.unshift(backendSessionData)
           }
           session = backendSessionData
-          sessionStore.setActiveSession(session.id)
+          sessionStore.setActiveSession(session)
         }
       } catch (e) {
         console.warn('Failed to fetch session from backend:', e)
@@ -677,6 +714,10 @@ const handleSend = async () => {
     }
 
     if (session) {
+      sessionStore.setActiveSession(session)
+      if (actualSessionId) {
+        router.replace({ path: '/workspace', query: { sessionId: actualSessionId } })
+      }
       const msgs = session.messages
       // Remove loading message
       const loadingIdx = msgs.findIndex(m => m.id === loadingMsgId)
@@ -709,19 +750,21 @@ const handleSend = async () => {
             title: response.caseName || response.title || session.title
           })
         }
-      } else if (response?.data) {
-        // 无文件时，chatApi.sendMessage 返回 { data: { aiResponse: string } }
-        const data = response.data
-        resultData = data
-        if (data.aiResponse) {
-          responseContent = data.aiResponse
+      } else {
+        // 无文件时，/agent/chat 返回 DrugAgentResp 对象
+        resultData = response
+        if (response?.answer) {
+          responseContent = response.answer
+        } else if (response?.summary) {
+          responseContent = response.summary
         }
       }
 
-      // 如果后端 session 有消息列表，使用后端的消息；否则添加响应到当前 session
-      if (session.messages && session.messages.length > 0) {
-        // 已有后端消息，不需要额外添加
-      } else {
+      const hasPersistedAssistantReply = files.length > 0 && msgs.some(message =>
+        (message.role === 'assistant' || message.role === 'agent') && !message.isLoading
+      )
+
+      if (!hasPersistedAssistantReply) {
         msgs.push({
           id: Date.now().toString(),
           role: 'agent',

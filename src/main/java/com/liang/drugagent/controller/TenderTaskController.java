@@ -1,4 +1,4 @@
-package com.liang.drugagent.controller.tender;
+package com.liang.drugagent.controller;
 
 import com.liang.drugagent.controller.domain.request.tender_review.TenderCaseCreateReq;
 import com.liang.drugagent.controller.domain.response.tender_review.TenderCaseCreateResp;
@@ -36,7 +36,7 @@ import java.util.Optional;
  * 保留一套入口处理标书任务的创建、解析、执行和结果查询。
  */
 @RestController
-@RequestMapping("/api/tender/tasks")
+@RequestMapping("/tender/tasks")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "标书任务", description = "标书审查任务生命周期管理")

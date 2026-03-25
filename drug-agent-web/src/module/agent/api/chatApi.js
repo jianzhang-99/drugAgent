@@ -5,6 +5,14 @@ import request from '@/api/request'
 // ============================================================
 
 /**
+ * 同步对话（不带文件的对话）
+ * @param {Object} data - 对话数据 { query, sessionId, userId, sceneHint }
+ */
+export const chat = (data) => {
+  return request.post('/agent/chat', data)
+}
+
+/**
  * 获取所有会话列表
  */
 export const getSessions = () => {
@@ -60,22 +68,13 @@ export const getMessages = (sessionId) => {
   return request.get(`/agent/sessions/${sessionId}/messages`)
 }
 
-/**
- * 发送消息
- * @param {string} sessionId - 会话ID
- * @param {Object} data - 消息数据 { role, content, metadata }
- */
-export const sendMessage = (sessionId, data) => {
-  return request.post(`/agent/sessions/${sessionId}/messages`, data)
-}
-
 export const chatApi = {
+  chat,
   getSessions,
   getSession,
   createSession,
   updateSessionTitle,
   deleteSession,
   searchSessions,
-  getMessages,
-  sendMessage
+  getMessages
 }

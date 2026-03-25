@@ -53,6 +53,8 @@ export const useSessionStore = defineStore('session', () => {
     return groups
   })
 
+  const activeSessionId = computed(() => activeSession.value?.id || null)
+
   // ==================== Actions ====================
 
   /**
@@ -64,7 +66,18 @@ export const useSessionStore = defineStore('session', () => {
 
     try {
       const response = await chatApi.getSessions()
-      sessions.value = response.data || []
+      // 拦截器已返回 res.data，直接使用
+      const incomingSessions = response || []
+      sessions.value = incomingSessions.map(incomingSession => {
+        const existingSession = sessions.value.find(session => session.id === incomingSession.id)
+        if (existingSession?.messages?.length && !incomingSession?.messages?.length) {
+          return {
+            ...incomingSession,
+            messages: existingSession.messages
+          }
+        }
+        return incomingSession
+      })
     } catch (e) {
       error.value = e.message || '获取会话列表失败'
       console.error('Failed to fetch sessions:', e)
@@ -82,8 +95,23 @@ export const useSessionStore = defineStore('session', () => {
 
     try {
       const response = await chatApi.getSession(sessionId)
-      activeSession.value = response.data
-      return response.data
+      // 拦截器已返回 res.data，直接使用
+      const existingIndex = sessions.value.findIndex(s => s.id === sessionId)
+      const existingSession = existingIndex >= 0 ? sessions.value[existingIndex] : null
+      const mergedResponse = existingSession?.messages?.length && !response?.messages?.length
+        ? {
+            ...response,
+            messages: existingSession.messages
+          }
+        : response
+
+      if (existingIndex >= 0) {
+        sessions.value[existingIndex] = mergedResponse
+      } else if (mergedResponse) {
+        sessions.value.unshift(mergedResponse)
+      }
+      activeSession.value = mergedResponse
+      return mergedResponse
     } catch (e) {
       error.value = e.message || '获取会话详情失败'
       console.error('Failed to fetch session:', e)
@@ -101,7 +129,8 @@ export const useSessionStore = defineStore('session', () => {
 
     try {
       const response = await chatApi.createSession({ title, scene })
-      const newSession = response.data
+      // 拦截器已返回 res.data，直接使用
+      const newSession = response
       sessions.value.unshift(newSession)
       activeSession.value = newSession
       return newSession
@@ -132,6 +161,46 @@ export const useSessionStore = defineStore('session', () => {
   }
 
   /**
+   * 添加消息到会话
+   */
+  function addMessage(sessionId, message) {
+    const session = sessions.value.find(s => s.id === sessionId)
+    const normalizedMessage = {
+      ...message,
+      id: message.id || Date.now().toString(),
+      createdAt: message.createdAt || new Date().toISOString()
+    }
+
+    if (session) {
+      if (!session.messages) {
+        session.messages = []
+      }
+      session.messages.push(normalizedMessage)
+    }
+
+    // activeSession 通常与 sessions 中对象同引用，避免重复 push
+    if (activeSession.value?.id === sessionId && activeSession.value !== session) {
+      if (!activeSession.value.messages) {
+        activeSession.value.messages = []
+      }
+      activeSession.value.messages.push(normalizedMessage)
+    }
+  }
+
+  /**
+   * 更新会话信息
+   */
+  function updateSession(sessionId, updates) {
+    const session = sessions.value.find(s => s.id === sessionId)
+    if (session) {
+      Object.assign(session, updates)
+    }
+    if (activeSession.value?.id === sessionId) {
+      Object.assign(activeSession.value, updates)
+    }
+  }
+
+  /**
    * 删除会话
    */
   async function deleteSession(sessionId) {
@@ -152,7 +221,8 @@ export const useSessionStore = defineStore('session', () => {
   async function searchSessions(query) {
     try {
       const response = await chatApi.searchSessions(query)
-      sessions.value = response.data || []
+      // 拦截器已返回 res.data，直接使用
+      sessions.value = response || []
     } catch (e) {
       console.error('Failed to search sessions:', e)
     }
@@ -162,6 +232,16 @@ export const useSessionStore = defineStore('session', () => {
    * 设置当前活跃会话
    */
   function setActiveSession(session) {
+    if (!session) {
+      activeSession.value = null
+      return
+    }
+
+    if (typeof session === 'string') {
+      activeSession.value = sessions.value.find(s => s.id === session) || { id: session }
+      return
+    }
+
     activeSession.value = session
   }
 
@@ -174,12 +254,15 @@ export const useSessionStore = defineStore('session', () => {
 
     // 计算属性
     groupedSessions,
+    activeSessionId,
 
     // Actions
     fetchSessions,
     fetchSession,
     createSession,
     updateSessionTitle,
+    addMessage,
+    updateSession,
     deleteSession,
     searchSessions,
     setActiveSession

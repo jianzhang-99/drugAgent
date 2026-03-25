@@ -1,4 +1,4 @@
-package com.liang.drugagent.controller.agent;
+package com.liang.drugagent.controller;
 
 import com.liang.drugagent.agent.chat.AgentChatService;
 import com.liang.drugagent.controller.domain.request.agent.DrugAgentReq;
@@ -33,7 +33,7 @@ import java.util.Map;
  * @author liangjiajian
  */
 @RestController
-@RequestMapping("/api/agent")
+@RequestMapping("/agent")
 @RequiredArgsConstructor
 @Tag(name = "Agent", description = "AI Agent 对话与会话管理")
 @CrossOrigin(origins = "*")

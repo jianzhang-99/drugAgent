@@ -1,4 +1,4 @@
-package com.liang.drugagent.controller.taskboard;
+package com.liang.drugagent.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.liang.drugagent.shared.domain.model.TaskStatusEnum;
@@ -27,7 +27,7 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/task-board")
+@RequestMapping("/task-board")
 @RequiredArgsConstructor
 @Tag(name = "任务看板", description = "任务看板管理和统计接口")
 public class TaskBoardController {

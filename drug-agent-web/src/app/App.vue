@@ -40,7 +40,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { RouterView, useRouter, useRoute } from 'vue-router'
 import AppSidebar from '../component/layout/AppSidebar.vue'
 import AppHeader from '../component/layout/AppHeader.vue'
@@ -66,15 +66,19 @@ const activeTaskCount = computed(() => {
   return taskStore.inProgressTasks.length
 })
 
+onMounted(() => {
+  sessionStore.fetchSessions()
+})
+
 // Actions
 const handleNewChat = () => {
   sessionStore.setActiveSession(null)
-  router.push('/workspace')
+  router.push({ path: '/workspace', query: {} })
 }
 
 const handleLoadSession = (sessionId) => {
-  sessionStore.setActiveSession(sessionId)
-  router.push('/workspace?sessionId=' + sessionId)
+  sessionStore.fetchSession(sessionId)
+  router.push({ path: '/workspace', query: { sessionId } })
 }
 
 const handleSelectTask = (task) => {

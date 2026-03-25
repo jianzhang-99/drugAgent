@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { chatApi } from '@/services/chatApi'
+import { chatApi } from '@/module/agent/api/chatApi'
 
 export const useChatStore = defineStore('chat', () => {
   // State
@@ -53,7 +53,8 @@ export const useChatStore = defineStore('chat', () => {
     loading.value = true
     try {
       const res = await chatApi.getSessions()
-      sessions.value = res.data
+      // 拦截器已返回 res.data，直接使用
+      sessions.value = res || []
     } catch (error) {
       console.error('Failed to fetch sessions:', error)
     } finally {
@@ -65,8 +66,9 @@ export const useChatStore = defineStore('chat', () => {
     loading.value = true
     try {
       const res = await chatApi.getSession(sessionId)
-      currentSession.value = res.data
-      messages.value = res.data.messages || []
+      // 拦截器已返回 res.data，直接使用
+      currentSession.value = res
+      messages.value = res?.messages || []
     } catch (error) {
       console.error('Failed to fetch session:', error)
     } finally {
@@ -77,10 +79,11 @@ export const useChatStore = defineStore('chat', () => {
   async function createSession(title = '新会话', scene = 'general') {
     try {
       const res = await chatApi.createSession({ title, scene })
-      sessions.value.unshift(res.data)
-      currentSession.value = res.data
+      // 拦截器已返回 res.data，直接使用
+      sessions.value.unshift(res)
+      currentSession.value = res
       messages.value = []
-      return res.data
+      return res
     } catch (error) {
       console.error('Failed to create session:', error)
     }
@@ -126,16 +129,23 @@ export const useChatStore = defineStore('chat', () => {
       }
       messages.value.push(userMsg)
 
-      // 发送消息到后端
-      const res = await chatApi.sendMessage(currentSession.value.id, {
-        role: 'user',
-        content,
-        metadata: metadata ? JSON.stringify(metadata) : null
+      // 调用 /agent/chat 同步对话接口
+      const res = await chatApi.chat({
+        query: content,
+        sessionId: currentSession.value.id,
+        userId: 'user'
       })
 
       // 添加助手消息
-      if (res.data) {
-        messages.value.push(res.data)
+      if (res) {
+        const agentMsg = {
+          id: 'temp-' + Date.now() + '-agent',
+          role: 'agent',
+          content: res.answer || res.summary || '处理完成',
+          createdAt: new Date().toISOString(),
+          result: res
+        }
+        messages.value.push(agentMsg)
       }
 
       // 更新会话标题（如果这是第一条消息）
@@ -144,7 +154,7 @@ export const useChatStore = defineStore('chat', () => {
         await updateSessionTitle(currentSession.value.id, autoTitle)
       }
 
-      return res.data
+      return res
     } catch (error) {
       console.error('Failed to send message:', error)
       // 移除临时消息
@@ -160,7 +170,8 @@ export const useChatStore = defineStore('chat', () => {
     }
     try {
       const res = await chatApi.searchSessions(query)
-      sessions.value = res.data
+      // 拦截器已返回 res.data，直接使用
+      sessions.value = res || []
     } catch (error) {
       console.error('Failed to search sessions:', error)
     }

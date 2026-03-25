@@ -1,4 +1,4 @@
-package com.liang.drugagent.controller.knowledge;
+package com.liang.drugagent.controller;
 
 import com.liang.drugagent.shared.domain.response.Result;
 import com.liang.drugagent.controller.domain.request.knowledge.KnowledgeAskReq;
