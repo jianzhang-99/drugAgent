@@ -421,6 +421,30 @@ export const useAgentStore = defineStore('agent', () => {
     tasks.value = tasks.value.filter(t => t.status !== 'completed')
   }
 
+  /**
+   * 清除所有会话
+   */
+  async function clearAllSessions() {
+    try {
+      if (USE_REAL_API) {
+        // 真实 API 模式：批量删除
+        await apiAgent.deleteAllSessions()
+      }
+      // 不管 API 是否成功，都清空本地状态
+      sessions.value = []
+      activeSession.value = null
+      selectedReport.value = null
+      isReportDrawerOpen.value = false
+    } catch (e) {
+      console.error('Failed to clear sessions:', e)
+      // 即使 API 失败，也清空本地状态
+      sessions.value = []
+      activeSession.value = null
+      selectedReport.value = null
+      isReportDrawerOpen.value = false
+    }
+  }
+
   // ==================== 报告抽屉 Actions ====================
 
   /**
@@ -518,6 +542,7 @@ export const useAgentStore = defineStore('agent', () => {
     updateTask,
     removeTask,
     clearCompletedTasks,
+    clearAllSessions,
     fetchTasks,
 
     // 报告抽屉 Actions

@@ -225,6 +225,20 @@ export const useSessionStore = defineStore('session', () => {
   }
 
   /**
+   * 清空所有会话
+   */
+  async function clearAllSessions() {
+    try {
+      await chatApi.deleteAllSessions()
+    } catch (e) {
+      console.error('Failed to clear all sessions:', e)
+    }
+    // 不管 API 是否成功，都清空本地状态
+    sessions.value = []
+    activeSession.value = null
+  }
+
+  /**
    * 搜索会话
    */
   async function searchSessions(query) {
@@ -273,6 +287,7 @@ export const useSessionStore = defineStore('session', () => {
     addMessage,
     updateSession,
     deleteSession,
+    clearAllSessions,
     searchSessions,
     setActiveSession
   }

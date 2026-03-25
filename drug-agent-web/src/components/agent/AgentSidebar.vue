@@ -85,6 +85,15 @@
     <!-- Footer: Settings & Collapse -->
     <div class="p-3 border-t border-slate-200 flex flex-col gap-1">
       <button
+        v-if="!isCollapsed && sessions.length > 0"
+        @click="handleClearAll"
+        class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm text-red-500 hover:bg-red-50 border border-transparent"
+        title="清空所有会话"
+      >
+        <Trash2 size="18" />
+        清空所有会话
+      </button>
+      <button
         v-if="!isCollapsed"
         @click="$emit('navigate', 'SETTINGS')"
         :class="[
@@ -123,7 +132,8 @@ import {
   Menu,
   MessageSquare,
   LayoutList,
-  BookOpen
+  BookOpen,
+  Trash2
 } from 'lucide-vue-next'
 import type { SessionSummary } from '@/store/agent/types'
 
@@ -139,7 +149,14 @@ defineEmits<{
   'new-chat': []
   'select-session': [session: SessionSummary]
   'toggle-collapse': []
+  'clear-all': []
 }>()
+
+const handleClearAll = () => {
+  if (confirm('确定要清空所有会话吗？此操作不可恢复。')) {
+    emit('clear-all')
+  }
+}
 
 const navItems = [
   { id: 'TASKS', label: '全局任务看板', icon: LayoutList, color: 'text-indigo-600' },

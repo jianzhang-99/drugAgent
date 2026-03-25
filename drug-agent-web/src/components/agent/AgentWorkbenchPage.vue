@@ -7,18 +7,6 @@
         agentStore.isReportDrawerOpen ? 'w-2/3' : 'w-full'
       ]"
     >
-      <!-- Top Bar -->
-      <AgentTopBar
-        :active-view="activeView"
-        :active-session-title="agentStore.activeSession?.title"
-        :tasks="agentStore.tasks"
-        :is-task-center-open="agentStore.isTaskCenterOpen"
-        @toggle-task-center="agentStore.toggleTaskCenter"
-        @close-task-center="agentStore.closeTaskCenter"
-        @select-task="handleSelectTask"
-        @clear-completed="agentStore.clearCompletedTasks"
-      />
-
       <!-- Chat Area -->
       <div class="flex-1 overflow-y-auto relative bg-[#FDFDFD]">
         <ChatTimeline
@@ -59,13 +47,13 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import AgentTopBar from './AgentTopBar.vue'
+import { Trash2 } from 'lucide-vue-next'
 import ChatTimeline from './ChatTimeline.vue'
 import ComposerBar from './ComposerBar.vue'
 import ReportDrawer from './ReportDrawer.vue'
 
 import { useAgentStore } from '@/module/agent/store/agentStore'
-import type { TaskItem, ReportSummary } from '@/module/agent/types/chatMessage'
+import type { ReportSummary } from '@/module/agent/types/chatMessage'
 
 // ==================== Store ====================
 
@@ -75,7 +63,6 @@ const route = useRoute()
 // ==================== 本地状态 ====================
 
 const activeView = ref('WORKSPACE')
-
 const chatTimelineRef = ref<InstanceType<typeof ChatTimeline>>()
 
 // ==================== 方法 ====================
@@ -86,24 +73,9 @@ const handleNewChat = () => {
   activeView.value = 'WORKSPACE'
 }
 
-const handleSelectSession = (session: { id: string }) => {
-  // 保存当前滚动位置并切换会话
-  chatTimelineRef.value?.scrollToTop()
-  agentStore.fetchSession(session.id)
-  agentStore.closeReportDrawer()
-  activeView.value = 'WORKSPACE'
-}
-
-const handleSelectTask = (task: TaskItem) => {
-  agentStore.closeTaskCenter()
-  // 如果任务有关联的 traceId，尝试定位到对应报告
-  if (task.traceId) {
-    const message = agentStore.messages.find(
-      m => m.type === 'assistant_result_card' && m.result?.traceId === task.traceId
-    )
-    if (message && message.result) {
-      agentStore.openReportDrawer(message.result)
-    }
+const handleClearAll = async () => {
+  if (confirm('确定要清空所有会话吗？此操作不可恢复。')) {
+    await agentStore.clearAllSessions()
   }
 }
 

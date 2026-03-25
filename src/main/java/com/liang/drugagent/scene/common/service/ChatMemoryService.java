@@ -1,6 +1,7 @@
 package com.liang.drugagent.scene.common.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.liang.drugagent.scene.common.entity.ChatMessage;
 import com.liang.drugagent.scene.common.entity.ChatSession;
@@ -115,6 +116,19 @@ public class ChatMemoryService extends ServiceImpl<ChatSessionMapper, ChatSessio
         session.setId(sessionId);
         session.setIsDeleted(1);
         return this.updateById(session);
+    }
+
+    /**
+     * 软删除用户的所有会话。
+     *
+     * @param userId 用户ID
+     */
+    public void deleteAllSessions(String userId) {
+        ChatSession session = new ChatSession();
+        session.setIsDeleted(1);
+        UpdateWrapper<ChatSession> wrapper = new UpdateWrapper<>();
+        wrapper.eq("user_id", userId);
+        this.update(session, wrapper);
     }
 
     /**

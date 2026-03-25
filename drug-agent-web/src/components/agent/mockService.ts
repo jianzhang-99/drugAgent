@@ -17,7 +17,7 @@ import type { SessionSummary, SessionDetail, ChatMessage, TaskItem, ReportSummar
  * true: 调用真实后端接口（需要后端服务运行）
  * false: 使用本地 mock 数据（默认，用于演示）
  */
-export const USE_REAL_API = false
+export const USE_REAL_API = true
 
 // ==================== Mock 数据 ====================
 

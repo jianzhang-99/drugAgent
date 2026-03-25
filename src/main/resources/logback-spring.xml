@@ -44,7 +44,7 @@
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <includeMdcKeyName>traceId</includeMdcKeyName>
             <includeMdcKeyName>scene</includeMdcKeyName>
-            <includeMdcKeyName>sceneName</sceneName>
+            <includeMdcKeyName>sceneName</includeMdcKeyName>
             <includeMdcKeyName>step</includeMdcKeyName>
             <includeMdcKeyName>stepName</includeMdcKeyName>
             <includeMdcKeyName>costMs</includeMdcKeyName>
@@ -68,7 +68,7 @@
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <includeMdcKeyName>traceId</includeMdcKeyName>
             <includeMdcKeyName>scene</includeMdcKeyName>
-            <includeMdcKeyName>sceneName</sceneName>
+            <includeMdcKeyName>sceneName</includeMdcKeyName>
             <includeMdcKeyName>step</includeMdcKeyName>
             <includeMdcKeyName>stepName</includeMdcKeyName>
             <includeMdcKeyName>costMs</includeMdcKeyName>
@@ -90,7 +90,7 @@
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <includeMdcKeyName>traceId</includeMdcKeyName>
             <includeMdcKeyName>scene</includeMdcKeyName>
-            <includeMdcKeyName>sceneName</sceneName>
+            <includeMdcKeyName>sceneName</includeMdcKeyName>
             <includeMdcKeyName>step</includeMdcKeyName>
             <includeMdcKeyName>stepName</includeMdcKeyName>
             <includeMdcKeyName>costMs</includeMdcKeyName>
@@ -112,7 +112,7 @@
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <includeMdcKeyName>traceId</includeMdcKeyName>
             <includeMdcKeyName>scene</includeMdcKeyName>
-            <includeMdcKeyName>sceneName</sceneName>
+            <includeMdcKeyName>sceneName</includeMdcKeyName>
             <includeMdcKeyName>step</includeMdcKeyName>
             <includeMdcKeyName>stepName</includeMdcKeyName>
             <includeMdcKeyName>costMs</includeMdcKeyName>

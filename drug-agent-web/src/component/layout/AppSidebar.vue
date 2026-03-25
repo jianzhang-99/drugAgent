@@ -92,6 +92,16 @@
 
     <!-- Footer -->
     <div class="px-3 py-4 border-t border-slate-200/50 space-y-1">
+      <!-- 批量清空按钮 -->
+      <button
+        v-if="!collapsed && sessions.length > 0"
+        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 border border-transparent text-red-500 hover:bg-red-50"
+        @click="handleClearAll"
+      >
+        <Trash2 class="w-5 h-5 flex-shrink-0" />
+        <span class="text-sm font-medium">清空所有会话</span>
+      </button>
+
       <div
         class="nav-item"
         :class="[
@@ -211,6 +221,12 @@ const navigate = (path) => {
 const handleDeleteSession = (sessionId) => {
   if (confirm('确定要删除这个会话吗？')) {
     sessionStore.deleteSession(sessionId)
+  }
+}
+
+const handleClearAll = () => {
+  if (confirm('确定要清空所有会话吗？此操作不可恢复。')) {
+    sessionStore.clearAllSessions()
   }
 }
 </script>

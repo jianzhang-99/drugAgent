@@ -53,6 +53,13 @@ export const deleteSession = (sessionId) => {
 }
 
 /**
+ * 清空所有会话
+ */
+export const deleteAllSessions = () => {
+  return request.delete('/agent/sessions/all')
+}
+
+/**
  * 搜索会话
  * @param {string} query - 搜索关键词
  */
@@ -75,6 +82,7 @@ export const chatApi = {
   createSession,
   updateSessionTitle,
   deleteSession,
+  deleteAllSessions,
   searchSessions,
   getMessages
 }

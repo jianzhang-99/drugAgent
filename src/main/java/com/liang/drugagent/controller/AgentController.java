@@ -134,6 +134,13 @@ public class AgentController {
         return Result.success(null);
     }
 
+    @Operation(summary = "清空所有会话")
+    @DeleteMapping("/sessions/all")
+    public Result<Void> deleteAllSessions() {
+        chatMemoryService.deleteAllSessions(DEFAULT_USER_ID);
+        return Result.success(null);
+    }
+
     @Operation(summary = "搜索会话")
     @GetMapping("/sessions/search")
     public Result<List<ChatSession>> searchSessions(
@@ -154,16 +161,19 @@ public class AgentController {
     @PostMapping("/sessions/{sessionId}/messages")
     public Result<Map<String, Object>> addMessage(
             @Parameter(description = "会话ID") @PathVariable String sessionId,
-            @RequestBody Map<String, String> request) {
-        String role = request.get("role");
-        String content = request.get("content");
-        String metadata = request.get("metadata");
+            @RequestBody Map<String, Object> request) {
+        // 兼容前端格式：前端发送 { content, attachments }
+        String role = request.get("role") != null ? (String) request.get("role") : "user";
+        String content = (String) request.get("content");
 
-        // 保存用户消息
-        ChatMessage userMsg = chatMemoryService.addMessage(sessionId, role, content, metadata, null);
+        if (content == null || content.isEmpty()) {
+            return Result.error("消息内容不能为空");
+        }
 
         DrugAgentResp aiResponse = null;
         ChatMessage aiMsg = null;
+
+        // 只有用户角色才调用AI
         if ("user".equals(role)) {
             DrugAgentReq req = DrugAgentReq.builder()
                     .sessionId(sessionId)
@@ -173,21 +183,17 @@ public class AgentController {
 
             // 根据AI响应确定消息类型
             String messageType = determineMessageType(aiResponse);
-            aiMsg = chatMemoryService.addMessage(sessionId, "assistant",
-                    aiResponse.getAnswer() != null ? aiResponse.getAnswer() : aiResponse.getSummary(),
-                    null, messageType);
+            String aiContent = aiResponse.getAnswer() != null ? aiResponse.getAnswer() : aiResponse.getSummary();
+            aiMsg = chatMemoryService.addMessage(sessionId, "assistant", aiContent, null, messageType);
         }
 
+        // 返回给前端的数据格式
         Map<String, Object> response = new LinkedHashMap<>();
+        response.put("message", aiMsg);
         response.put("userMessage", content);
-        response.put("userMessageType", userMsg.getType());
         response.put("aiResponse", aiResponse != null ? aiResponse.getAnswer() : "");
-        response.put("aiMessageType", aiMsg != null ? aiMsg.getType() : null);
         response.put("traceId", aiResponse != null ? aiResponse.getTraceId() : null);
         response.put("scene", aiResponse != null ? aiResponse.getScene() : null);
-        response.put("routeSource", aiResponse != null ? aiResponse.getRouteSource() : null);
-        response.put("routeReason", aiResponse != null ? aiResponse.getRouteReason() : null);
-        response.put("confidence", aiResponse != null ? aiResponse.getConfidence() : null);
 
         return Result.success(response);
     }

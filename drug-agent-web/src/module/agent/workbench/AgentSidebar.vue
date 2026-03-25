@@ -88,6 +88,20 @@
 
     <!-- 底部设置和折叠按钮 -->
     <div class="p-3 border-t border-slate-200 flex flex-col gap-1">
+      <!-- 调试信息 -->
+      <div v-if="!isCollapsed" class="text-xs text-slate-400 px-3 py-1">
+        会话数量: {{ sessionCount }}
+      </div>
+
+      <button
+        v-if="!isCollapsed"
+        class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm text-red-500 hover:bg-red-50 border border-transparent"
+        @click="handleClearAll"
+      >
+        <Trash2 size="18" />
+        <span>清空所有会话 ({{ sessionCount }})</span>
+      </button>
+
       <button
         v-if="!isCollapsed"
         class="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm text-slate-500 hover:bg-slate-200/50 border border-transparent"
@@ -116,21 +130,40 @@ import {
   BookOpen,
   Settings,
   MessageSquare,
-  Menu
+  Menu,
+  Trash2
 } from 'lucide-vue-next'
 import type { SessionSummary } from '@/module/agent/types/chatMessage'
+import { computed } from 'vue'
 
-defineProps<{
+const props = defineProps<{
   sessions: Record<string, SessionSummary[]>
   activeSessionId: string | null
   isCollapsed: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'select-session', sessionId: string): void
   (e: 'new-session'): void
   (e: 'toggle-collapse'): void
+  (e: 'clear-all'): void
 }>()
+
+// 检查是否有任何会话
+const hasSessions = computed(() => {
+  return Object.values(props.sessions).some(group => Array.isArray(group) && group.length > 0)
+})
+
+// 会话总数
+const sessionCount = computed(() => {
+  return Object.values(props.sessions).reduce((sum, group) => sum + (Array.isArray(group) ? group.length : 0), 0)
+})
+
+const handleClearAll = () => {
+  if (confirm('确定要清空所有会话吗？此操作不可恢复。')) {
+    emit('clear-all')
+  }
+}
 
 // 导航项
 const navItems = [

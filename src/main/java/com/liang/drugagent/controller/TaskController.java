@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/tasks")
 @RequiredArgsConstructor
 @Tag(name = "任务与报告", description = "任务查询和报告获取接口")
 @CrossOrigin(origins = "*")
@@ -82,7 +82,7 @@ public class TaskController {
      * <p>返回状态为 PENDING、PARSING、PARSED、RUNNING 的任务。</p>
      */
     @Operation(summary = "获取活跃任务", description = "返回所有状态为执行中的任务列表")
-    @GetMapping("/tasks/active")
+    @GetMapping("/active")
     public Result<List<ActiveTaskVO>> getActiveTasks() {
         log.info("Getting active tasks");
 

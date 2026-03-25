@@ -8,6 +8,7 @@
       @select-session="handleSelectSession"
       @new-session="handleNewSession"
       @toggle-collapse="isSidebarCollapsed = !isSidebarCollapsed"
+      @clear-all="handleClearAll"
     />
 
     <!-- 中间主工作区 -->
@@ -317,6 +318,13 @@ function closeTaskCenter() {
  */
 function closeReportDrawer() {
   agentStore.closeReportDrawer()
+}
+
+/**
+ * 清空所有会话
+ */
+async function handleClearAll() {
+  await agentStore.clearAllSessions()
 }
 </script>
 
