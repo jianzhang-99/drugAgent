@@ -608,6 +608,28 @@ const handleQuickAction = (action) => {
   handleSend()
 }
 
+const removeLoadingMessages = (messages) => {
+  if (!Array.isArray(messages) || messages.length === 0) return
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    if (messages[i]?.isLoading) {
+      messages.splice(i, 1)
+    }
+  }
+}
+
+const shouldRenderResultPanel = (response) => {
+  if (!response) return false
+  if (response.requiresClarification) return false
+  if (!response.scene || response.scene === 'UNKNOWN') return false
+  return Boolean(
+    response.report ||
+    response.evidenceList?.length ||
+    response.evidenceGroups?.length ||
+    response.riskLevel ||
+    response.score !== undefined
+  )
+}
+
 const handleSend = async () => {
   if (!inputText.value.trim() && selectedFiles.value.length === 0) return
 
@@ -718,10 +740,8 @@ const handleSend = async () => {
       if (actualSessionId) {
         router.replace({ path: '/workspace', query: { sessionId: actualSessionId } })
       }
-      const msgs = session.messages
-      // Remove loading message
-      const loadingIdx = msgs.findIndex(m => m.id === loadingMsgId)
-      if (loadingIdx !== -1) msgs.splice(loadingIdx, 1)
+      const msgs = session.messages || []
+      removeLoadingMessages(msgs)
 
       // 构建响应内容
       let responseContent = '处理完成'
@@ -752,7 +772,7 @@ const handleSend = async () => {
         }
       } else {
         // 无文件时，/agent/chat 返回 DrugAgentResp 对象
-        resultData = response
+        resultData = shouldRenderResultPanel(response) ? response : null
         if (response?.answer) {
           responseContent = response.answer
         } else if (response?.summary) {
@@ -781,24 +801,14 @@ const handleSend = async () => {
     const session = sessionStore.sessions.find(s => s.id === sessionId)
     if (session) {
       const msgs = session.messages
-      const loadingIdx = msgs.findIndex(m => m.id === loadingMsgId)
-      if (loadingIdx !== -1) {
-        msgs[loadingIdx] = {
-          id: loadingMsgId,
-          role: 'agent',
-          content: '抱歉，服务器繁忙，请稍后重试。',
-          timestamp: new Date().toISOString(),
-          isLoading: false
-        }
-      } else {
-        msgs.push({
-          id: Date.now().toString(),
-          role: 'agent',
-          content: '抱歉，服务器繁忙，请稍后重试。',
-          timestamp: new Date().toISOString(),
-          isLoading: false
-        })
-      }
+      removeLoadingMessages(msgs)
+      msgs.push({
+        id: Date.now().toString(),
+        role: 'agent',
+        content: '抱歉，服务器繁忙，请稍后重试。',
+        timestamp: new Date().toISOString(),
+        isLoading: false
+      })
     }
   }
 }

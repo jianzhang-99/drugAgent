@@ -4,8 +4,8 @@
   路径: src/main/resources/logback-spring.xml
 
   配置说明:
-  - 控制台: 使用 logstash-logback-encoder 彩色渲染
-  - 文件: JSON 格式滚动输出
+  - 控制台: 中文友好格式，易读性强
+  - 文件: JSON 格式 + 中文级别 + 场景说明
   - 分类策略: tender_review/contract/risk 场景分文件
 -->
 <configuration>
@@ -19,15 +19,12 @@
     <!-- 日志目录（doc/log 方便查看历史日志） -->
     <property name="LOG_PATH" value="doc/log"/>
 
-    <!-- 控制台日志格式 (彩色) -->
+    <!-- 控制台日志格式（中文友好） -->
+    <!-- 格式：[时间] [级别] [追踪ID] [场景] [线程] [类名] 消息 -->
     <property name="CONSOLE_LOG_PATTERN"
-              value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%5p) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %clr([%X{traceId:-N/A}]){yellow} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
+              value="%d{HH:mm:ss.SSS} %highlight(%-5level) [%magenta(%X{traceId:-无})] [%blue(%X{scene:-无})] %cyan([%thread]) %green(%-40.40logger{20}) - %m%n%wEx"/>
 
-    <!-- JSON 格式 (文件输出) -->
-    <property name="JSON_LOG_PATTERN"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS}|%p|%t|%-40.40logger{39}|%X{traceId}|%X{scene}|%X{step}|%X{costMs}|%X{userId}|%X{sessionId}|%m|%n"/>
-
-    <!-- ========== 控制台 Appender (彩色) ========== -->
+    <!-- ========== 控制台 Appender (彩色+中文) ========== -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>${CONSOLE_LOG_PATTERN}</pattern>
@@ -36,6 +33,7 @@
     </appender>
 
     <!-- ========== JSON 文件 Appender (通用) ========== -->
+    <!-- 使用自定义 JSON 格式，增加中文可读性 -->
     <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_PATH}/drug-agent.json</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
@@ -46,11 +44,13 @@
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <includeMdcKeyName>traceId</includeMdcKeyName>
             <includeMdcKeyName>scene</includeMdcKeyName>
+            <includeMdcKeyName>sceneName</sceneName>
             <includeMdcKeyName>step</includeMdcKeyName>
+            <includeMdcKeyName>stepName</includeMdcKeyName>
             <includeMdcKeyName>costMs</includeMdcKeyName>
             <includeMdcKeyName>userId</includeMdcKeyName>
             <includeMdcKeyName>sessionId</includeMdcKeyName>
-            <customFields>{"application":"drug-agent"}</customFields>
+            <customFields>{"应用":"drug-agent","服务":"医药监管AI系统"}</customFields>
         </encoder>
     </appender>
 
@@ -68,11 +68,13 @@
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <includeMdcKeyName>traceId</includeMdcKeyName>
             <includeMdcKeyName>scene</includeMdcKeyName>
+            <includeMdcKeyName>sceneName</sceneName>
             <includeMdcKeyName>step</includeMdcKeyName>
+            <includeMdcKeyName>stepName</includeMdcKeyName>
             <includeMdcKeyName>costMs</includeMdcKeyName>
             <includeMdcKeyName>userId</includeMdcKeyName>
             <includeMdcKeyName>sessionId</includeMdcKeyName>
-            <customFields>{"application":"drug-agent","scene":"TENDER_REVIEW"}</customFields>
+            <customFields>{"应用":"drug-agent","场景":"招标审查","场景英文":"TENDER_REVIEW"}</customFields>
         </encoder>
     </appender>
 
@@ -88,11 +90,13 @@
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <includeMdcKeyName>traceId</includeMdcKeyName>
             <includeMdcKeyName>scene</includeMdcKeyName>
+            <includeMdcKeyName>sceneName</sceneName>
             <includeMdcKeyName>step</includeMdcKeyName>
+            <includeMdcKeyName>stepName</includeMdcKeyName>
             <includeMdcKeyName>costMs</includeMdcKeyName>
             <includeMdcKeyName>userId</includeMdcKeyName>
             <includeMdcKeyName>sessionId</includeMdcKeyName>
-            <customFields>{"application":"drug-agent","scene":"CONTRACT"}</customFields>
+            <customFields>{"应用":"drug-agent","场景":"合同审查","场景英文":"CONTRACT"}</customFields>
         </encoder>
     </appender>
 
@@ -108,11 +112,13 @@
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <includeMdcKeyName>traceId</includeMdcKeyName>
             <includeMdcKeyName>scene</includeMdcKeyName>
+            <includeMdcKeyName>sceneName</sceneName>
             <includeMdcKeyName>step</includeMdcKeyName>
+            <includeMdcKeyName>stepName</includeMdcKeyName>
             <includeMdcKeyName>costMs</includeMdcKeyName>
             <includeMdcKeyName>userId</includeMdcKeyName>
             <includeMdcKeyName>sessionId</includeMdcKeyName>
-            <customFields>{"application":"drug-agent","scene":"RISK"}</customFields>
+            <customFields>{"应用":"drug-agent","场景":"风险预警","场景英文":"RISK"}</customFields>
         </encoder>
     </appender>
 

@@ -157,7 +157,7 @@ return (
   <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
     <Sparkles className="text-white" size={18} />
   </div>
-  {isSidebarOpen && <span className="font-bold text-lg tracking-tight text-slate-800 truncate">横渡智能系统</span>}
+  {isSidebarOpen && <span className="font-bold text-lg tracking-tight text-slate-800 truncate">Drug-Agent</span>}
 </div>
 {isSidebarOpen && (
 <button
@@ -315,6 +315,7 @@ className={`flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg
   {activeView === 'WORKSPACE' && (
   <WorkspaceContainer
       activeSessionId={activeSessionId}
+      setActiveSessionId={setActiveSessionId}
       sessions={sessions}
       setSessions={setSessions}
       addTask={addTask}
@@ -331,7 +332,7 @@ className={`flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg
 };
 
 // --- Workspace 容器 ---
-const WorkspaceContainer = ({ activeSessionId, sessions, setSessions, addTask, updateTaskProgress }) => {
+const WorkspaceContainer = ({ activeSessionId, setActiveSessionId, sessions, setSessions, addTask, updateTaskProgress }) => {
 const [input, setInput] = useState("");
 const [isRouting, setIsRouting] = useState(false);
 const [selectedReport, setSelectedReport] = useState(null);
@@ -382,6 +383,7 @@ scene: 'UNKNOWN',
 messages: [newUserMsg]
 };
 setSessions(prev => [newSess, ...prev]);
+setActiveSessionId(currentSessionId);
 } else {
 setSessions(prev => prev.map(s => s.id === currentSessionId ? { ...s, messages: [...s.messages, newUserMsg] } : s));
 }
@@ -488,7 +490,7 @@ return (
 
 <div className={`flex flex-col ${selectedReport ? 'max-w-[95%]' : 'max-w-[85%] sm:max-w-[75%]'} ${isUser ? 'items-end' : 'items-start'}`}>
 <span className="text-[10px] text-slate-400 font-semibold mb-1 px-1">
-                    {isUser ? '您' : '横渡智能系统'} · {msg.time}
+                    {isUser ? '您' : 'Drug-Agent'} · {msg.time}
                   </span>
 
 {isUser && (
@@ -608,7 +610,7 @@ selectedReport?.traceId === msg.result.traceId
   </div>
   </div>
   <div className="text-center text-[10px] text-slate-400 mt-3 font-medium">
-  AI 生成内容仅供参考，重大决策请人工复核 (横渡智能系统 v1.0)
+  AI 生成内容仅供参考，重大决策请人工复核 (Drug-Agent Core v0.3)
   </div>
   </div>
   </div>

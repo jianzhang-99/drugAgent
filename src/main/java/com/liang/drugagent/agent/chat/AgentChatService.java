@@ -1,9 +1,11 @@
 package com.liang.drugagent.agent.chat;
 
+import com.liang.drugagent.agent.prompt.AgentPrompt;
 import com.liang.drugagent.agent.route.AgentRouteService;
 import com.liang.drugagent.controller.domain.request.agent.DrugAgentReq;
 import com.liang.drugagent.controller.domain.response.agent.DrugAgentResp;
 import com.liang.drugagent.scene.SceneEnum;
+import com.liang.drugagent.shared.llm.LlmService;
 import com.liang.drugagent.scene.SceneWorkflow;
 import com.liang.drugagent.scene.common.service.ChatMemoryService;
 import com.liang.drugagent.scene.tender_review.model.TenderDocument;
@@ -53,6 +55,7 @@ public class AgentChatService {
 
     private final AgentRouteService agentRouteService;
     private final WorkflowRegistryService workflowRegistryService;
+    private final LlmService llmService;
     private final ChatMemoryService chatMemoryService;
     private final TenderCaseService tenderCaseService;
     private final TenderDocumentParseService tenderDocumentParseService;
@@ -85,14 +88,13 @@ public class AgentChatService {
             // 1. 意图路由
             WorkflowRouteDecision decision = agentRouteService.route(req, context);
 
-            // 2. 若需要澄清，返回澄清问题
-            if (agentRouteService.shouldClarify(decision)) {
-                String question = agentRouteService.generateClarificationQuestion(decision);
-                return buildClarificationResponse(context, decision, question);
+            // 2. 识别到特定场景，执行对应工作流
+            if (decision.getScene() != SceneEnum.UNKNOWN) {
+                return executeWorkflow(context, decision);
             }
 
-            // 3. 执行工作流
-            return executeWorkflow(context, decision);
+            // 3. 未识别到特定场景，走通用对话
+            return handleGeneralChat(context, decision);
 
         } catch (AgentRouteService.RouteException e) {
             log.error("[AgentChatService] Route failed, falling back: {}", e.getMessage());
@@ -138,30 +140,31 @@ public class AgentChatService {
                     "routeReason", decision.getReason() != null ? decision.getReason() : ""
             ));
 
-            // 3. 若需要澄清
-            if (agentRouteService.shouldClarify(decision)) {
-                String question = agentRouteService.generateClarificationQuestion(decision);
-                sendEvent(emitter, "delta", question);
+            // 3. 识别到特定场景，执行工作流
+            if (decision.getScene() != SceneEnum.UNKNOWN) {
+                sendEvent(emitter, "workflow_start", Map.of(
+                        "scene", decision.getScene().name(),
+                        "message", "场景已识别，开始执行工作流..."
+                ));
                 sendEvent(emitter, "done", Map.of(
-                        "requiresClarification", true,
-                        "scene", decision.getScene().name()
+                        "scene", decision.getScene().name(),
+                        "requiresStreamContinue", true
                 ));
                 emitter.complete();
                 return emitter;
             }
 
-            // 4. 发送工作流开始标记
+            // 4. 未识别到特定场景，发送通用对话开始标记
             sendEvent(emitter, "workflow_start", Map.of(
-                    "scene", decision.getScene().name(),
-                    "message", "场景已识别，开始执行工作流..."
+                    "scene", "UNKNOWN",
+                    "message", "开始通用对话..."
             ));
-
-            // 5. 流式模式下前端会通过另一个接口拉取实际结果
             sendEvent(emitter, "done", Map.of(
-                    "scene", decision.getScene().name(),
+                    "scene", "UNKNOWN",
                     "requiresStreamContinue", true
             ));
             emitter.complete();
+            return emitter;
 
         } catch (AgentRouteService.RouteException e) {
             log.error("[AgentChatService] Stream route failed: {}", e.getMessage());
@@ -222,22 +225,26 @@ public class AgentChatService {
         try {
             WorkflowRouteDecision decision = agentRouteService.route(req, context);
 
-            // 4. 若是标书审查场景，填充审查数据
-            if (decision.getScene() == SceneEnum.TENDER_REVIEW) {
-                hydrateTenderMetadata(req, submittedBy, files);
+            // 4. 识别到特定场景，执行对应工作流
+            if (decision.getScene() != SceneEnum.UNKNOWN) {
+                // 若是标书审查场景，填充审查数据
+                if (decision.getScene() == SceneEnum.TENDER_REVIEW) {
+                    hydrateTenderMetadata(req, submittedBy, files);
+                }
+                DrugAgentResp resp = executeWorkflow(context, decision);
+                chatMemoryService.addMessage(sessionId, "assistant",
+                        resp.getAnswer() != null ? resp.getAnswer() : resp.getSummary(), null);
+                updateSessionTitle(sessionId, query, chatSession);
+                resp.setSessionId(sessionId);
+                return resp;
             }
 
-            // 5. 执行工作流
-            DrugAgentResp resp = executeWorkflow(context, decision);
-
-            // 6. 保存 AI 响应
+            // 5. 未识别到特定场景，走通用对话
+            DrugAgentResp resp = handleGeneralChat(context, decision);
             chatMemoryService.addMessage(sessionId, "assistant",
                     resp.getAnswer() != null ? resp.getAnswer() : resp.getSummary(), null);
-
-            // 7. 更新会话标题
             updateSessionTitle(sessionId, query, chatSession);
             resp.setSessionId(sessionId);
-
             return resp;
 
         } catch (AgentRouteService.RouteException e) {
@@ -285,31 +292,38 @@ public class AgentChatService {
     }
 
     /**
-     * 构建需要澄清的响应。
+     * 处理通用对话。
+     *
+     * <p>当未识别到特定业务场景时，调用 LLM 进行通用对话。</p>
      *
      * @param context  Agent 上下文
      * @param decision 路由决策结果
-     * @param question 澄清问题
-     * @return 包含澄清问题的响应
+     * @return AI 响应结果
      */
-    private DrugAgentResp buildClarificationResponse(AgentChatContext context,
-                                                     WorkflowRouteDecision decision,
-                                                     String question) {
+    private DrugAgentResp handleGeneralChat(AgentChatContext context, WorkflowRouteDecision decision) {
+        log.info("[AgentChatService] 通用对话模式: query={}", context.getQuery());
+
+        String answer;
+        try {
+            answer = llmService.chat(context.getQuery(), AgentPrompt.GENERAL_CHAT, context.getSessionId());
+        } catch (Exception e) {
+            log.error("[AgentChatService] 通用对话失败", e);
+            answer = "抱歉，系统暂时无法处理您的请求，请稍后再试。";
+        }
+
         DrugAgentResp resp = new DrugAgentResp();
         resp.setTraceId(context.getTraceId());
-        resp.setScene(decision.getScene().name());
-        resp.setRouteReason(decision.getReason());
-        resp.setRouteSource(decision.getSource());
-        resp.setConfidence(decision.getConfidence());
-        resp.setRequiresClarification(true);
-        resp.setClarificationQuestion(question);
-        resp.setAnswer(question);
-        resp.setSummary("需要补充信息");
+        resp.setScene(SceneEnum.UNKNOWN.name());
+        resp.setRouteReason(decision != null ? decision.getReason() : "未识别到特定场景");
+        resp.setRouteSource("general_chat");
+        resp.setConfidence(decision != null ? decision.getConfidence() : 0.0);
+        resp.setAnswer(answer);
+        resp.setSummary("通用对话");
         return resp;
     }
 
     /**
-     * 构建正常响应。
+     * 构建需要澄清的响应。
      *
      * @param context  Agent 上下文
      * @param result   工作流执行结果
@@ -362,7 +376,7 @@ public class AgentChatService {
      * <ol>
      *   <li>再次调用路由服务</li>
      *   <li>若路由到非 UNKNOWN 场景，执行对应工作流</li>
-     *   <li>否则返回系统无法理解的友好提示</li>
+     *   <li>否则走通用对话</li>
      * </ol>
      *
      * @param req      原始请求
@@ -371,7 +385,7 @@ public class AgentChatService {
      * @return 降级响应
      */
     private DrugAgentResp handleFallback(DrugAgentReq req, AgentChatContext context, String errorMsg) {
-        log.warn("[AgentChatService] Falling back: {}", errorMsg);
+        log.warn("[AgentChatService] 降级处理: {}", errorMsg);
 
         try {
             // 尝试重新路由
@@ -380,19 +394,21 @@ public class AgentChatService {
                 context.setSceneType(decision.getScene());
                 return executeWorkflow(context, decision);
             }
+            // UNKNOWN 场景走通用对话
+            return handleGeneralChat(context, decision);
         } catch (Exception e) {
-            log.error("[AgentChatService] Fallback route also failed", e);
+            log.error("[AgentChatService] 降级路由也失败", e);
         }
 
-        // 返回降级响应
+        // 降级失败，返回友好提示
         DrugAgentResp resp = new DrugAgentResp();
         resp.setTraceId(context.getTraceId());
         resp.setScene(SceneEnum.UNKNOWN.name());
-        resp.setRouteReason("LLM和规则都无法决策: " + errorMsg);
+        resp.setRouteReason("降级处理失败: " + errorMsg);
         resp.setRouteSource("fallback");
         resp.setConfidence(0.0);
-        resp.setAnswer("抱歉，系统暂时无法理解您的请求，请稍后再试或提供更详细的信息。");
-        resp.setSummary("系统无法理解请求");
+        resp.setAnswer("抱歉，系统暂时无法处理您的请求，请稍后再试。");
+        resp.setSummary("系统暂时无法处理");
         return resp;
     }
 

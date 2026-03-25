@@ -53,20 +53,33 @@ public class AgentRouteService {
      * 执行完整路由判断。
      */
     public WorkflowRouteDecision route(DrugAgentReq req, AgentChatContext context) {
-        // Step 1: 收集上下文
-        RouteContext routeContext = enrichContext(req);
-
-        // Step 2: 获取规则信号
         RuleSignals ruleSignals = detectRuleSignal(req);
+        RouteContext routeContext = enrichContext(req, ruleSignals);
+        WorkflowRouteDecision explicitDecision = resolveExplicitDecision(req);
+        if (explicitDecision != null) {
+            context.setSceneType(explicitDecision.getScene());
+            log.info("[AgentRoute] 显式路由命中: scene={}, source={}, confidence={}",
+                    explicitDecision.getScene(), explicitDecision.getSource(), explicitDecision.getConfidence());
+            return explicitDecision;
+        }
 
-        // Step 3: LLM 意图理解
-        WorkflowRouteDecision llmDecision = understandByLlm(routeContext);
+        WorkflowRouteDecision ruleDecision = buildDecisionFromRuleSignals(ruleSignals);
+        if (canShortCircuitByRule(ruleDecision)) {
+            context.setSceneType(ruleDecision.getScene());
+            log.info("[AgentRoute] 规则直达命中: scene={}, source={}, confidence={}, reason={}",
+                    ruleDecision.getScene(), ruleDecision.getSource(), ruleDecision.getConfidence(), ruleDecision.getReason());
+            return ruleDecision;
+        }
 
-        // Step 4: 融合决策
-        WorkflowRouteDecision finalDecision = mergeDecision(llmDecision, ruleSignals);
+        WorkflowRouteDecision llmDecision = null;
+        if (shouldCallLlm(routeContext, ruleDecision)) {
+            llmDecision = understandByLlm(routeContext, ruleSignals);
+        }
+
+        WorkflowRouteDecision finalDecision = arbitrate(ruleDecision, llmDecision);
         context.setSceneType(finalDecision.getScene());
 
-        log.info("[AgentRoute] Final decision: scene={}, source={}, confidence={}",
+        log.info("[AgentRoute] 最终决策: scene={}, source={}, confidence={}",
                 finalDecision.getScene(), finalDecision.getSource(), finalDecision.getConfidence());
 
         return finalDecision;
@@ -109,7 +122,22 @@ public class AgentRouteService {
 
     // ==================== 私有方法 ====================
 
-    private RouteContext enrichContext(DrugAgentReq req) {
+    private WorkflowRouteDecision resolveExplicitDecision(DrugAgentReq req) {
+        SceneEnum sceneHint = SceneEnum.fromHint(req.getSceneHint());
+        if (sceneHint == null || sceneHint == SceneEnum.UNKNOWN) {
+            return null;
+        }
+
+        return WorkflowRouteDecision.builder()
+                .scene(sceneHint)
+                .source("scene_hint")
+                .reason("前端或上游显式指定场景")
+                .confidence(1.0)
+                .requiresClarification(false)
+                .build();
+    }
+
+    private RouteContext enrichContext(DrugAgentReq req, RuleSignals ruleSignals) {
         List<String> fileNames = extractFileNames(req);
 
         List<String> availableScenes = Arrays.stream(SceneEnum.values())
@@ -117,69 +145,101 @@ public class AgentRouteService {
                 .map(SceneEnum::name)
                 .collect(Collectors.toList());
 
+        Map<String, Object> ruleSignalMap = null;
+        if (ruleSignals != null && ruleSignals.scene() != null && ruleSignals.scene() != SceneEnum.UNKNOWN) {
+            ruleSignalMap = new LinkedHashMap<>();
+            ruleSignalMap.put("scene", ruleSignals.scene().name());
+            ruleSignalMap.put("confidence", ruleSignals.confidence());
+            ruleSignalMap.put("reason", ruleSignals.reason());
+            ruleSignalMap.put("strong", ruleSignals.strong());
+        }
+
         return new RouteContext(
                 req.getQuery(),
                 fileNames,
                 fileNames.size(),
                 req.getSceneHint(),
+                ruleSignalMap,
                 availableScenes,
                 fileNames.size() > 0
         );
     }
 
     private RuleSignals detectRuleSignal(DrugAgentReq req) {
-        // 1. 显式 sceneHint 优先
-        SceneEnum sceneHint = SceneEnum.fromHint(req.getSceneHint());
-        if (sceneHint != null && sceneHint != SceneEnum.UNKNOWN) {
-            return new RuleSignals(sceneHint.name(), 1.0, "显式指定");
-        }
-
-        // 2. 多文件上传 -> 标书查重
         List<String> fileNames = extractFileNames(req);
-        if (fileNames.size() >= 2) {
-            return new RuleSignals(SceneEnum.TENDER_REVIEW.name(), HIGH_CONFIDENCE, "多文件上传");
-        }
-
-        // 3. 单文件标书关键词 -> 标书查重
-        if (fileNames.size() == 1 && isTenderFile(fileNames.get(0))) {
-            return new RuleSignals(SceneEnum.TENDER_REVIEW.name(), HIGH_CONFIDENCE, "文件名含标书关键词");
-        }
-
-        // 4. 单文件 -> 合同预审
-        if (fileNames.size() == 1) {
-            return new RuleSignals(SceneEnum.CONTRACT_PRECHECK.name(), MEDIUM_CONFIDENCE, "单文件");
-        }
-
-        // 5. 纯文本关键词判断
         String query = req.getQuery() != null ? req.getQuery().toLowerCase() : "";
 
+        // 1. 强规则：多文件且存在标书语义，直接认为是标书审查
+        if (fileNames.size() >= 2) {
+            if (fileNames.stream().anyMatch(this::isTenderFile)
+                    || containsAny(query, "标书", "投标", "招标", "围标", "串标", "雷同", "查重", "对比")) {
+                return new RuleSignals(SceneEnum.TENDER_REVIEW, 0.98, "多文件且存在标书语义", true);
+            }
+            return new RuleSignals(SceneEnum.TENDER_REVIEW, 0.88, "多文件上传，倾向文件比对类任务", false);
+        }
+
+        // 2. 强规则：单文件但文件名明显是标书
+        if (fileNames.size() == 1 && isTenderFile(fileNames.get(0))) {
+            return new RuleSignals(SceneEnum.TENDER_REVIEW, 0.95, "文件名含标书关键词", true);
+        }
+
+        // 3. 中规则：单文件更像文档审核，但需要结合文本进一步判断
+        if (fileNames.size() == 1) {
+            if (containsAny(query, "合同", "协议", "条款", "法务", "审核", "预审", "审查")) {
+                return new RuleSignals(SceneEnum.CONTRACT_PRECHECK, 0.92, "单文件且文本含合同关键词", true);
+            }
+            return new RuleSignals(SceneEnum.CONTRACT_PRECHECK, 0.65, "单文件上传，倾向文档审核", false);
+        }
+
+        // 4. 纯文本关键词判断
         if (containsAny(query, "标书", "投标", "串标", "围标", "雷同", "查重", "相似", "对比")) {
-            return new RuleSignals(SceneEnum.TENDER_REVIEW.name(), HIGH_CONFIDENCE, "文本含标书关键词");
+            return new RuleSignals(SceneEnum.TENDER_REVIEW, 0.90, "文本含标书关键词", true);
         }
         if (containsAny(query, "合同", "协议", "条款", "法务", "审核", "预审", "审查")) {
-            return new RuleSignals(SceneEnum.CONTRACT_PRECHECK.name(), HIGH_CONFIDENCE, "文本含合同关键词");
+            return new RuleSignals(SceneEnum.CONTRACT_PRECHECK, 0.90, "文本含合同关键词", true);
         }
         if (containsAny(query, "药品", "耗材", "预警", "异常", "用量", "趋势", "统计", "分析")) {
-            return new RuleSignals(SceneEnum.RISK_ALERT.name(), HIGH_CONFIDENCE, "文本含风险关键词");
+            return new RuleSignals(SceneEnum.RISK_ALERT, 0.85, "文本含风险分析关键词", false);
         }
 
-        // 无法决策
-        return new RuleSignals(null, 0.0, "无信号");
+        return RuleSignals.none();
     }
 
-    private WorkflowRouteDecision understandByLlm(RouteContext context) {
+    private boolean shouldCallLlm(RouteContext context, WorkflowRouteDecision ruleDecision) {
+        if (!routeConfig.isLlmEnabled()) {
+            return false;
+        }
+        if (context == null) {
+            return false;
+        }
+        if (ruleDecision == null) {
+            return true;
+        }
+        Double confidence = ruleDecision.getConfidence();
+        return confidence == null || confidence < routeConfig.getConfidenceThreshold();
+    }
+
+    private boolean canShortCircuitByRule(WorkflowRouteDecision ruleDecision) {
+        if (ruleDecision == null || ruleDecision.getScene() == null || ruleDecision.getScene() == SceneEnum.UNKNOWN) {
+            return false;
+        }
+        Double confidence = ruleDecision.getConfidence();
+        return confidence != null && confidence >= routeConfig.getConfidenceThreshold();
+    }
+
+    private WorkflowRouteDecision understandByLlm(RouteContext context, RuleSignals ruleSignals) {
         String prompt = buildPrompt(context);
 
-        log.debug("[AgentRoute] Calling LLM, query={}, fileCount={}", context.query(), context.fileCount());
+        log.debug("[AgentRoute] 调用 LLM, query={}, fileCount={}", context.query(), context.fileCount());
 
         String rawResponse;
         try {
             rawResponse = callWithTimeout(prompt, SYSTEM_PROMPT, routeConfig.getLlmTimeout());
         } catch (TimeoutException e) {
-            log.error("[AgentRoute] LLM call timeout");
+            log.error("[AgentRoute] LLM 调用超时");
             throw new RouteException("LLM 调用超时");
         } catch (Exception e) {
-            log.error("[AgentRoute] LLM call failed", e);
+            log.error("[AgentRoute] LLM 调用失败", e);
             throw new RouteException("LLM 调用失败: " + e.getMessage());
         }
 
@@ -190,49 +250,55 @@ public class AgentRouteService {
         return parseAndValidate(rawResponse);
     }
 
-    private WorkflowRouteDecision mergeDecision(WorkflowRouteDecision llmDecision, RuleSignals ruleSignals) {
-        // 无规则信号时采纳 LLM
-        if (ruleSignals == null || ruleSignals.confidence() <= 0.0 || ruleSignals.hitScenes() == null) {
-            return llmDecision != null ? llmDecision : buildUnknownDecision("LLM 和规则都无法决策");
+    private WorkflowRouteDecision arbitrate(WorkflowRouteDecision ruleDecision, WorkflowRouteDecision llmDecision) {
+        if (ruleDecision == null && llmDecision == null) {
+            return buildUnknownDecision("规则和 LLM 都无法决策");
         }
-
-        // 无 LLM 决策时采纳规则
+        if (ruleDecision == null) {
+            return llmDecision;
+        }
         if (llmDecision == null) {
-            return buildDecisionFromRuleSignals(ruleSignals);
+            return finalizeRuleDecision(ruleDecision);
         }
 
-        // 场景一致时融合
-        String llmScene = llmDecision.getScene().name();
-        String ruleScene = ruleSignals.hitScenes();
-        if (llmScene.equals(ruleScene)) {
+        if (ruleDecision.getScene() == llmDecision.getScene()) {
             return WorkflowRouteDecision.builder()
-                    .scene(llmDecision.getScene())
+                    .scene(ruleDecision.getScene())
                     .source("merged")
-                    .reason("LLM与规则一致")
-                    .confidence(Math.max(llmDecision.getConfidence(), ruleSignals.confidence()))
+                    .reason("规则与 LLM 一致")
+                    .confidence(Math.max(safeConfidence(ruleDecision), safeConfidence(llmDecision)))
                     .requiresClarification(false)
+                    .raw(Map.of(
+                            "ruleReason", defaultText(ruleDecision.getReason()),
+                            "llmReason", defaultText(llmDecision.getReason())
+                    ))
                     .build();
         }
 
-        // 冲突时：高置信优先
-        double llmConf = llmDecision.getConfidence() != null ? llmDecision.getConfidence() : 0.5;
-        double ruleConf = ruleSignals.confidence();
+        double ruleConf = safeConfidence(ruleDecision);
+        double llmConf = safeConfidence(llmDecision);
 
-        if (ruleConf >= routeConfig.getConfidenceThreshold()) {
-            return buildDecisionFromRuleSignals(ruleSignals);
+        if (ruleConf >= routeConfig.getConfidenceThreshold() && ruleConf > llmConf) {
+            return finalizeRuleDecision(ruleDecision);
         }
-        if (llmConf >= routeConfig.getConfidenceThreshold()) {
+        if (llmConf >= routeConfig.getConfidenceThreshold() && llmConf > ruleConf) {
             return llmDecision;
         }
 
-        // 双方都低时需要澄清
         return WorkflowRouteDecision.builder()
                 .scene(SceneEnum.UNKNOWN)
                 .source("conflict")
-                .reason("场景冲突且置信度都不高")
+                .reason(String.format("规则(%s)与LLM(%s)冲突，且都不足以直接执行",
+                        ruleDecision.getScene(), llmDecision.getScene()))
                 .confidence(Math.min(llmConf, ruleConf))
                 .requiresClarification(true)
                 .clarificationQuestion("系统检测到您可能想要执行多个操作。请确认您是想要：1）标书查重分析；2）合同预审；还是3）风险预警分析？")
+                .raw(Map.of(
+                        "ruleScene", ruleDecision.getScene().name(),
+                        "ruleReason", defaultText(ruleDecision.getReason()),
+                        "llmScene", llmDecision.getScene().name(),
+                        "llmReason", defaultText(llmDecision.getReason())
+                ))
                 .build();
     }
 
@@ -274,6 +340,12 @@ public class AgentRouteService {
                 sb.append("  ").append(i + 1).append(". ").append(context.uploadedFileNames().get(i)).append("\n");
             }
         }
+        if (context.sceneHint() != null && !context.sceneHint().isBlank()) {
+            sb.append("上游指定场景：").append(context.sceneHint()).append("\n");
+        }
+        if (context.ruleSignals() != null && !context.ruleSignals().isEmpty()) {
+            sb.append("已有规则信号：").append(context.ruleSignals()).append("\n");
+        }
         sb.append("\n请根据以上信息，判断用户意图所属的业务场景。");
         return sb.toString();
     }
@@ -306,7 +378,7 @@ public class AgentRouteService {
                     .build();
 
         } catch (Exception e) {
-            log.error("[AgentRoute] Parse LLM output failed", e);
+            log.error("[AgentRoute] 解析 LLM 输出失败", e);
             throw new RouteException("解析 LLM 输出失败: " + e.getMessage());
         }
     }
@@ -337,12 +409,30 @@ public class AgentRouteService {
     }
 
     private WorkflowRouteDecision buildDecisionFromRuleSignals(RuleSignals ruleSignals) {
+        if (ruleSignals == null || ruleSignals.scene() == null || ruleSignals.scene() == SceneEnum.UNKNOWN) {
+            return null;
+        }
         return WorkflowRouteDecision.builder()
-                .scene(SceneEnum.valueOf(ruleSignals.hitScenes()))
+                .scene(ruleSignals.scene())
                 .source("rule")
                 .reason(ruleSignals.reason())
                 .confidence(ruleSignals.confidence())
                 .requiresClarification(false)
+                .raw(Map.of("strong", ruleSignals.strong()))
+                .build();
+    }
+
+    private WorkflowRouteDecision finalizeRuleDecision(WorkflowRouteDecision ruleDecision) {
+        if (ruleDecision == null) {
+            return null;
+        }
+        return WorkflowRouteDecision.builder()
+                .scene(ruleDecision.getScene())
+                .source(ruleDecision.getSource())
+                .reason(ruleDecision.getReason())
+                .confidence(ruleDecision.getConfidence())
+                .requiresClarification(false)
+                .raw(ruleDecision.getRaw())
                 .build();
     }
 
@@ -364,13 +454,26 @@ public class AgentRouteService {
         }
     }
 
-    public record RuleSignals(String hitScenes, double confidence, String reason) {}
+    private double safeConfidence(WorkflowRouteDecision decision) {
+        return decision != null && decision.getConfidence() != null ? decision.getConfidence() : 0.0;
+    }
+
+    private String defaultText(String text) {
+        return text == null ? "" : text;
+    }
+
+    public record RuleSignals(SceneEnum scene, double confidence, String reason, boolean strong) {
+        public static RuleSignals none() {
+            return new RuleSignals(SceneEnum.UNKNOWN, 0.0, "无规则信号", false);
+        }
+    }
 
     public record RouteContext(
             String query,
             List<String> uploadedFileNames,
             int fileCount,
             String sceneHint,
+            Map<String, Object> ruleSignals,
             List<String> availableScenes,
             boolean hasAttachments
     ) {}

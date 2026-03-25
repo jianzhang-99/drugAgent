@@ -73,7 +73,13 @@ export const useSessionStore = defineStore('session', () => {
         if (existingSession?.messages?.length && !incomingSession?.messages?.length) {
           return {
             ...incomingSession,
-            messages: existingSession.messages
+            messages: existingSession.messages.filter(message => !message?.isLoading)
+          }
+        }
+        if (incomingSession?.messages?.length) {
+          return {
+            ...incomingSession,
+            messages: incomingSession.messages.filter(message => !message?.isLoading)
           }
         }
         return incomingSession
@@ -101,9 +107,12 @@ export const useSessionStore = defineStore('session', () => {
       const mergedResponse = existingSession?.messages?.length && !response?.messages?.length
         ? {
             ...response,
-            messages: existingSession.messages
+            messages: existingSession.messages.filter(message => !message?.isLoading)
           }
-        : response
+        : {
+            ...response,
+            messages: (response?.messages || []).filter(message => !message?.isLoading)
+          }
 
       if (existingIndex >= 0) {
         sessions.value[existingIndex] = mergedResponse
