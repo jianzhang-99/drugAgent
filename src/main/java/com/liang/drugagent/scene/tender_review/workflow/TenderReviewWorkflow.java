@@ -1,7 +1,7 @@
 package com.liang.drugagent.scene.tender_review.workflow;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.liang.drugagent.agent.chat.AgentChatContext;
+import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.scene.SceneWorkflow;
 import com.liang.drugagent.scene.common.service.ChatService;

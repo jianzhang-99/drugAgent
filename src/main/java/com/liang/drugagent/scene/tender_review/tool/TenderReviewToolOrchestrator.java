@@ -1,6 +1,6 @@
 package com.liang.drugagent.scene.tender_review.tool;
 
-import com.liang.drugagent.agent.chat.AgentChatContext;
+import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
 import com.liang.drugagent.scene.tender_review.service.TenderCaseService;

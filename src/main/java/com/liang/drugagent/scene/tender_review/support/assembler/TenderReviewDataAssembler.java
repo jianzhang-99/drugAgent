@@ -1,7 +1,7 @@
 package com.liang.drugagent.scene.tender_review.support.assembler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.liang.drugagent.agent.chat.AgentChatContext;
+import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.scene.tender_review.model.Block;
 import com.liang.drugagent.scene.tender_review.model.CompareScope;
 import com.liang.drugagent.scene.tender_review.model.ExtractionMeta;

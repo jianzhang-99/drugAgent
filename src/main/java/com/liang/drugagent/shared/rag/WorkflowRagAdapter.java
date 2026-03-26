@@ -1,6 +1,6 @@
 package com.liang.drugagent.shared.rag;
 
-import com.liang.drugagent.agent.chat.AgentChatContext;
+import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.shared.domain.model.EvidenceItem;
 import com.liang.drugagent.shared.domain.model.RagOutcome;

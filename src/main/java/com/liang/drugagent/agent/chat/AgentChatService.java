@@ -1,7 +1,6 @@
 package com.liang.drugagent.agent.chat;
 
-import com.liang.drugagent.agent.assembler.AgentResponseService;
-import com.liang.drugagent.agent.scene.AgentSceneService;
+import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
 import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
 import com.liang.drugagent.scene.SceneEnum;
@@ -103,8 +102,8 @@ public class AgentChatService {
      * 构建澄清响应。
      */
     private AgentChatResp buildClarificationResp(AgentChatContext context,
-                                               com.liang.drugagent.shared.domain.model.WorkflowRouteDecision decision,
-                                               String clarifyQuestion) {
+                                                 com.liang.drugagent.shared.domain.model.WorkflowRouteDecision decision,
+                                                 String clarifyQuestion) {
         log.info("[AgentChatService] 需要澄清: sessionId={}, question={}",
                 context.getSessionId(), clarifyQuestion);
 

@@ -272,35 +272,35 @@ public class AgentSessionService {
     /**
      * 保存用户消息。
      */
-    public void saveUserMessage(String sessionId, String content, String metadata) {
+    public ChatMessage saveUserMessage(String sessionId, String content, String metadata) {
         if (sessionId == null || sessionId.isBlank()) {
             log.warn("[AgentSessionService] 保存用户消息失败，sessionId 为空");
-            return;
+            return null;
         }
         if (content == null || content.isBlank()) {
             log.warn("[AgentSessionService] 保存用户消息失败，content 为空");
-            return;
+            return null;
         }
         log.info("[AgentSessionService] 保存用户消息，sessionId={}，content={}",
                 sessionId, truncateContent(content));
-        chatMemoryService.addMessage(sessionId, ROLE_USER, content, metadata);
+        return chatMemoryService.addMessage(sessionId, ROLE_USER, content, metadata);
     }
 
     /**
      * 保存助手消息。
      */
-    public void saveAssistantMessage(String sessionId, String content, String metadata, String type) {
+    public ChatMessage saveAssistantMessage(String sessionId, String content, String metadata, String type) {
         if (sessionId == null || sessionId.isBlank()) {
             log.warn("[AgentSessionService] 保存助手消息失败，sessionId 为空");
-            return;
+            return null;
         }
         if (content == null || content.isBlank()) {
             log.warn("[AgentSessionService] 保存助手消息失败，content 为空");
-            return;
+            return null;
         }
         log.info("[AgentSessionService] 保存助手消息，sessionId={}，type={}",
                 sessionId, type != null ? type : "text");
-        chatMemoryService.addMessage(sessionId, ROLE_ASSISTANT, content, metadata, type);
+        return chatMemoryService.addMessage(sessionId, ROLE_ASSISTANT, content, metadata, type);
     }
 
     /**

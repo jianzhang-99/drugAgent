@@ -1,14 +1,12 @@
 package com.liang.drugagent.scene.tender_review.orchestrator;
 
-import com.liang.drugagent.agent.chat.AgentChatContext;
+import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.agent.chat.AgentExecutionResult;
 import com.liang.drugagent.common.log.BusinessLogger;
 import com.liang.drugagent.common.log.LogConstants;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
 import com.liang.drugagent.scene.tender_review.tool.ReviewTenderToolResultMapper;
-import com.liang.drugagent.shared.domain.model.EvidenceItem;
-import com.liang.drugagent.shared.domain.model.ReviewReport;
 import com.liang.drugagent.shared.llm.LlmRequest;
 import com.liang.drugagent.shared.llm.LlmResponse;
 import com.liang.drugagent.shared.llm.LlmService;
@@ -21,7 +19,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 标书审查工具编排器。
@@ -39,7 +36,7 @@ import java.util.Map;
  *
  * <p>调用链路：
  * <pre>
- * AgentRouteService -> TenderReviewPreparationService -> TenderReviewToolOrchestrator
+ * AgentSceneService -> TenderReviewToolOrchestrator
  *   -> ReviewTenderTool -> TenderReviewWorkflow
  * </pre>
  *

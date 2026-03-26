@@ -1,6 +1,6 @@
 package com.liang.drugagent.scene.risk.workflow;
 
-import com.liang.drugagent.agent.chat.AgentChatContext;
+import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.scene.SceneWorkflow;
 import com.liang.drugagent.shared.domain.model.EvidenceItem;
 import com.liang.drugagent.shared.domain.model.WorkflowResult;

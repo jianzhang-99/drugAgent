@@ -56,6 +56,11 @@ public class ChatMessage {
     private String role;
 
     /**
+     * 本轮消息对应场景。
+     */
+    private String scene;
+
+    /**
      * 消息内容。
      */
     private String content;

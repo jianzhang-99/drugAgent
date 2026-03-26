@@ -1,4 +1,4 @@
-package com.liang.drugagent.agent.chat;
+package com.liang.drugagent.controller.domain;
 
 import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
 import com.liang.drugagent.scene.SceneEnum;
@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Agent 执行上下文。
+ * Agent 对话上下文。
  *
  * <p>保存请求参数与执行状态，确保链路中上下文不丢失。
  * 使用明确的成员变量替代 Map 结构，保证类型安全。

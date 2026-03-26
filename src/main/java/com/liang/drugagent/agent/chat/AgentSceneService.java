@@ -1,9 +1,9 @@
-package com.liang.drugagent.agent.scene;
+package com.liang.drugagent.agent.chat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.liang.drugagent.agent.chat.AgentChatContext;
 import com.liang.drugagent.agent.prompt.AgentPrompt;
+import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
 import com.liang.drugagent.controller.domain.request.agent.FileChatReq;
 import com.liang.drugagent.scene.SceneEnum;
@@ -42,9 +42,7 @@ import java.util.stream.Collectors;
  *   <li>返回统一 {@link AgentExecutionResult}</li>
  * </ul>
  *
- * <p>该服务合并了原 {@link com.liang.drugagent.agent.route.AgentRouteService}
- * 和 {@link com.liang.drugagent.agent.route.AgentSceneDispatcher} 的职责，
- * 简化调用链路，使 AgentChatService 更轻量。
+ * <p>该服务统一负责场景路由判断与执行分发，简化调用链路，使 AgentChatService 更轻量。
  *
  * @author liangjiajian
  */

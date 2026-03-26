@@ -1,6 +1,6 @@
 package com.liang.drugagent.scene;
 
-import com.liang.drugagent.agent.chat.AgentChatContext;
+import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.shared.domain.model.WorkflowResult;
 
 /**

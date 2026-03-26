@@ -18,8 +18,10 @@ import java.util.List;
  * <ul>
  *   <li>{@code id} - 会话唯一标识，采用UUID自动生成</li>
  *   <li>{@code title} - 会话标题，默认值为"新对话"</li>
- *   <li>{@code scene} - 场景标识，用于区分不同业务场景</li>
  *   <li>{@code userId} - 所属用户ID，数据隔离依据</li>
+ *   <li>{@code summary} - 会话摘要，用于长对话压缩</li>
+ *   <li>{@code lastScene} - 最近一次命中的场景</li>
+ *   <li>{@code messageCount} - 消息总数</li>
  *   <li>{@code isDeleted} - 软删除标记，0-未删除，1-已删除</li>
  * </ul>
  *
@@ -47,14 +49,24 @@ public class ChatSession {
     private String title;
 
     /**
-     * 场景标识，用于区分不同业务场景（如 tender_review, compliance_review 等）。
-     */
-    private String scene;
-
-    /**
      * 所属用户ID，用于数据隔离。
      */
     private String userId;
+
+    /**
+     * 会话摘要，用于长对话压缩。
+     */
+    private String summary;
+
+    /**
+     * 最近一次命中的场景。
+     */
+    private String lastScene;
+
+    /**
+     * 消息总数。
+     */
+    private Integer messageCount;
 
     /**
      * 软删除标记：0-未删除，1-已删除。
@@ -73,6 +85,11 @@ public class ChatSession {
      */
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
+
+    /**
+     * 最后一条消息时间。
+     */
+    private LocalDateTime lastMessageAt;
 
     /**
      * 关联的消息列表（非数据库字段，用于关联查询）。

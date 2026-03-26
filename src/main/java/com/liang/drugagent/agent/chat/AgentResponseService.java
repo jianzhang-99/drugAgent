@@ -1,6 +1,6 @@
-package com.liang.drugagent.agent.assembler;
+package com.liang.drugagent.agent.chat;
 
-import com.liang.drugagent.agent.chat.AgentChatContext;
+import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.shared.domain.model.AgentExecutionResult;
@@ -19,9 +19,8 @@ import java.util.ArrayList;
  */
 @Slf4j
 @Service
-public class AgentResponseServiceImpl implements AgentResponseService {
+public class AgentResponseService {
 
-    @Override
     public AgentChatResp buildResponse(AgentChatContext context, WorkflowRouteDecision decision, AgentExecutionResult executionResult) {
         log.info("[AgentResponseService] 开始构建响应: sessionId={}, success={}",
                 context.getSessionId(), executionResult != null && executionResult.isSuccess());
