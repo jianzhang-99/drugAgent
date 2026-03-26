@@ -21,7 +21,7 @@ import java.util.Map;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class DrugAgentResp {
+public class AgentChatResp {
 
     /** 会话ID */
     private String sessionId;

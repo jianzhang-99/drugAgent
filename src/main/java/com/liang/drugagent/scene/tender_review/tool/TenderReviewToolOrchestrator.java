@@ -1,10 +1,10 @@
 package com.liang.drugagent.scene.tender_review.tool;
 
 import com.liang.drugagent.agent.chat.AgentChatContext;
+import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
 import com.liang.drugagent.scene.tender_review.service.TenderCaseService;
 import com.liang.drugagent.scene.tender_review.service.TenderDocumentParseService;
-import com.liang.drugagent.shared.domain.model.WorkflowResult;
 import com.liang.drugagent.shared.llm.LlmRequest;
 import com.liang.drugagent.shared.llm.LlmResponse;
 import com.liang.drugagent.shared.llm.LlmService;
@@ -56,17 +56,17 @@ public class TenderReviewToolOrchestrator {
      * <ol>
      *   <li>构建工具调用请求</li>
      *   <li>执行 ReviewTenderTool</li>
-     *   <li>将工具结果转换为 DrugAgentResp</li>
+     *   <li>将工具结果转换为 AgentChatResp</li>
      * </ol>
      *
      * @param context  Agent 上下文
      * @param decision 路由决策结果
      * @return AI 响应结果
      */
-    public com.liang.drugagent.controller.domain.response.agent.DrugAgentResp handle(
+    public AgentChatResp handle(
             AgentChatContext context,
             com.liang.drugagent.shared.domain.model.WorkflowRouteDecision decision) {
-        log.info("[TenderReviewToolOrchestrator] Handle request: sessionId={}, query={}",
+        log.info("[TenderReviewToolOrchestrator] 开始处理标书审查请求: sessionId={}, query={}",
                 context.getSessionId(), context.getQuery());
 
         try {
@@ -75,7 +75,7 @@ public class TenderReviewToolOrchestrator {
 
             // 2. 如果没有审查数据，降级为通用对话
             if (tenderReviewData == null || tenderReviewData.getDocuments() == null || tenderReviewData.getDocuments().isEmpty()) {
-                log.warn("[TenderReviewToolOrchestrator] No tender review data, falling back to workflow");
+                log.warn("[TenderReviewToolOrchestrator] 无标书审查数据，降级到工作流");
                 return resultMapper.toDrugAgentResp(
                         com.liang.drugagent.scene.tender_review.tool.ReviewTenderToolResult.failure("无标书审查数据"),
                         null,
@@ -96,7 +96,7 @@ public class TenderReviewToolOrchestrator {
             // 4. 执行工具
             ReviewTenderToolResult toolResult = reviewTenderTool.reviewTender(toolRequest);
 
-            // 5. 转换为 DrugAgentResp
+            // 5. 转换为 AgentChatResp
             return resultMapper.toDrugAgentResp(
                     toolResult,
                     context.getSessionId(),
@@ -105,7 +105,7 @@ public class TenderReviewToolOrchestrator {
             );
 
         } catch (Exception e) {
-            log.error("[TenderReviewToolOrchestrator] Handle failed: {}", e.getMessage(), e);
+            log.error("[TenderReviewToolOrchestrator] 处理标书审查请求失败: {}", e.getMessage(), e);
             return resultMapper.toDrugAgentResp(
                     ReviewTenderToolResult.failure("标书审查执行失败: " + e.getMessage()),
                     null,
@@ -192,7 +192,7 @@ public class TenderReviewToolOrchestrator {
     public OrchestrationResult orchestrate(AgentChatContext context,
                                           MultipartFile[] files,
                                           String submittedBy) {
-        log.info("[TenderReviewToolOrchestrator] Start orchestration, sessionId={}, fileCount={}",
+        log.info("[TenderReviewToolOrchestrator] 开始编排标书审查流程, sessionId={}, fileCount={}",
                 context.getSessionId(), files != null ? files.length : 0);
 
         try {
@@ -201,7 +201,7 @@ public class TenderReviewToolOrchestrator {
 
             // 如果没有文件或无法构建审查数据，返回失败
             if (tenderReviewData == null || tenderReviewData.getDocuments() == null || tenderReviewData.getDocuments().isEmpty()) {
-                log.warn("[TenderReviewToolOrchestrator] Failed to build tender review data");
+                log.warn("[TenderReviewToolOrchestrator] 构建标书审查数据失败");
                 return OrchestrationResult.failure("无法构建标书审查数据，请确保已上传文件");
             }
 
@@ -209,10 +209,10 @@ public class TenderReviewToolOrchestrator {
             return orchestrateWithData(context, tenderReviewData);
 
         } catch (IllegalArgumentException e) {
-            log.warn("[TenderReviewToolOrchestrator] Invalid request: {}", e.getMessage());
+            log.warn("[TenderReviewToolOrchestrator] 请求参数不完整: {}", e.getMessage());
             return OrchestrationResult.failure("请求参数不完整: " + e.getMessage());
         } catch (Exception e) {
-            log.error("[TenderReviewToolOrchestrator] Orchestration failed", e);
+            log.error("[TenderReviewToolOrchestrator] 编排流程执行失败", e);
             return OrchestrationResult.failure("标书审查执行失败: " + e.getMessage());
         }
     }
@@ -229,7 +229,7 @@ public class TenderReviewToolOrchestrator {
      */
     public OrchestrationResult orchestrateWithData(AgentChatContext context,
                                                    TenderReviewData tenderReviewData) {
-        log.info("[TenderReviewToolOrchestrator] Start orchestration with existing data, sessionId={}",
+        log.info("[TenderReviewToolOrchestrator] 使用已有数据开始编排, sessionId={}",
                 context.getSessionId());
 
         long startTime = System.currentTimeMillis();
@@ -268,7 +268,7 @@ public class TenderReviewToolOrchestrator {
                     .build();
 
         } catch (Exception e) {
-            log.error("[TenderReviewToolOrchestrator] Orchestration with data failed", e);
+            log.error("[TenderReviewToolOrchestrator] 使用数据编排失败", e);
             return OrchestrationResult.failure("标书审查执行失败: " + e.getMessage());
         }
     }
@@ -297,7 +297,7 @@ public class TenderReviewToolOrchestrator {
             );
             return reviewTenderTool.reviewTender(toolRequest, tenderReviewData);
         } catch (IOException e) {
-            log.error("[TenderReviewToolOrchestrator] executeToolOnly failed: {}", e.getMessage(), e);
+            log.error("[TenderReviewToolOrchestrator] 仅执行工具失败: {}", e.getMessage(), e);
             return ReviewTenderToolResult.failure("构建审查数据失败: " + e.getMessage());
         }
     }
@@ -391,7 +391,7 @@ public class TenderReviewToolOrchestrator {
      * @return 润色后的回复
      */
     private String polishResult(ReviewTenderToolResult toolResult, AgentChatContext context) {
-        log.info("[TenderReviewToolOrchestrator] Polishing result with LLM, riskLevel={}",
+        log.info("[TenderReviewToolOrchestrator] 开始用LLM润色审查结果, riskLevel={}",
                 toolResult.riskLevel());
 
         String systemPrompt = buildPolishSystemPrompt(toolResult);
@@ -411,12 +411,12 @@ public class TenderReviewToolOrchestrator {
             if (Boolean.TRUE.equals(llmResponse.getSuccess())) {
                 return llmResponse.getContent();
             } else {
-                log.warn("[TenderReviewToolOrchestrator] LLM polishing failed: {}, falling back to raw result",
+                log.warn("[TenderReviewToolOrchestrator] LLM润色失败，回退到原始结果: {}",
                         llmResponse.getErrorMessage());
                 return toolResult.report() != null ? toolResult.report().getMarkdownContent() : toolResult.summary();
             }
         } catch (Exception e) {
-            log.error("[TenderReviewToolOrchestrator] LLM polishing error, falling back to raw result", e);
+            log.error("[TenderReviewToolOrchestrator] LLM润色异常，回退到原始结果", e);
             return toolResult.report() != null ? toolResult.report().getMarkdownContent() : toolResult.summary();
         }
     }

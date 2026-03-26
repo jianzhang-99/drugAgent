@@ -2,16 +2,13 @@ package com.liang.drugagent.controller;
 
 import com.liang.drugagent.agent.chat.AgentChatService;
 import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
-import com.liang.drugagent.controller.domain.request.agent.FileChatReq;
-import com.liang.drugagent.controller.domain.response.agent.DrugAgentResp;
+import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
 import com.liang.drugagent.shared.domain.response.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
  * Agent 统一控制器。
@@ -34,19 +31,8 @@ public class AgentController {
 
     @Operation(summary = "同步对话")
     @PostMapping("/chat")
-    public Result<DrugAgentResp> chat(@RequestBody AgentChatReq req) {
+    public Result<AgentChatResp> chat(@RequestBody AgentChatReq req) {
         return Result.success(agentChatService.chat(req));
     }
 
-    @Operation(summary = "文件上传对话")
-    @PostMapping(value = "/fileChat", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public Result<DrugAgentResp> fileChat(@ModelAttribute FileChatReq req) {
-        return Result.success(agentChatService.fileChat(req));
-    }
-
-    @Operation(summary = "流式对话")
-    @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter streamChat(@RequestBody AgentChatReq req) {
-        return agentChatService.handleStreamChat(req);
-    }
 }

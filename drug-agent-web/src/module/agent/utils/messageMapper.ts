@@ -13,7 +13,7 @@ import type {
 } from '../types/agent';
 
 /**
- * 从后端 DrugAgentResp 映射为前端 Message
+ * 从后端 AgentChatResp 映射为前端 Message
  */
 export function mapResponseToMessage(
   resp: DrugAgentResp,
@@ -60,7 +60,7 @@ export function mapChatMessageToMessage(chatMsg: ChatMessage): Message {
 }
 
 /**
- * 根据 DrugAgentResp 确定消息类型
+ * 根据 AgentChatResp 确定消息类型
  */
 export function determineMessageType(resp: DrugAgentResp): MessageType {
   if (!resp) {

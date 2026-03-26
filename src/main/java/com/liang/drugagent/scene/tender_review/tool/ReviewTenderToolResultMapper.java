@@ -1,6 +1,6 @@
 package com.liang.drugagent.scene.tender_review.tool;
 
-import com.liang.drugagent.controller.domain.response.agent.DrugAgentResp;
+import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.shared.domain.model.EvidenceItem;
 import com.liang.drugagent.shared.domain.model.ReviewReport;
@@ -8,9 +8,7 @@ import com.liang.drugagent.shared.domain.model.WorkflowResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * 标书审查工具结果映射器。
@@ -18,7 +16,7 @@ import java.util.Objects;
  * <p>负责在不同结果对象之间进行转换：</p>
  * <ul>
  *   <li>WorkflowResult -> ReviewTenderToolResult</li>
- *   <li>ReviewTenderToolResult -> DrugAgentResp</li>
+ *   <li>ReviewTenderToolResult -> AgentChatResp</li>
  * </ul>
  *
  * <p>该映射器确保数据结构在不同层级之间传递时的一致性。</p>
@@ -55,19 +53,19 @@ public class ReviewTenderToolResultMapper {
     }
 
     /**
-     * 将 ReviewTenderToolResult 转换为 DrugAgentResp。
+     * 将 ReviewTenderToolResult 转换为 AgentChatResp。
      *
      * @param toolResult 工具执行结果
      * @param context Agent 上下文信息
      * @param traceId 追踪ID
      * @param routeReason 路由原因
-     * @return DrugAgentResp 响应对象
+     * @return AgentChatResp 响应对象
      */
-    public DrugAgentResp toDrugAgentResp(ReviewTenderToolResult toolResult,
-                                          String context,
-                                          String traceId,
-                                          String routeReason) {
-        DrugAgentResp resp = new DrugAgentResp();
+    public AgentChatResp toDrugAgentResp(ReviewTenderToolResult toolResult,
+                                         String context,
+                                         String traceId,
+                                         String routeReason) {
+        AgentChatResp resp = new AgentChatResp();
         resp.setTraceId(traceId);
         resp.setScene(SceneEnum.TENDER_REVIEW.name());
         resp.setRouteReason(routeReason);

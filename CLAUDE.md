@@ -1,112 +1,183 @@
-# Drug Agent - 医药监管AI系统
+# CLAUDE.md
 
-## 项目概述
+本文件为 Claude Code 提供项目约束、架构边界与协作规范。
 
-横渡智能监管系统后端服务，提供医药监管领域的AI辅助审查能力。
+---
 
-## 技术栈
+## 1. 项目定位
 
-- **框架**: Spring Boot 3.4
-- **AI**: Spring AI Alibaba (通义千问)
-- **数据库**: MySQL 8.0 + MyBatis Plus 3.5
-- **文档**: Knife4j (Swagger UI)
+这是一个医药监管方向的上层通用 Agent 项目。
 
-## 快速开始
+当前重点场景：
+1. 标书审查
+2. 合同预审
+3. 风险预警
 
-### 1. 启动 MySQL
-```bash
-docker-compose up -d mysql
-```
+系统目标：建设一个有明确场景路由、稳定工作流、结构化结果、证据链和可解释输出的业务 Agent 系统，**不是随意聊天机器人**。
 
-### 2. 初始化数据库
-```bash
-mysql -h localhost -u root -proot123 -e "CREATE DATABASE IF NOT EXISTS drug_agent"
-# 执行 schema.sql 初始化表结构
-```
+---
 
-### 3. 启动后端
-```bash
-./mvnw spring-boot:run
-```
+## 2. 总体架构原则
 
-### 4. 访问 API 文档
-http://localhost:8080/doc.html
+### 2.1 Controller 层
+- **职责**：接收 HTTP 请求、基础参数接收与协议转换、返回统一响应
+- **禁止**：编排复杂业务流程、场景判断、直接操作具体 Workflow
 
-## 核心模块
+### 2.2 AgentChatService 层
+- **定位**：前端会话请求的统一应用编排器
+- **应该负责**：接住前端对话请求、构建统一上下文、调用路由服务判断场景、根据场景分发到对应执行器、统一降级、统一结果回写和响应整理
+- **不应该负责**：场景专属业务规则、Workflow 内部逻辑、Tool schema 和调用细节、场景专属数据准备逻辑、底层基础设施细节
+- **判断原则**：对所有场景都成立的逻辑可以放 AgentChatService；只对单一场景成立的逻辑不要放
 
-### 历史对话功能 (Chat History)
+### 2.3 Route 层
+- `AgentRouteService` 只负责：场景识别、路由决策、返回 `WorkflowRouteDecision`
+- 不要让它直接输出最终业务结果
 
-#### 数据模型
-- **ChatSession**: 聊天会话，包含标题、场景、创建/更新时间
-- **ChatMessage**: 聊天消息，包含角色、内容、元数据
+### 2.4 Orchestrator 层
+- 场景复杂且需要 Tool Calling 时，应优先引入场景编排器（如 `TenderReviewToolOrchestrator`）
+- **负责**：注册 Tool 给 LLM、调用 Tool、接收结构化结果、调用 LLM 做最终整理
+- 不要把这些逻辑塞回 `AgentChatService`
 
-#### API 端点
+### 2.5 Tool 层
+- Tool 是"可调用执行入口"，不是最终业务引擎
+- **负责**：参数校验、请求整理、调用底层 Workflow、返回结构化结果对象
+- **不负责**：HTTP 接入、前端响应组装、通用路由
 
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| GET | /api/sessions | 获取所有会话列表 |
-| GET | /api/sessions/{id} | 获取会话详情（含消息） |
-| POST | /api/sessions | 创建新会话 |
-| PUT | /api/sessions/{id}/title | 更新会话标题 |
-| DELETE | /api/sessions/{id} | 删除会话（软删除） |
-| GET | /api/sessions/search?q=关键词 | 搜索会话 |
-| GET | /api/sessions/{sessionId}/messages | 获取会话消息 |
-| POST | /api/sessions/{sessionId}/messages | 发送消息 |
+### 2.6 Workflow 层
+- Workflow 是确定性业务执行引擎
+- **负责**：业务执行主链路、规则命中、豁免处理、风险融合、证据组装、报告生成
+- 不要在 Workflow 中处理前端协议、会话管理、HTTP 语义
 
-#### 数据库表
+---
 
-```sql
-chat_session     -- 会话表
-chat_message     -- 消息表
-```
+## 3. 标书审查目标链路
 
-## 开发指南
-
-### 添加新场景
-1. 在 `SceneEnum` 中添加新场景类型
-2. 在 `WorkflowRegistry` 中注册新工作流
-3. 更新前端场景选择组件
-
-### 添加新规则执行器
-1. 继承 `AbstractTenderExecutor`
-2. 实现 `execute()` 方法
-3. 在相应 Engine 中注册
-
-## 目录结构
+当用户输入"帮我看看这两份标书是否有围标风险"，目标链路：
 
 ```
-drug-agent/
-├── src/main/java/com/liang/drugagent/
-│   ├── config/          # 配置类
-│   ├── controller/     # 控制器
-│   ├── service/        # 服务层
-│   ├── mapper/         # MyBatis Mapper
-│   ├── domain/         # 实体类
-│   │   ├── entity/     # 数据库实体
-│   │   ├── req/        # 请求DTO
-│   │   └── resp/       # 响应DTO
-│   ├── enums/          # 枚举类
-│   ├── advisor/        # AI Advisor
-│   ├── agent/          # Agent 逻辑
-│   ├── workflow/       # 工作流
-│   ├── engine/         # 规则引擎
-│   └── executor/       # 执行器
-└── docker-compose.yml   # Docker 配置
+AgentController
+-> AgentChatService
+-> AgentRouteService
+-> scene = TENDER_REVIEW
+-> 若有上传文件，补齐 TenderReviewData
+-> 转入 TenderReviewToolOrchestrator
+-> Orchestrator 注册 reviewTenderTool 给 LLM
+-> LLM 决定是否调用 Tool
+-> reviewTenderTool(request)
+-> Tool 内部调用 TenderReviewWorkflow
+-> Workflow: 文档解析 -> 结构化提取 -> 规则命中 -> 豁免处理 -> 风险融合 -> 证据组装 -> 报告生成
+-> Tool 返回 ReviewTenderToolResult
+-> LLM 整理成用户可读回复
+-> AgentChatService 统一回写并返回 DrugAgentResp
 ```
 
-## 后续迭代计划
+- 标书审查场景主入口目标是 `TenderReviewToolOrchestrator`
+- `TenderReviewWorkflow` 继续作为底层确定性审查引擎
+- `AgentChatService` 不应长期直接驱动 `TenderReviewWorkflow`
 
-### Phase 2: 增强功能
-- [ ] AI 自动生成会话标题
-- [ ] 会话导出（Markdown/PDF）
-- [ ] 消息附件支持
+---
 
-### Phase 3: 高级功能
-- [ ] 基于 Embedding 的语义搜索
-- [ ] 跨设备同步（用户认证）
-- [ ] 会话分享功能
+## 4. 编码规范
 
-### Phase 4: 性能优化
-- [ ] 消息分页加载
-- [ ] 缓存优化
-- [ ] 数据库索引优化
+### 4.1 命名规范
+- 请求对象统一以 `Req` 结尾
+- 响应对象统一以 `Resp` 结尾
+- 场景编排类优先使用 `Orchestrator`
+- 场景数据准备类优先使用 `PreparationService`
+- 避免旧命名和新命名混用
+- 优先表达职责和层次，不要用模糊名字
+
+### 4.2 DTO 规范
+纯 DTO 优先简洁，避免注解堆叠：
+
+```java
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class XxxReq {}
+```
+
+如果类没有继承关系，不要默认使用 `@SuperBuilder`。
+
+### 4.3 日志规范
+- 优先使用 Lombok `@Slf4j`
+- 不要混用手写 `LoggerFactory` 与 `@Slf4j`
+- 日志要带场景上下文：`sessionId`、`traceId`、`scene`
+- **日志内容必须使用中文**，禁止在日志中出现英文（变量值、异常堆栈除外）
+- 日志格式：`[类名] 操作描述 + 关键上下文`
+- 敏感信息（如文件内容、用户输入）需脱敏后再记录
+
+### 4.4 注释规范
+- 注释必须解释**为什么这样做**、**这段代码的业务意图**、**边界条件**，不要只翻译代码表面动作
+- 禁止写“赋值型注释”或“逐行翻译型注释”，例如：
+  - `// 设置sessionId`
+  - `// 调用service方法`
+  - `// 遍历list`
+- 注释要少而准，能靠命名表达清楚的代码不要额外写注释
+- 方法注释优先说明：
+  - 方法职责
+  - 输入输出语义
+  - 关键副作用
+  - 适用边界或限制
+- 类注释优先说明：
+  - 该类在系统中的定位
+  - 负责什么
+  - 不负责什么
+- 修改代码时，如果原注释与现有实现不一致，优先更新或删除注释，禁止保留过时注释
+- 禁止为了“显得完整”批量生成模板化注释，尤其是无信息量的 AI 注释
+- TODO 注释必须写清楚“待完成什么”和“为什么现在不做”，避免只写 `TODO`
+- 注释内容必须使用中文，术语、类名、接口名可保留英文原文
+
+### 4.5 CORS 规范
+- 不要在 Controller 上继续新增 `@CrossOrigin`
+- 统一使用全局 CORS 配置
+
+### 4.6 返回结构规范
+前端对话统一返回 `DrugAgentResp` 或其统一包装，应尽量包含：
+- `traceId`、`scene`、`routeReason`、`routeSource`、`confidence`
+- `summary`、`answer`、`riskLevel`、`score`
+- `report`、`evidenceList`、`evidenceGroups`、`steps`
+
+---
+
+## 5. 重构优先级规范
+
+修改代码时优先顺序：
+1. 先保证职责边界清晰
+2. 再整理流程顺序
+3. 再统一命名
+4. 最后再考虑抽象复用
+
+**不要一上来过度抽象。**
+
+优先做：去除明显越层逻辑、减少大而全的 service、将场景专属逻辑从通用层下沉
+
+避免做：为了"看起来高级"引入过多中间抽象、业务尚未稳定就提前做复杂泛化
+
+---
+
+## 6. 文档规范
+
+涉及架构、主流程、Tool 链路的重要调整时，应优先更新：
+- `doc/上层通用agent/技术文档/上层通用Agent总体设计.md`
+- `doc/上层通用agent/技术文档/标书审查Tool化落地技术设计.md`
+- `doc/上层通用agent/技术文档/AgentChatService重构设计.md`
+
+新增重要设计文档请优先放在 `doc/上层通用agent/技术文档`。
+
+---
+
+## 7. AI Agent 工作方式
+
+1. 先读现有代码与文档，再改代码
+2. 优先沿用既有目录结构和职责分层
+3. 如果发现通用层混入场景专属逻辑，应优先提出拆分方案
+4. 对标书审查链路，优先朝 Tool Orchestrator 主入口收敛
+5. 不要把临时兼容写法当成长期架构
+
+---
+
+## 8. 一句话协作准则
+
+在这个仓库里，优先做"边界清晰、流程稳定、便于扩展"的设计，而不是"短期能跑但不断堆逻辑"的实现。

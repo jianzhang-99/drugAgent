@@ -2,11 +2,11 @@ package com.liang.drugagent.agent.chat;
 
 import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
 import com.liang.drugagent.scene.SceneEnum;
-import com.liang.drugagent.agent.route.AgentRouteContext;
+import com.liang.drugagent.scene.common.entity.ChatMessage;
+import com.liang.drugagent.scene.common.entity.ChatSession;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -15,6 +15,7 @@ import java.util.UUID;
  * Agent 执行上下文。
  *
  * <p>保存请求参数与执行状态，确保链路中上下文不丢失。
+ * 使用明确的成员变量替代 Map 结构，保证类型安全。
  *
  * @author liangjiajian
  */
@@ -25,28 +26,37 @@ public class AgentChatContext {
     private final String traceId;
     /** 会话ID。 */
     private final String sessionId;
-    /** 用户ID。 */
-    private final String userId;
     /** 用户query。 */
     private final String query;
     /** 文件ID列表。 */
     private final List<String> fileIds;
     /** 请求元数据。 */
     private final Map<String, Object> metadata;
+
     /** 场景类型。 */
     @Setter
     private SceneEnum sceneType;
-    /** 路由上下文。 */
-    @Setter
-    private AgentRouteContext intentContext;
-    /** 扩展属性。 */
-    private final Map<String, Object> attributes = new HashMap<>();
 
-    private AgentChatContext(String traceId, String sessionId, String userId, String query, List<String> fileIds,
+    /** 会话信息。 */
+    @Setter
+    private ChatSession session;
+
+    /** 历史消息列表。 */
+    @Setter
+    private List<ChatMessage> historyMessages;
+
+    /** 最近会话摘要。 */
+    @Setter
+    private String recentSummary;
+
+    /** 扩展属性（用于临时存储非通用数据）。 */
+    @Setter
+    private Map<String, Object> attributes;
+
+    private AgentChatContext(String traceId, String sessionId, String query, List<String> fileIds,
                              Map<String, Object> metadata) {
         this.traceId = traceId;
         this.sessionId = sessionId;
-        this.userId = userId;
         this.query = query;
         this.fileIds = fileIds;
         this.metadata = metadata == null ? Map.of() : metadata;
@@ -64,7 +74,6 @@ public class AgentChatContext {
         return new AgentChatContext(
                 UUID.randomUUID().toString(),
                 sessionId,
-                req.getUserId(),
                 req.getQuery(),
                 req.getFileIds(),
                 req.getMetadata()
@@ -79,7 +88,6 @@ public class AgentChatContext {
         return new AgentChatContext(
                 UUID.randomUUID().toString(),
                 sessionId != null ? sessionId : "default-drug-session",
-                null,
                 query,
                 fileIds != null ? fileIds : List.of(),
                 metadata

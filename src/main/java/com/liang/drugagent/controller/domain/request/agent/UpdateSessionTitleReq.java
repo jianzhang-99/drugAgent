@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 更新会话标题请求。
+ * 更新会话标题请求对象。
  */
 @Data
 @Builder
@@ -14,6 +14,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UpdateSessionTitleReq {
 
-    /** 新标题 */
+    /**
+     * 新标题。
+     */
     private String title;
 }

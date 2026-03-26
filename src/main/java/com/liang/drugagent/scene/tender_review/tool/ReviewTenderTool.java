@@ -143,7 +143,7 @@ public class ReviewTenderTool {
      * @return 工具执行结果
      */
     public ReviewTenderToolResult reviewTender(ReviewTenderToolRequest request, TenderReviewData tenderReviewData) {
-        log.info("[ReviewTenderTool] Start review with preloaded data: sessionId={}",
+        log.info("[ReviewTenderTool] 开始使用预加载数据执行标书审查: sessionId={}",
                 request.sessionId());
 
         if (request == null) {
@@ -160,7 +160,7 @@ public class ReviewTenderTool {
             return convertToToolResult(workflowResult);
 
         } catch (Exception e) {
-            log.error("[ReviewTenderTool] Review with data failed: {}", e.getMessage(), e);
+            log.error("[ReviewTenderTool] 使用预加载数据执行审查失败: {}", e.getMessage(), e);
             return ReviewTenderToolResult.failure("标书审查执行失败: " + e.getMessage());
         }
     }
@@ -316,7 +316,7 @@ public class ReviewTenderTool {
                 documents.add(docOpt.get());
                 fetchedDocIds.add(fileId);
             } else {
-                log.warn("[ReviewTenderTool] Document not found in store, fileId={}", fileId);
+                log.warn("[ReviewTenderTool] 文档未在存储中找到, fileId={}", fileId);
             }
         }
 
@@ -385,7 +385,7 @@ public class ReviewTenderTool {
             // 获取文件内容
             Optional<byte[]> contentOpt = caseService.getFileContent(doc.getDocumentId());
             if (contentOpt.isEmpty()) {
-                log.warn("[ReviewTenderTool] File content not found, docId={}", doc.getDocumentId());
+                log.warn("[ReviewTenderTool] 文件内容未找到, docId={}", doc.getDocumentId());
                 continue;
             }
 
