@@ -2,7 +2,8 @@ package com.liang.drugagent.agent.chat;
 
 import com.liang.drugagent.agent.prompt.AgentPrompt;
 import com.liang.drugagent.agent.route.AgentRouteService;
-import com.liang.drugagent.controller.domain.request.agent.DrugAgentReq;
+import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
+import com.liang.drugagent.controller.domain.request.agent.FileChatReq;
 import com.liang.drugagent.controller.domain.response.agent.DrugAgentResp;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.scene.common.MessageTypeEnum;
@@ -79,7 +80,7 @@ public class AgentChatService {
      * @param req 对话请求，包含 query、sessionId、userId 等
      * @return AI 响应结果
      */
-    public DrugAgentResp handleChat(DrugAgentReq req) {
+    public DrugAgentResp chat(AgentChatReq req) {
         log.info("[AgentChatService] Start sync handling: sessionId={}, queryLength={}",
                 req.getSessionId(), req.getQuery() == null ? 0 : req.getQuery().length());
 
@@ -122,7 +123,7 @@ public class AgentChatService {
      * @param req 对话请求
      * @return SseEmitter 用于推送事件流
      */
-    public SseEmitter handleStreamChat(DrugAgentReq req) {
+    public SseEmitter handleStreamChat(AgentChatReq req) {
         log.info("[AgentChatService] Start stream handling: sessionId={}", req.getSessionId());
 
         AgentChatContext context = AgentChatContext.from(req);
@@ -192,51 +193,43 @@ public class AgentChatService {
      *   <li>保存 AI 响应到会话</li>
      * </ol>
      *
-     * @param query       用户输入的查询/指令
-     * @param sceneHint   场景提示（如 "tender_review"）
-     * @param sessionId   会话ID（可为空）
-     * @param userId      用户ID
-     * @param submittedBy 提交人
-     * @param files       上传的文件列表
+     * @param req 文件上传对话请求
      * @return AI 响应结果
      * @throws IllegalArgumentException 文件列表为空时抛出
      */
-    public DrugAgentResp handleFileUpload(String query,
-                                         String sceneHint,
-                                         String sessionId,
-                                         String userId,
-                                         String submittedBy,
-                                         MultipartFile[] files) {
-        if (files == null || files.length == 0) {
+    public DrugAgentResp fileChat(FileChatReq req) {
+        if (req == null || req.getFiles() == null || req.getFiles().length == 0) {
             throw new IllegalArgumentException("请至少上传一个文件");
         }
 
+        MultipartFile[] files = req.getFiles();
+
         // 1. 创建或获取会话
-        ChatSession chatSession = getOrCreateSession(sessionId, sceneHint, userId);
-        sessionId = chatSession.getId();
+        ChatSession chatSession = getOrCreateSession(req.getSessionId(), req.getSceneHint(), req.getUserId());
+        String sessionId = chatSession.getId();
 
         // 2. 保存用户消息（包含文件信息）
         String fileNamesJson = buildFileNamesJson(files);
-        chatMemoryService.addMessage(sessionId, "user", query, fileNamesJson);
+        chatMemoryService.addMessage(sessionId, "user", req.getQuery(), fileNamesJson);
 
         // 3. 构建请求并路由
-        DrugAgentReq req = buildDrugAgentReq(query, sceneHint, sessionId, userId, files);
-        AgentChatContext context = AgentChatContext.from(req);
+        AgentChatReq chatReq = buildDrugAgentReq(req.getQuery(), req.getSceneHint(), sessionId, req.getUserId(), files);
+        AgentChatContext context = AgentChatContext.from(chatReq);
 
         try {
-            WorkflowRouteDecision decision = agentRouteService.route(req, context);
+            WorkflowRouteDecision decision = agentRouteService.route(chatReq, context);
 
             // 4. 识别到特定场景，执行对应工作流
             if (decision.getScene() != SceneEnum.UNKNOWN) {
                 // 若是标书审查场景，填充审查数据
                 if (decision.getScene() == SceneEnum.TENDER_REVIEW) {
-                    hydrateTenderMetadata(req, submittedBy, files);
+                    hydrateTenderMetadata(chatReq, req.getSubmittedBy(), files);
                 }
                 DrugAgentResp resp = executeWorkflow(context, decision);
                 String messageType = determineMessageType(resp);
                 chatMemoryService.addMessage(sessionId, "assistant",
                         resp.getAnswer() != null ? resp.getAnswer() : resp.getSummary(), null, messageType);
-                updateSessionTitle(sessionId, query, chatSession);
+                updateSessionTitle(sessionId, req.getQuery(), chatSession);
                 resp.setSessionId(sessionId);
                 return resp;
             }
@@ -246,13 +239,13 @@ public class AgentChatService {
             String messageType = determineMessageType(resp);
             chatMemoryService.addMessage(sessionId, "assistant",
                     resp.getAnswer() != null ? resp.getAnswer() : resp.getSummary(), null, messageType);
-            updateSessionTitle(sessionId, query, chatSession);
+            updateSessionTitle(sessionId, req.getQuery(), chatSession);
             resp.setSessionId(sessionId);
             return resp;
 
         } catch (AgentRouteService.RouteException e) {
             log.error("[AgentChatService] Route failed for file upload: {}", e.getMessage());
-            return handleFallback(req, context, e.getMessage());
+            return handleFallback(chatReq, context, e.getMessage());
         }
     }
 
@@ -387,7 +380,7 @@ public class AgentChatService {
      * @param errorMsg 错误信息
      * @return 降级响应
      */
-    private DrugAgentResp handleFallback(DrugAgentReq req, AgentChatContext context, String errorMsg) {
+    private DrugAgentResp handleFallback(AgentChatReq req, AgentChatContext context, String errorMsg) {
         log.warn("[AgentChatService] 降级处理: {}", errorMsg);
 
         try {
@@ -458,11 +451,11 @@ public class AgentChatService {
      * @param sessionId 会话ID
      * @param userId    用户ID
      * @param files     上传的文件
-     * @return DrugAgentReq 请求对象
+     * @return AgentChatReq 请求对象
      */
-    private DrugAgentReq buildDrugAgentReq(String query, String sceneHint, String sessionId,
+    private AgentChatReq buildDrugAgentReq(String query, String sceneHint, String sessionId,
                                            String userId, MultipartFile[] files) {
-        DrugAgentReq req = new DrugAgentReq();
+        AgentChatReq req = new AgentChatReq();
         req.setQuery(query);
         req.setSceneHint(sceneHint);
         req.setSessionId(sessionId);
@@ -502,7 +495,7 @@ public class AgentChatService {
      * @param submittedBy 提交人
      * @param files       上传的文档文件
      */
-    private void hydrateTenderMetadata(DrugAgentReq req, String submittedBy, MultipartFile[] files) {
+    private void hydrateTenderMetadata(AgentChatReq req, String submittedBy, MultipartFile[] files) {
         // 收集文件名
         List<String> filenames = new ArrayList<>();
         for (MultipartFile file : files) {

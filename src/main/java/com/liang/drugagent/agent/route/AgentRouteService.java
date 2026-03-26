@@ -3,9 +3,9 @@ package com.liang.drugagent.agent.route;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.liang.drugagent.agent.prompt.AgentPrompt;
+import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.agent.chat.AgentChatContext;
-import com.liang.drugagent.controller.domain.request.agent.DrugAgentReq;
 import com.liang.drugagent.shared.domain.model.WorkflowRouteDecision;
 import com.liang.drugagent.shared.llm.LlmService;
 import com.liang.drugagent.agent.utils.CompletableFutureUtils;
@@ -52,7 +52,7 @@ public class AgentRouteService {
     /**
      * 执行完整路由判断。
      */
-    public WorkflowRouteDecision route(DrugAgentReq req, AgentChatContext context) {
+    public WorkflowRouteDecision route(AgentChatReq req, AgentChatContext context) {
         RuleSignals ruleSignals = detectRuleSignal(req);
         RouteContext routeContext = enrichContext(req, ruleSignals);
         WorkflowRouteDecision explicitDecision = resolveExplicitDecision(req);
@@ -122,7 +122,7 @@ public class AgentRouteService {
 
     // ==================== 私有方法 ====================
 
-    private WorkflowRouteDecision resolveExplicitDecision(DrugAgentReq req) {
+    private WorkflowRouteDecision resolveExplicitDecision(AgentChatReq req) {
         SceneEnum sceneHint = SceneEnum.fromHint(req.getSceneHint());
         if (sceneHint == null || sceneHint == SceneEnum.UNKNOWN) {
             return null;
@@ -137,7 +137,7 @@ public class AgentRouteService {
                 .build();
     }
 
-    private RouteContext enrichContext(DrugAgentReq req, RuleSignals ruleSignals) {
+    private RouteContext enrichContext(AgentChatReq req, RuleSignals ruleSignals) {
         List<String> fileNames = extractFileNames(req);
 
         List<String> availableScenes = Arrays.stream(SceneEnum.values())
@@ -165,7 +165,7 @@ public class AgentRouteService {
         );
     }
 
-    private RuleSignals detectRuleSignal(DrugAgentReq req) {
+    private RuleSignals detectRuleSignal(AgentChatReq req) {
         List<String> fileNames = extractFileNames(req);
         String query = req.getQuery() != null ? req.getQuery().toLowerCase() : "";
 
@@ -304,7 +304,7 @@ public class AgentRouteService {
 
     // ==================== 工具方法 ====================
 
-    private List<String> extractFileNames(DrugAgentReq req) {
+    private List<String> extractFileNames(AgentChatReq req) {
         Map<String, Object> metadata = req.getMetadata();
         if (metadata == null) return List.of();
 

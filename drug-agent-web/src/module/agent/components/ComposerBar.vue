@@ -1,32 +1,44 @@
 <template>
   <div class="composer-bar">
-    <!-- 上传面板 -->
     <UploadPanel v-if="showUploadPanel" @close="showUploadPanel = false" />
 
-    <!-- 消息输入区 -->
-    <div class="input-area">
-      <div class="input-wrapper">
-        <t-input
-          v-model="inputText"
-          placeholder="输入您的问题..."
-          :disabled="store.sending"
-          @enter="handleSend"
-          @keydown.enter.ctrl="handleSend"
-        >
-          <template #suffix-icon>
-            <t-icon name="upload" class="upload-icon" @click="showUploadPanel = true" />
-          </template>
-        </t-input>
-      </div>
+    <div class="composer-shell">
+      <t-textarea
+        v-model="inputText"
+        class="composer-textarea"
+        :autosize="{ minRows: 3, maxRows: 6 }"
+        placeholder="描述您的监管需求，例如：检测这两份标书文件是否雷同..."
+        :disabled="store.sending"
+        @keydown.enter.exact.prevent="handleSend"
+      />
 
-      <t-button
-        theme="primary"
-        :disabled="!inputText.trim() || store.sending"
-        :loading="store.sending"
-        @click="handleSend"
-      >
-        发送
-      </t-button>
+      <div class="action-row">
+        <div class="left-actions">
+          <button class="tool-link" type="button" @click="showUploadPanel = true">
+            <span>⇪</span>
+            <span>上传材料</span>
+          </button>
+          <button class="tool-link" type="button">
+            <span>◫</span>
+            <span>引用知识</span>
+          </button>
+        </div>
+
+        <t-button
+          theme="primary"
+          size="large"
+          class="send-btn"
+          :disabled="!inputText.trim() || store.sending"
+          :loading="store.sending"
+          @click="handleSend"
+        >
+          发送任务
+        </t-button>
+      </div>
+    </div>
+
+    <div class="composer-note">
+      AI 生成内容仅供参考，重大决策请人工复核（横渡智能体 Core v0.3）
     </div>
   </div>
 </template>
@@ -49,26 +61,73 @@ function handleSend() {
 
 <style scoped>
 .composer-bar {
-  padding: 16px 24px;
+  position: relative;
+}
+
+.composer-shell {
+  border-radius: 34px;
   background: #fff;
+  border: 1px solid #dfe7f2;
+  box-shadow: 0 -4px 24px -8px rgba(15, 23, 42, 0.12);
+  padding: 10px 10px 6px;
 }
 
-.input-area {
+.composer-textarea :deep(textarea) {
+  border: none;
+  box-shadow: none;
+  resize: none;
+  padding: 18px 22px 16px;
+  font-size: 18px;
+  line-height: 1.7;
+  color: #31435f;
+}
+
+.action-row {
   display: flex;
-  gap: 12px;
-  align-items: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 12px 10px;
+  border-top: 1px solid #eef3f9;
 }
 
-.input-wrapper {
-  flex: 1;
+.left-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
 }
 
-.upload-icon {
+.tool-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  color: #61748f;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
-  color: #666;
 }
 
-.upload-icon:hover {
-  color: #1890ff;
+.send-btn {
+  min-width: 160px;
+}
+
+.composer-note {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 12px;
+  color: #a0aec0;
+}
+
+@media (max-width: 768px) {
+  .action-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .left-actions {
+    justify-content: space-between;
+  }
 }
 </style>

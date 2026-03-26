@@ -1,7 +1,9 @@
 package com.liang.drugagent.scene.tender_review.model;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -12,8 +14,10 @@ import java.util.List;
  *
  * @author liangjiajian
  */
-@Getter
-@Setter
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class TenderCase {
 
     /** 审查任务 ID。 */

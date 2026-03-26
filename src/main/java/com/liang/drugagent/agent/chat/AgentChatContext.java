@@ -1,7 +1,7 @@
 package com.liang.drugagent.agent.chat;
 
+import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
 import com.liang.drugagent.scene.SceneEnum;
-import com.liang.drugagent.controller.domain.request.agent.DrugAgentReq;
 import com.liang.drugagent.agent.route.AgentRouteContext;
 import lombok.Getter;
 import lombok.Setter;
@@ -57,7 +57,7 @@ public class AgentChatContext {
      *
      * <p>sessionId 为空时使用默认值，保证链路稳定。
      */
-    public static AgentChatContext from(DrugAgentReq req) {
+    public static AgentChatContext from(AgentChatReq req) {
         String sessionId = (req.getSessionId() == null || req.getSessionId().isBlank())
                 ? "default-drug-session"
                 : req.getSessionId();
@@ -68,6 +68,21 @@ public class AgentChatContext {
                 req.getQuery(),
                 req.getFileIds(),
                 req.getMetadata()
+        );
+    }
+
+    /**
+     * 从标书审查请求构建上下文。
+     */
+    public static AgentChatContext fromToolRequest(String sessionId, String query,
+                                                    List<String> fileIds, Map<String, Object> metadata) {
+        return new AgentChatContext(
+                UUID.randomUUID().toString(),
+                sessionId != null ? sessionId : "default-drug-session",
+                null,
+                query,
+                fileIds != null ? fileIds : List.of(),
+                metadata
         );
     }
 

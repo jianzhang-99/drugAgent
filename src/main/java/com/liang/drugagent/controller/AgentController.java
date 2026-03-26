@@ -1,216 +1,52 @@
 package com.liang.drugagent.controller;
 
 import com.liang.drugagent.agent.chat.AgentChatService;
-import com.liang.drugagent.controller.domain.request.agent.DrugAgentReq;
+import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
+import com.liang.drugagent.controller.domain.request.agent.FileChatReq;
 import com.liang.drugagent.controller.domain.response.agent.DrugAgentResp;
-import com.liang.drugagent.scene.common.MessageTypeEnum;
-import com.liang.drugagent.scene.common.service.ChatMemoryService;
 import com.liang.drugagent.shared.domain.response.Result;
-import com.liang.drugagent.scene.common.entity.ChatMessage;
-import com.liang.drugagent.scene.common.entity.ChatSession;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Agent 统一控制器。
  *
- * <p>整合 AI 对话与会话管理功能：
+ * <p>聚焦 AI 对话入口能力：
  * <ul>
  *   <li>AI 对话：同步/流式对话、文件上传</li>
- *   <li>会话管理：会话 CRUD、消息存取</li>
  * </ul>
  *
  * @author liangjiajian
  */
+@Slf4j
 @RestController
 @RequestMapping("/agent")
 @RequiredArgsConstructor
 @Tag(name = "Agent", description = "AI Agent 对话与会话管理")
-@CrossOrigin(origins = "*")
 public class AgentController {
 
-    private static final Logger log = LoggerFactory.getLogger(AgentController.class);
-    private static final String DEFAULT_USER_ID = "default_user";
-
     private final AgentChatService agentChatService;
-    private final ChatMemoryService chatMemoryService;
-
-    // ==================== AI 对话接口 ====================
 
     @Operation(summary = "同步对话")
     @PostMapping("/chat")
-    public Result<DrugAgentResp> chat(@RequestBody DrugAgentReq req) {
-        if (req == null || ((req.getQuery() == null || req.getQuery().isBlank())
-                && (req.getFileIds() == null || req.getFileIds().isEmpty()))) {
-            log.warn("Reject empty chat request");
-            return Result.error("query 和 fileIds 不能同时为空");
-        }
-        log.info("Receive sync chat request: sessionId={}, userId={}, queryLength={}",
-                req.getSessionId(), req.getUserId(), req.getQuery() == null ? 0 : req.getQuery().length());
-        return Result.success(agentChatService.handleChat(req));
+    public Result<DrugAgentResp> chat(@RequestBody AgentChatReq req) {
+        return Result.success(agentChatService.chat(req));
     }
 
     @Operation(summary = "文件上传对话")
-    @PostMapping(value = "/submit", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public Result<DrugAgentResp> submit(
-            @RequestParam(value = "query", required = false) String query,
-            @RequestParam(value = "sceneHint", required = false) String sceneHint,
-            @RequestParam(value = "sessionId", required = false) String sessionId,
-            @RequestParam(value = "userId", required = false) String userId,
-            @RequestParam(value = "submittedBy", defaultValue = "anonymous") String submittedBy,
-            @RequestParam("files") MultipartFile[] files) {
-        if (files == null || files.length == 0) {
-            return Result.error("请至少上传一个文件");
-        }
-        return Result.success(agentChatService.handleFileUpload(query, sceneHint, sessionId, userId, submittedBy, files));
+    @PostMapping(value = "/fileChat", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Result<DrugAgentResp> fileChat(@ModelAttribute FileChatReq req) {
+        return Result.success(agentChatService.fileChat(req));
     }
 
     @Operation(summary = "流式对话")
-    @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter streamChat(@RequestBody DrugAgentReq req) {
-        log.info("Receive stream chat request: sessionId={}, userId={}, queryLength={}",
-                req == null ? null : req.getSessionId(),
-                req == null ? null : req.getUserId(),
-                req == null || req.getQuery() == null ? 0 : req.getQuery().length());
+    @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamChat(@RequestBody AgentChatReq req) {
         return agentChatService.handleStreamChat(req);
-    }
-
-    // ==================== 会话管理接口 ====================
-
-    @Operation(summary = "获取所有会话列表")
-    @GetMapping("/sessions")
-    public Result<List<ChatSession>> getAllSessions() {
-        List<ChatSession> sessions = chatMemoryService.getSessionsByUserId(DEFAULT_USER_ID);
-        return Result.success(sessions);
-    }
-
-    @Operation(summary = "获取会话详情（含消息）")
-    @GetMapping("/sessions/{id}")
-    public Result<ChatSession> getSessionById(
-            @Parameter(description = "会话ID") @PathVariable String id) {
-        ChatSession session = chatMemoryService.getSessionWithMessages(id);
-        if (session == null) {
-            return Result.error("会话不存在");
-        }
-        return Result.success(session);
-    }
-
-    @Operation(summary = "创建新会话")
-    @PostMapping("/sessions")
-    public Result<ChatSession> createSession(@RequestBody Map<String, String> request) {
-        String title = request.getOrDefault("title", "新对话");
-        String scene = request.getOrDefault("scene", "general");
-        ChatSession session = chatMemoryService.createSession(title, scene, DEFAULT_USER_ID);
-        return Result.success(session);
-    }
-
-    @Operation(summary = "更新会话标题")
-    @PutMapping("/sessions/{id}/title")
-    public Result<Void> updateSessionTitle(
-            @Parameter(description = "会话ID") @PathVariable String id,
-            @RequestBody Map<String, String> request) {
-        String title = request.get("title");
-        chatMemoryService.updateSessionTitle(id, title);
-        return Result.success(null);
-    }
-
-    @Operation(summary = "删除会话（软删除）")
-    @DeleteMapping("/sessions/{id}")
-    public Result<Void> deleteSession(
-            @Parameter(description = "会话ID") @PathVariable String id) {
-        chatMemoryService.deleteSession(id);
-        return Result.success(null);
-    }
-
-    @Operation(summary = "清空所有会话")
-    @DeleteMapping("/sessions/all")
-    public Result<Void> deleteAllSessions() {
-        chatMemoryService.deleteAllSessions(DEFAULT_USER_ID);
-        return Result.success(null);
-    }
-
-    @Operation(summary = "搜索会话")
-    @GetMapping("/sessions/search")
-    public Result<List<ChatSession>> searchSessions(
-            @Parameter(description = "搜索关键词") @RequestParam String q) {
-        List<ChatSession> sessions = chatMemoryService.searchSessions(DEFAULT_USER_ID, q);
-        return Result.success(sessions);
-    }
-
-    @Operation(summary = "获取会话的所有消息")
-    @GetMapping("/sessions/{sessionId}/messages")
-    public Result<List<ChatMessage>> getMessages(
-            @Parameter(description = "会话ID") @PathVariable String sessionId) {
-        List<ChatMessage> messages = chatMemoryService.getMessagesBySessionId(sessionId);
-        return Result.success(messages);
-    }
-
-    @Operation(summary = "发送消息并获取AI响应")
-    @PostMapping("/sessions/{sessionId}/messages")
-    public Result<Map<String, Object>> addMessage(
-            @Parameter(description = "会话ID") @PathVariable String sessionId,
-            @RequestBody Map<String, Object> request) {
-        // 兼容前端格式：前端发送 { content, attachments }
-        String role = request.get("role") != null ? (String) request.get("role") : "user";
-        String content = (String) request.get("content");
-
-        if (content == null || content.isEmpty()) {
-            return Result.error("消息内容不能为空");
-        }
-
-        DrugAgentResp aiResponse = null;
-        ChatMessage aiMsg = null;
-
-        // 只有用户角色才调用AI
-        if ("user".equals(role)) {
-            DrugAgentReq req = DrugAgentReq.builder()
-                    .sessionId(sessionId)
-                    .query(content)
-                    .build();
-            aiResponse = agentChatService.handleChat(req);
-
-            // 根据AI响应确定消息类型
-            String messageType = determineMessageType(aiResponse);
-            String aiContent = aiResponse.getAnswer() != null ? aiResponse.getAnswer() : aiResponse.getSummary();
-            aiMsg = chatMemoryService.addMessage(sessionId, "assistant", aiContent, null, messageType);
-        }
-
-        // 返回给前端的数据格式
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("message", aiMsg);
-        response.put("userMessage", content);
-        response.put("aiResponse", aiResponse != null ? aiResponse.getAnswer() : "");
-        response.put("traceId", aiResponse != null ? aiResponse.getTraceId() : null);
-        response.put("scene", aiResponse != null ? aiResponse.getScene() : null);
-
-        return Result.success(response);
-    }
-
-    /**
-     * 根据AI响应确定消息类型。
-     */
-    private String determineMessageType(DrugAgentResp resp) {
-        if (resp == null) {
-            return MessageTypeEnum.ASSISTANT_TEXT.getCode();
-        }
-        if (resp.isRequiresClarification()) {
-            return MessageTypeEnum.ASSISTANT_CLARIFY.getCode();
-        }
-        if (resp.getReport() != null) {
-            return MessageTypeEnum.ASSISTANT_RESULT_CARD.getCode();
-        }
-        return MessageTypeEnum.ASSISTANT_TEXT.getCode();
     }
 }

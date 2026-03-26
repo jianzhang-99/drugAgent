@@ -1,7 +1,9 @@
 package com.liang.drugagent.shared.domain.model;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * 工作流证据项。
@@ -10,21 +12,14 @@ import lombok.Setter;
  *
  * @author liangjiajian
  */
-@Setter
-@Getter
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class EvidenceItem {
 
     private String title;
     private String content;
     private String source;
-
-    public EvidenceItem() {
-    }
-
-    public EvidenceItem(String title, String content, String source) {
-        this.title = title;
-        this.content = content;
-        this.source = source;
-    }
 
 }

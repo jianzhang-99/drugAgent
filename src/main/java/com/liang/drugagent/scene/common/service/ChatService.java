@@ -30,8 +30,9 @@ import reactor.core.publisher.Flux;
  * <p>会根据{@code agentType}自动选择对应的System Prompt，当前支持：</p>
  * <ul>
  *   <li>default - 默认医药监管专家角色</li>
- *   <li>data_analysis - 数据分析专家</li>
- *   <li>compliance_review - 合规审查专家</li>
+ *   <li>risk_alert - 医疗耗材与药品合规风险预警</li>
+ *   <li>contract_precheck - 合同文件AI预审核</li>
+ *   <li>tender_review - 标书雷同与语义查重</li>
  * </ul>
  *
  * @author liangjiajian
@@ -104,11 +105,13 @@ public class ChatService {
     }
 
     private String resolveSystemPrompt(String agentType) {
-        // 1. 根据场景选择 System Prompt
-        if ("data_analysis".equals(agentType)) {
-            return SystemPrompt.DATA_ANALYSIS_EXPERT_PROMPT;
-        } else if ("compliance_review".equals(agentType)) {
-            return SystemPrompt.COMPLIANCE_REVIEW_EXPERT_PROMPT;
+        // 根据场景选择 System Prompt
+        if ("risk_alert".equals(agentType)) {
+            return SystemPrompt.RISK_ALERT_PROMPT;
+        } else if ("contract_precheck".equals(agentType)) {
+            return SystemPrompt.CONTRACT_PRECHECK_PROMPT;
+        } else if ("tender_review".equals(agentType)) {
+            return SystemPrompt.TENDER_REVIEW_PROMPT;
         }
         return SystemPrompt.DRUG_REGULATION_EXPERT_PROMPT;
     }

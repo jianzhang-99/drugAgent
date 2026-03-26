@@ -1,7 +1,9 @@
 package com.liang.drugagent.scene.tender_review.model;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * 免责命中记录。
@@ -10,8 +12,10 @@ import lombok.Setter;
  *
  * @author drug-agent
  */
-@Getter
-@Setter
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ExemptionHit {
 
     /** 命中记录唯一ID */

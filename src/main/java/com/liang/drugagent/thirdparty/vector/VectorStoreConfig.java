@@ -1,7 +1,6 @@
 package com.liang.drugagent.thirdparty.vector;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -10,10 +9,9 @@ import org.springframework.context.annotation.Configuration;
 
 import java.io.File;
 
+@Slf4j
 @Configuration
 public class VectorStoreConfig {
-
-    private static final Logger log = LoggerFactory.getLogger(VectorStoreConfig.class);
 
     /**
      * 配置基于内存的向量数据库 (SimpleVectorStore)

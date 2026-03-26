@@ -2,20 +2,21 @@
   <t-drawer
     v-model:visible="visible"
     :header="drawerTitle"
-    size="480px"
+    size="560px"
     placement="right"
     @close="handleClose"
   >
     <div v-if="result" class="result-detail">
-      <!-- 风险等级 -->
       <div class="detail-section">
         <h4 class="section-title">风险等级</h4>
-        <div class="risk-badge" :class="`risk-${result.riskLevel || 'unknown'}`">
-          {{ riskLabel }}
+        <div class="hero-panel">
+          <div class="risk-badge" :class="`risk-${result.riskLevel || 'unknown'}`">
+            {{ riskLabel }}
+          </div>
+          <div class="summary-pane">{{ result.summary || '暂无摘要' }}</div>
         </div>
       </div>
 
-      <!-- 评分 -->
       <div v-if="result.score !== undefined" class="detail-section">
         <h4 class="section-title">风险评分</h4>
         <div class="score-display">
@@ -28,13 +29,6 @@
         </div>
       </div>
 
-      <!-- 摘要 -->
-      <div v-if="result.summary" class="detail-section">
-        <h4 class="section-title">摘要</h4>
-        <p class="summary-text">{{ result.summary }}</p>
-      </div>
-
-      <!-- 审查步骤 -->
       <div v-if="result.steps && result.steps.length > 0" class="detail-section">
         <h4 class="section-title">审查步骤</h4>
         <t-steps :current="result.steps.length" layout="vertical">
@@ -47,7 +41,6 @@
         </t-steps>
       </div>
 
-      <!-- 证据列表 -->
       <div v-if="result.evidenceList && result.evidenceList.length > 0" class="detail-section">
         <h4 class="section-title">证据列表</h4>
         <div class="evidence-list">
@@ -67,7 +60,6 @@
         </div>
       </div>
 
-      <!-- 报告内容 -->
       <div v-if="result.report" class="detail-section">
         <h4 class="section-title">审查报告</h4>
         <div class="report-content">
@@ -114,7 +106,7 @@ const visible = computed({
     if (!val) {
       store.setCurrentResult(null);
     }
-  }
+  },
 });
 
 const drawerTitle = computed(() => {
@@ -131,7 +123,7 @@ const riskLabel = computed(() => {
     medium: '中风险',
     low: '低风险',
     safe: '安全',
-    unknown: '未知'
+    unknown: '未知',
   };
   return map[result.value?.riskLevel || 'unknown'] || '未知';
 });
@@ -150,7 +142,7 @@ function handleClose() {
 
 <style scoped>
 .result-detail {
-  padding: 0 8px;
+  padding: 0 8px 24px;
 }
 
 .detail-section {
@@ -169,9 +161,25 @@ function handleClose() {
 .risk-badge {
   display: inline-block;
   padding: 6px 16px;
-  border-radius: 4px;
+  border-radius: 999px;
   font-size: 14px;
   font-weight: 500;
+}
+
+.hero-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(247, 251, 250, 0.9), rgba(241, 247, 248, 0.9));
+  border: 1px solid rgba(19, 49, 59, 0.08);
+}
+
+.summary-pane {
+  font-size: 14px;
+  line-height: 1.75;
+  color: #4d6672;
 }
 
 .risk-high {
@@ -203,6 +211,10 @@ function handleClose() {
   display: flex;
   align-items: center;
   gap: 16px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(19, 49, 59, 0.08);
 }
 
 .score-number {
@@ -210,13 +222,6 @@ function handleClose() {
   font-weight: 600;
   color: #333;
   min-width: 50px;
-}
-
-.summary-text {
-  font-size: 14px;
-  line-height: 1.6;
-  color: #666;
-  margin: 0;
 }
 
 .evidence-list {
@@ -228,7 +233,7 @@ function handleClose() {
 .evidence-item {
   padding: 12px;
   background: #f5f7fa;
-  border-radius: 4px;
+  border-radius: 14px;
 }
 
 .evidence-type {
@@ -264,7 +269,7 @@ function handleClose() {
 .finding-item {
   padding: 8px 12px;
   background: #f5f7fa;
-  border-radius: 4px;
+  border-radius: 12px;
   margin-bottom: 8px;
 }
 

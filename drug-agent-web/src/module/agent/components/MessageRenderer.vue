@@ -1,16 +1,22 @@
 <template>
   <div :class="['message-renderer', `type-${message.type}`]">
-    <!-- 用户消息 -->
     <div v-if="message.role === 'user'" class="user-message">
-      <div class="message-content">{{ message.content }}</div>
+      <div class="message-meta">你</div>
+      <div class="message-content">
+        <div v-if="message.attachments?.length" class="attachment-list">
+          <span v-for="file in message.attachments" :key="file.id" class="attachment-chip">
+            {{ file.name }}
+          </span>
+        </div>
+        <div>{{ message.content }}</div>
+      </div>
     </div>
 
-    <!-- AI 消息 - 文本 -->
     <div v-else-if="message.type === 'assistant_text'" class="assistant-message">
+      <div class="message-meta">Agent</div>
       <div class="message-content">{{ message.content }}</div>
     </div>
 
-    <!-- AI 消息 - 澄清 -->
     <div v-else-if="message.type === 'assistant_clarify'" class="clarify-message">
       <div class="message-header">
         <t-icon name="help-circle" />
@@ -19,25 +25,23 @@
       <div class="message-content">{{ message.content }}</div>
     </div>
 
-    <!-- AI 消息 - 结果卡片 -->
     <div v-else-if="message.type === 'assistant_result_card'" class="result-message">
+      <div class="message-meta">结构化结果</div>
       <ResultCard :data="message.result" />
     </div>
 
-    <!-- 系统错误 -->
     <div v-else-if="message.type === 'system_error'" class="error-message">
       <t-icon name="error-circle" />
       <span>{{ message.content }}</span>
     </div>
 
-    <!-- 上传中 -->
     <div v-else-if="message.type === 'uploading'" class="uploading-message">
       <t-loading-indicator />
       <span>文件上传中...</span>
     </div>
 
-    <!-- 默认 -->
     <div v-else class="assistant-message">
+      <div class="message-meta">Agent</div>
       <div class="message-content">{{ message.content }}</div>
     </div>
   </div>
@@ -47,42 +51,74 @@
 import type { Message } from '../types/agent';
 import ResultCard from './ResultCard.vue';
 
-defineProps<{
-  message: Message;
-}>();
+defineProps<{ message: Message }>();
 </script>
 
 <style scoped>
 .message-renderer {
-  max-width: 80%;
+  max-width: min(820px, 88%);
 }
 
 .message-content {
-  padding: 12px 16px;
-  border-radius: 8px;
+  padding: 16px 18px;
+  border-radius: 20px;
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.75;
   word-break: break-word;
 }
 
+.message-meta {
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #6e8792;
+}
+
+.attachment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.attachment-chip {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 12px;
+}
+
+.user-message {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
 .user-message .message-content {
-  background: #1890ff;
+  background: linear-gradient(135deg, #0f766e, #0284c7);
   color: #fff;
-  border-bottom-right-radius: 4px;
+  border-bottom-right-radius: 8px;
+  box-shadow: 0 18px 40px rgba(2, 132, 199, 0.2);
+}
+
+.assistant-message,
+.assistant-message .message-content {
+  color: #16333e;
 }
 
 .assistant-message .message-content {
-  background: #fff;
-  color: #333;
-  border-bottom-left-radius: 4px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom-left-radius: 8px;
+  border: 1px solid rgba(19, 49, 59, 0.08);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
 }
 
 .clarify-message {
-  background: #fff;
-  border-radius: 8px;
-  padding: 12px 16px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 22px;
+  padding: 16px 18px;
+  border: 1px solid rgba(250, 173, 20, 0.26);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
 }
 
 .message-header {
@@ -91,26 +127,27 @@ defineProps<{
   gap: 6px;
   color: #faad14;
   font-weight: 500;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .error-message {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 16px;
-  background: #fff2f0;
+  padding: 14px 16px;
+  background: rgba(255, 242, 240, 0.9);
   color: #ff4d4f;
-  border-radius: 8px;
+  border-radius: 18px;
 }
 
 .uploading-message {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 16px;
-  background: #fff;
-  color: #666;
-  border-radius: 8px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #5b7380;
+  border-radius: 18px;
+  border: 1px solid rgba(19, 49, 59, 0.08);
 }
 </style>

@@ -4,8 +4,7 @@ import com.liang.drugagent.shared.llm.LlmClient;
 import com.liang.drugagent.shared.llm.LlmProviderType;
 import com.liang.drugagent.shared.llm.LlmRequest;
 import com.liang.drugagent.shared.llm.LlmResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
@@ -18,18 +17,9 @@ import reactor.core.publisher.Flux;
 
 import java.util.List;
 
-/**
- * 百炼（DashScope）LLM客户端实现
- *
- * 基于Spring AI Alibaba的ChatClient封装，提供与Spring AI标准接口对齐的LLM调用能力。
- * 支持百炼平台所有模型（如qwen-plus、qwen-max等）
- *
- * @author liangjiajian
- */
+@Slf4j
 @Component
 public class DashScopeLlmClient implements LlmClient {
-
-    private static final Logger log = LoggerFactory.getLogger(DashScopeLlmClient.class);
 
     private final ChatClient chatClient;
     private final ChatMemory chatMemory;
@@ -51,7 +41,7 @@ public class DashScopeLlmClient implements LlmClient {
 
     @Override
     public LlmResponse chat(LlmRequest request) {
-        log.debug("DashScope chat request - sessionId: {}, model: {}",
+        log.debug("百炼聊天请求 - sessionId: {}, 模型: {}",
                 request.getSessionId(), request.getModel());
 
         try {
@@ -62,12 +52,12 @@ public class DashScopeLlmClient implements LlmClient {
                     .call()
                     .content();
 
-            log.debug("DashScope chat response - sessionId: {}, response length: {}",
+            log.debug("百炼聊天响应 - sessionId: {}, 响应长度: {}",
                     request.getSessionId(), response.length());
 
             return LlmResponse.success(response, LlmProviderType.DASHSCOPE, request.getModel());
         } catch (Exception e) {
-            log.error("DashScope chat error - sessionId: {}, error: {}",
+            log.error("百炼聊天异常 - sessionId: {}, 错误: {}",
                     request.getSessionId(), e.getMessage(), e);
             return LlmResponse.error("DASHSCOPE_ERROR", "百炼API调用失败: " + e.getMessage());
         }
@@ -75,7 +65,7 @@ public class DashScopeLlmClient implements LlmClient {
 
     @Override
     public Flux<LlmResponse> streamChat(LlmRequest request) {
-        log.debug("DashScope stream chat request - sessionId: {}, model: {}",
+        log.debug("百炼流式聊天请求 - sessionId: {}, 模型: {}",
                 request.getSessionId(), request.getModel());
 
         return chatClient.prompt()
@@ -85,7 +75,7 @@ public class DashScopeLlmClient implements LlmClient {
                 .stream()
                 .content()
                 .map(chunk -> LlmResponse.streamedChunk(chunk, false))
-                .doOnError(e -> log.error("DashScope stream error: {}", e.getMessage(), e));
+                .doOnError(e -> log.error("百炼流式聊天异常: {}", e.getMessage(), e));
     }
 
     private List<Message> buildMessages(LlmRequest request) {

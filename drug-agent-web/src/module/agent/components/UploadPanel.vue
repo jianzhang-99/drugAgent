@@ -1,14 +1,16 @@
 <template>
   <div class="upload-panel">
     <div class="panel-header">
-      <span class="panel-title">上传标书文件</span>
+      <div>
+        <div class="panel-label">上传材料</div>
+        <span class="panel-title">开始一轮 mock 审查</span>
+      </div>
       <t-button theme="default" variant="text" @click="handleClose">
         <t-icon name="close" />
       </t-button>
     </div>
 
     <div class="panel-body">
-      <!-- 文件选择区 -->
       <div
         class="upload-zone"
         :class="{ 'drag-over': isDragOver }"
@@ -20,11 +22,10 @@
         <div class="upload-hint">
           <t-icon name="upload" size="32px" />
           <p>点击或拖拽文件到此处上传</p>
-          <p class="upload-formats">支持 PDF、Word、Markdown、TXT 格式</p>
+          <p class="upload-formats">支持 PDF、Word、Markdown、TXT 格式，当前仅做前端 mock 演示</p>
         </div>
       </div>
 
-      <!-- 文件列表 -->
       <div v-if="fileList.length > 0" class="file-list">
         <div v-for="(file, index) in fileList" :key="index" class="file-item">
           <t-icon name="file-pdf" />
@@ -41,11 +42,11 @@
         </div>
       </div>
 
-      <!-- 查询条件 -->
       <div class="query-input">
-        <t-input
+        <t-textarea
           v-model="queryText"
-          placeholder="添加查询说明（可选）"
+          :autosize="{ minRows: 2, maxRows: 4 }"
+          placeholder="补充你的审查重点，例如：优先看围标、商务条款或技术方案雷同。"
         />
       </div>
     </div>
@@ -68,9 +69,7 @@
 import { ref } from 'vue';
 import { useAgentStore } from '../store/agentStore';
 
-const emit = defineEmits<{
-  (e: 'close'): void;
-}>();
+const emit = defineEmits<{ (e: 'close'): void }>();
 
 const store = useAgentStore();
 const fileList = ref<File[]>([]);
@@ -84,22 +83,19 @@ function triggerFileInput() {
   input.accept = '.pdf,.doc,.docx,.md,.txt';
   input.onchange = (e) => {
     const target = e.target as HTMLInputElement;
-    if (target.files) {
-      addFiles(Array.from(target.files));
-    }
+    if (target.files) addFiles(Array.from(target.files));
   };
   input.click();
 }
 
 function handleDrop(e: DragEvent) {
   isDragOver.value = false;
-  const droppedFiles = Array.from(e.dataTransfer?.files || []);
-  addFiles(droppedFiles);
+  addFiles(Array.from(e.dataTransfer?.files || []));
 }
 
 function addFiles(newFiles: File[]) {
-  newFiles.forEach(file => {
-    if (!fileList.value.some(f => f.name === file.name)) {
+  newFiles.forEach((file) => {
+    if (!fileList.value.some((item) => item.name === file.name)) {
       fileList.value.push(file);
     }
   });
@@ -115,7 +111,6 @@ function handleClose() {
 
 async function handleSubmit() {
   if (fileList.value.length === 0) return;
-
   await store.uploadFiles(fileList.value, queryText.value || undefined);
   fileList.value = [];
   queryText.value = '';
@@ -123,18 +118,19 @@ async function handleSubmit() {
 }
 
 function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 </script>
 
 <style scoped>
 .upload-panel {
-  background: #fff;
-  border-radius: 8px;
-  margin: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 24px;
+  margin-bottom: 14px;
+  border: 1px solid rgba(19, 49, 59, 0.08);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
 }
 
 .panel-header {
@@ -142,12 +138,20 @@ function formatFileSize(bytes: number): string {
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  border-bottom: 1px solid #e7e7e7;
+  border-bottom: 1px solid rgba(19, 49, 59, 0.08);
+}
+
+.panel-label {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6f8793;
+  margin-bottom: 4px;
 }
 
 .panel-title {
-  font-size: 16px;
-  font-weight: 500;
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .panel-body {
@@ -155,17 +159,19 @@ function formatFileSize(bytes: number): string {
 }
 
 .upload-zone {
-  border: 2px dashed #d9d9d9;
-  border-radius: 8px;
+  border: 2px dashed rgba(14, 165, 233, 0.24);
+  border-radius: 20px;
   padding: 32px;
   text-align: center;
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, background-color 0.2s;
+  background: rgba(245, 251, 252, 0.75);
 }
 
 .upload-zone:hover,
 .upload-zone.drag-over {
   border-color: #1890ff;
+  background: rgba(230, 247, 255, 0.78);
 }
 
 .upload-hint {
@@ -189,9 +195,9 @@ function formatFileSize(bytes: number): string {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px;
+  padding: 10px 12px;
   background: #f5f7fa;
-  border-radius: 4px;
+  border-radius: 12px;
   margin-bottom: 8px;
 }
 
@@ -216,6 +222,6 @@ function formatFileSize(bytes: number): string {
   justify-content: flex-end;
   gap: 12px;
   padding: 16px;
-  border-top: 1px solid #e7e7e7;
+  border-top: 1px solid rgba(19, 49, 59, 0.08);
 }
 </style>

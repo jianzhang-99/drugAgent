@@ -34,7 +34,6 @@ import java.util.stream.Collectors;
 @RequestMapping("/tasks")
 @RequiredArgsConstructor
 @Tag(name = "任务与报告", description = "任务查询和报告获取接口")
-@CrossOrigin(origins = "*")
 public class TaskController {
 
     private final TaskCardService taskCardService;

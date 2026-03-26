@@ -8,8 +8,7 @@ import com.liang.drugagent.scene.tender_review.TenderCaseStatus;
 import com.liang.drugagent.scene.tender_review.model.*;
 import com.liang.drugagent.scene.tender_review.support.TenderRuleEngine;
 import com.liang.drugagent.scene.tender_review.support.storage.InMemoryTenderCaseStore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -28,10 +27,9 @@ import java.util.*;
  *
  * @author drug-agent
  */
+@Slf4j
 @Service
 public class TenderCaseService {
-
-    private static final Logger log = LoggerFactory.getLogger(TenderCaseService.class);
 
     private final InMemoryTenderCaseStore store;
     private final ObjectMapper objectMapper;
@@ -50,7 +48,7 @@ public class TenderCaseService {
      */
     public TenderCaseCreateResp createCase(TenderCaseCreateReq req) {
         validateRequest(req);
-        log.info("Creating tender case: submittedBy={}, filenames={}", req.getSubmittedBy(), req.getFilenames());
+        log.info("创建标书案例: 提交人={}, 文件名={}", req.getSubmittedBy(), req.getFilenames());
 
         String caseId = UUID.randomUUID().toString();
         List<String> documentIds = new ArrayList<>();
@@ -79,7 +77,7 @@ public class TenderCaseService {
 
         store.saveCase(c);
         docs.forEach(store::saveDocument);
-        log.info("Tender case persisted: caseId={}, documentCount={}", caseId, docs.size());
+        log.info("标书案例已持久化: caseId={}, 文档数量={}", caseId, docs.size());
 
         return TenderCaseCreateResp.builder()
                 .caseId(caseId)
@@ -94,7 +92,7 @@ public class TenderCaseService {
      */
     public void storeFileContent(String docId, byte[] bytes) {
         store.saveFileBytes(docId, bytes);
-        log.info("Stored tender file content: docId={}, size={}", docId, bytes == null ? 0 : bytes.length);
+        log.info("已存储标书文件内容: docId={}, 大小={}", docId, bytes == null ? 0 : bytes.length);
     }
 
     /**
@@ -119,7 +117,7 @@ public class TenderCaseService {
      */
     public void saveCase(TenderCase tenderCase) {
         store.saveCase(tenderCase);
-        log.info("Saved tender case: caseId={}, status={}", tenderCase.getCaseId(), tenderCase.getStatus());
+        log.info("已保存标书案例: caseId={}, 状态={}", tenderCase.getCaseId(), tenderCase.getStatus());
     }
 
     /**
@@ -130,7 +128,7 @@ public class TenderCaseService {
                 .sorted(Comparator.comparing(TenderCase::getCreatedAt,
                         Comparator.nullsLast(Comparator.naturalOrder())).reversed())
                 .toList();
-        log.info("Listed tender cases: count={}", cases.size());
+        log.info("查询标书案例列表: 数量={}", cases.size());
         return cases;
     }
 
@@ -142,7 +140,7 @@ public class TenderCaseService {
      * @return 审查结果
      */
     public TenderCase executeReview(String caseId, TenderReviewData reviewData) {
-        log.info("Executing review for case: {}", caseId);
+        log.info("执行标书案例审查: caseId={}", caseId);
 
         Optional<TenderCase> caseOpt = store.findCase(caseId);
         if (caseOpt.isEmpty()) {
@@ -179,11 +177,11 @@ public class TenderCaseService {
             String resultJson = objectMapper.writeValueAsString(allHits);
             tenderCase.setReviewResult(resultJson);
         } catch (JsonProcessingException e) {
-            log.error("Failed to serialize review result", e);
+            log.error("序列化审查结果失败", e);
         }
 
         store.saveCase(tenderCase);
-        log.info("Review completed for case: {}, score={}, riskLevel={}", caseId, totalScore, riskLevel);
+        log.info("标书案例审查完成: caseId={}, 评分={}, 风险等级={}", caseId, totalScore, riskLevel);
 
         return tenderCase;
     }
@@ -195,7 +193,7 @@ public class TenderCaseService {
      * @return 审查结果
      */
     public Optional<TenderCase> getReviewResult(String caseId) {
-        log.info("Getting review result for case: {}", caseId);
+        log.info("获取审查结果: caseId={}", caseId);
         return store.findCase(caseId);
     }
 

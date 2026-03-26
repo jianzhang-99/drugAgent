@@ -1,7 +1,6 @@
 package com.liang.drugagent.shared.llm;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -17,10 +16,9 @@ import java.util.stream.Collectors;
  * @author liangjiajian
  * @since 2026-03-23
  */
+@Slf4j
 @Service
 public class LlmService {
-
-    private static final Logger log = LoggerFactory.getLogger(LlmService.class);
 
     private final Map<LlmProviderType, LlmClient> clientMap;
 
@@ -50,7 +48,7 @@ public class LlmService {
      */
     public LlmResponse chat(LlmRequest request) {
         LlmProviderType provider = resolveProvider(request);
-        log.info("LLM chat request - provider: {}, model: {}", provider, request.getModel());
+        log.info("LLM对话请求 - provider: {}, 模型: {}", provider, request.getModel());
         return getClient(provider).chat(request);
     }
 
@@ -79,7 +77,7 @@ public class LlmService {
      */
     public Flux<LlmResponse> streamChat(LlmRequest request) {
         LlmProviderType provider = resolveProvider(request);
-        log.info("LLM stream chat request - provider: {}, model: {}", provider, request.getModel());
+        log.info("LLM流式对话请求 - provider: {}, 模型: {}", provider, request.getModel());
         return getClient(provider).streamChat(request);
     }
 
@@ -88,7 +86,7 @@ public class LlmService {
      */
     public LlmResponse chatForRouting(LlmRequest request) {
         request.setProvider(routingProvider);
-        log.info("LLM routing request - provider: {}", routingProvider);
+        log.info("LLM路由请求 - provider: {}", routingProvider);
         return getClient(routingProvider).chat(request);
     }
 
@@ -97,7 +95,7 @@ public class LlmService {
      */
     public LlmResponse chatForReport(LlmRequest request) {
         request.setProvider(reportProvider);
-        log.info("LLM report request - provider: {}", reportProvider);
+        log.info("LLM报告请求 - provider: {}", reportProvider);
         return getClient(reportProvider).chat(request);
     }
 
@@ -106,7 +104,7 @@ public class LlmService {
      */
     public LlmResponse chatForChat(LlmRequest request) {
         request.setProvider(chatProvider);
-        log.info("LLM chat request - provider: {}", chatProvider);
+        log.info("LLM对话请求 - provider: {}", chatProvider);
         return getClient(chatProvider).chat(request);
     }
 

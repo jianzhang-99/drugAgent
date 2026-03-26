@@ -1,7 +1,9 @@
 package com.liang.drugagent.shared.domain.model;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -16,8 +18,10 @@ import java.util.Map;
  *
  * @author liangjiajian
  */
-@Getter
-@Setter
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ReviewReport {
 
     private String caseId;
@@ -30,8 +34,10 @@ public class ReviewReport {
     private List<String> recommendedActions = new ArrayList<>();
     private Map<String, String> explanations = new LinkedHashMap<>();
 
-    @Getter
-    @Setter
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class Overview {
         private Integer documentCount;
         private Integer rawHitCount;
@@ -44,8 +50,10 @@ public class ReviewReport {
         private String summary;
     }
 
-    @Getter
-    @Setter
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class RiskItem {
         private String riskType;
         private String riskLevel;

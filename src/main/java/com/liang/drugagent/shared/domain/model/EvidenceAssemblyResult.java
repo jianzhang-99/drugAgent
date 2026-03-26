@@ -1,6 +1,9 @@
 package com.liang.drugagent.shared.domain.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.ArrayList;
@@ -19,6 +22,9 @@ import java.util.List;
  */
 @Getter
 @Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class EvidenceAssemblyResult {
 
     /** 扁平化的证据项列表（去重、排序后） */

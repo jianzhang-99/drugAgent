@@ -1,15 +1,19 @@
 package com.liang.drugagent.scene.tender_review.model;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * 规则命中的证据引用。
  *
  * @author liangjiajian
  */
-@Getter
-@Setter
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class RuleEvidence {
 
     /** 证据所属文档 ID。 */

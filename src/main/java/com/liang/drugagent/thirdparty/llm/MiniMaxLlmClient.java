@@ -6,8 +6,7 @@ import com.liang.drugagent.shared.llm.LlmClient;
 import com.liang.drugagent.shared.llm.LlmProviderType;
 import com.liang.drugagent.shared.llm.LlmRequest;
 import com.liang.drugagent.shared.llm.LlmResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -19,20 +18,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * MiniMax LLM客户端实现
- *
- * 基于HTTP封装的MiniMax API调用，支持：
- * - Bearer Token认证
- * - 流式输出（SSE）
- * - MiniMax Chat Completion API
- *
- * @author liangjiajian
- */
+@Slf4j
 @Component
 public class MiniMaxLlmClient implements LlmClient {
-
-    private static final Logger log = LoggerFactory.getLogger(MiniMaxLlmClient.class);
 
     private static final String CHAT_COMPLETION_PATH = "/v1/text/chatcompletion_v2";
 
@@ -63,7 +51,7 @@ public class MiniMaxLlmClient implements LlmClient {
 
     @Override
     public LlmResponse chat(LlmRequest request) {
-        log.debug("MiniMax chat request - userMessage length: {}",
+        log.debug("MiniMax聊天请求 - 用户消息长度: {}",
                 request.getMessages().get(0).getContent().length());
 
         try {
@@ -80,19 +68,19 @@ public class MiniMaxLlmClient implements LlmClient {
             String content = parseNonStreamResponse(responseBody);
             return LlmResponse.success(content, LlmProviderType.MINIMAX, request.getModel());
         } catch (WebClientResponseException e) {
-            log.error("MiniMax API error: status={}, body={}",
+            log.error("MiniMax API异常 - 状态码: {}, 响应体: {}",
                     e.getStatusCode(), e.getResponseBodyAsString());
             return LlmResponse.error("MINIMAX_API_ERROR",
                     "MiniMax API调用失败: " + e.getStatusCode() + " - " + e.getMessage());
         } catch (Exception e) {
-            log.error("MiniMax chat error: {}", e.getMessage(), e);
+            log.error("MiniMax聊天异常: {}", e.getMessage(), e);
             return LlmResponse.error("MINIMAX_ERROR", "MiniMax API调用失败: " + e.getMessage());
         }
     }
 
     @Override
     public Flux<LlmResponse> streamChat(LlmRequest request) {
-        log.debug("MiniMax stream chat request - userMessage length: {}",
+        log.debug("MiniMax流式聊天请求 - 用户消息长度: {}",
                 request.getMessages().get(0).getContent().length());
 
         try {
@@ -107,7 +95,7 @@ public class MiniMaxLlmClient implements LlmClient {
                     .timeout(Duration.ofMillis(properties.getTimeout()))
                     .flatMap(line -> parseSseLine(line));
         } catch (Exception e) {
-            log.error("MiniMax stream chat error: {}", e.getMessage(), e);
+            log.error("MiniMax流式聊天异常: {}", e.getMessage(), e);
             return Flux.error(new RuntimeException("MiniMax流式API调用失败: " + e.getMessage(), e));
         }
     }

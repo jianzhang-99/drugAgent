@@ -1,8 +1,10 @@
 package com.liang.drugagent.shared.domain.model;
 
 import com.liang.drugagent.scene.SceneEnum;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Getter;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.Map;
 
@@ -14,8 +16,10 @@ import java.util.Map;
  *
  * @author liangjiajian
  */
-@Getter
+@Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class WorkflowRouteDecision {
 
     /**

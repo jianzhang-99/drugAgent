@@ -6,11 +6,11 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type {
-  Session,
   Message,
   DrugAgentResp,
   CreateSessionRequest,
   Attachment,
+  ChatSession,
 } from '../types/agent';
 import * as agentApi from '../api/agentApi';
 import {
@@ -25,7 +25,7 @@ export const useAgentStore = defineStore('agent', () => {
   // ==================== 状态定义 ====================
 
   /** 会话列表 */
-  const sessions = ref<Session[]>([]);
+  const sessions = ref<ChatSession[]>([]);
 
   /** 当前激活的会话 ID */
   const activeSessionId = ref<string | null>(null);
@@ -72,10 +72,6 @@ export const useAgentStore = defineStore('agent', () => {
       const res = await agentApi.getSessions();
       if (res.data.code === 200 || res.data.code === 0) {
         sessions.value = res.data.data || [];
-        // 如果有会话但没有选中的，自动选中第一个
-        if (sessions.value.length > 0 && !activeSessionId.value) {
-          await selectSession(sessions.value[0].id);
-        }
       }
     } catch (error) {
       console.error('加载会话列表失败:', error);

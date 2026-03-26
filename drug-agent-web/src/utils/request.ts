@@ -1,7 +1,7 @@
 /**
  * 基于 axios 的请求封装
  */
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { Message } from 'tdesign-vue-next';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';

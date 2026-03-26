@@ -43,7 +43,7 @@ export function mapResponseToMessage(
  * 从后端 ChatMessage 映射为前端 Message
  */
 export function mapChatMessageToMessage(chatMsg: ChatMessage): Message {
-  return {
+  const message: Message = {
     id: chatMsg.id,
     role: chatMsg.role as 'user' | 'assistant' | 'system',
     type: chatMsg.type as MessageType,
@@ -52,6 +52,11 @@ export function mapChatMessageToMessage(chatMsg: ChatMessage): Message {
     status: 'sent',
     raw: chatMsg,
   };
+  const metadata = chatMsg.metadata as DrugAgentResp | undefined;
+  if (metadata && (metadata.report || metadata.riskLevel || metadata.score !== undefined)) {
+    message.result = mapToResultData(metadata);
+  }
+  return message;
 }
 
 /**

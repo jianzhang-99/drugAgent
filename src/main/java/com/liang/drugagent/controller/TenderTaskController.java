@@ -40,7 +40,6 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "标书任务", description = "标书审查任务生命周期管理")
-@CrossOrigin(origins = "*")
 public class TenderTaskController {
 
     @Schema(name = "CreateCaseForm", description = "创建审查任务 - 上传表单")

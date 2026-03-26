@@ -1,5 +1,6 @@
 package com.liang.drugagent.shared.advisor;
 
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.ai.chat.client.advisor.api.AdvisedRequest;
 import org.springframework.ai.chat.client.advisor.api.AdvisedResponse;
@@ -14,16 +15,12 @@ import reactor.core.publisher.Flux;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * 统一日志监控 Advisor
  * 作用：拦截调用过程，打印完整的请求与响应参数，包括耗时等，便于研发阶段的调试与监控
  */
+@Slf4j
 public class LoggingAdvisor implements CallAroundAdvisor, StreamAroundAdvisor {
-
-    private static final Logger log = LoggerFactory.getLogger(LoggingAdvisor.class);
 
     @NotNull
     @Override

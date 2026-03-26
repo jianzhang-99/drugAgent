@@ -30,7 +30,6 @@ import java.util.UUID;
 @RequestMapping("/files")
 @RequiredArgsConstructor
 @Tag(name = "文件管理", description = "文件上传接口")
-@CrossOrigin(origins = "*")
 public class FileController {
 
     /**

@@ -1,8 +1,7 @@
 package com.liang.drugagent.shared.advisor;
 
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.advisor.api.AdvisedRequest;
 import org.springframework.ai.chat.client.advisor.api.AdvisedResponse;
 import org.springframework.ai.chat.client.advisor.api.CallAroundAdvisor;
@@ -17,9 +16,8 @@ import java.util.List;
  * 内容安全过滤 Advisor
  * 作用：拦截 AI 返回结果中的敏感词汇或不合规表述
  */
+@Slf4j
 public class SafetyAdvisor implements CallAroundAdvisor {
-
-    private static final Logger log = LoggerFactory.getLogger(SafetyAdvisor.class);
 
     // 示例停用词库
     private static final List<String> BLACK_LIST = List.of("处方药优惠", "买一送一", "疗效神速", "保证治愈");

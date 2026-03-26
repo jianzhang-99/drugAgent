@@ -1,6 +1,9 @@
 package com.liang.drugagent.scene.tender_review.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.ArrayList;
@@ -15,6 +18,9 @@ import java.util.List;
  */
 @Getter
 @Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class RiskFusionResult {
 
     /** 综合风险等级（如"HIGH"、"MEDIUM"、"LOW"） */

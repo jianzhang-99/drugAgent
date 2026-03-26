@@ -30,7 +30,6 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/agent/knowledge")
-@CrossOrigin(origins = "*")
 public class AgentKnowledgeController {
 
     private final KnowledgeIngestService knowledgeIngestService;
