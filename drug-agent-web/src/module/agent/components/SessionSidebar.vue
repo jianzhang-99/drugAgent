@@ -3,15 +3,22 @@
     <template v-for="group in groupedSessions" :key="group.label">
       <div v-if="group.items.length" class="group-block">
         <div class="group-label">{{ group.label }}</div>
-        <button
+        <div
           v-for="session in group.items"
           :key="session.id"
-          type="button"
           :class="['session-item', { active: session.id === store.activeSessionId }]"
           @click="handleSelectSession(session.id)"
         >
           <span class="session-title">{{ session.title }}</span>
-        </button>
+          <button
+            type="button"
+            class="delete-btn"
+            title="删除会话"
+            @click.stop="handleDeleteSession(session.id)"
+          >
+            <t-icon name="delete" />
+          </button>
+        </div>
       </div>
     </template>
   </div>
@@ -50,6 +57,10 @@ function handleSelectSession(id: string) {
   store.selectSession(id);
 }
 
+function handleDeleteSession(id: string) {
+  store.removeSession(id);
+}
+
 function formatTime(timeStr: string) {
   if (!timeStr) return '';
   const date = new Date(timeStr);
@@ -81,6 +92,9 @@ function formatTime(timeStr: string) {
 }
 
 .session-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   width: 100%;
   border: none;
   background: transparent;
@@ -89,6 +103,11 @@ function formatTime(timeStr: string) {
   border-radius: 12px;
   cursor: pointer;
   color: #4b5e7c;
+  transition: background 0.2s;
+}
+
+.session-item:hover {
+  background: #f5f7fa;
 }
 
 .session-item.active {
@@ -100,5 +119,32 @@ function formatTime(timeStr: string) {
 .session-title {
   font-size: 14px;
   line-height: 1.6;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delete-btn {
+  opacity: 0;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: #9aa9bf;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.session-item:hover .delete-btn {
+  opacity: 1;
+}
+
+.delete-btn:hover {
+  background: rgba(255, 77, 79, 0.1);
+  color: #ff4d4f;
 }
 </style>

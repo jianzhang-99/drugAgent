@@ -50,7 +50,14 @@ public class AgentSessionService extends ServiceImpl<ChatSessionMapper, ChatSess
         return this.list()
                 .stream()
                 .filter(s -> s.getIsDeleted() == 0)
-                .sorted((a, b) -> b.getUpdatedAt().compareTo(a.getUpdatedAt()))
+                .sorted((a, b) -> {
+                    LocalDateTime aTime = a.getUpdatedAt();
+                    LocalDateTime bTime = b.getUpdatedAt();
+                    if (aTime == null && bTime == null) return 0;
+                    if (aTime == null) return 1;
+                    if (bTime == null) return -1;
+                    return bTime.compareTo(aTime);
+                })
                 .toList();
     }
 

@@ -1,20 +1,28 @@
 <template>
   <div :class="['message-renderer', `type-${message.type}`]">
     <div v-if="message.role === 'user'" class="user-message">
-      <div class="message-meta">你</div>
-      <div class="message-content">
-        <div v-if="message.attachments?.length" class="attachment-list">
-          <span v-for="file in message.attachments" :key="file.id" class="attachment-chip">
-            {{ file.name }}
-          </span>
+      <div class="avatar user-avatar">
+        <span>👤</span>
+      </div>
+      <div class="message-body">
+        <div class="message-content">
+          <div v-if="message.attachments?.length" class="attachment-list">
+            <span v-for="file in message.attachments" :key="file.id" class="attachment-chip">
+              {{ file.name }}
+            </span>
+          </div>
+          <div>{{ message.content }}</div>
         </div>
-        <div>{{ message.content }}</div>
       </div>
     </div>
 
     <div v-else-if="message.type === 'assistant_text'" class="assistant-message">
-      <div class="message-meta">Agent</div>
-      <div class="message-content">{{ message.content }}</div>
+      <div class="avatar agent-avatar">
+        <span>🤖</span>
+      </div>
+      <div class="message-body">
+        <div class="message-content">{{ message.content }}</div>
+      </div>
     </div>
 
     <div v-else-if="message.type === 'assistant_clarify'" class="clarify-message">
@@ -26,8 +34,14 @@
     </div>
 
     <div v-else-if="message.type === 'assistant_result_card'" class="result-message">
-      <div class="message-meta">结构化结果</div>
-      <ResultCard :data="message.result" />
+      <div class="avatar agent-avatar">
+        <span>🤖</span>
+      </div>
+      <div class="message-body">
+        <div class="message-content">
+          <ResultCard :data="message.result" />
+        </div>
+      </div>
     </div>
 
     <div v-else-if="message.type === 'system_error'" class="error-message">
@@ -36,13 +50,17 @@
     </div>
 
     <div v-else-if="message.type === 'uploading'" class="uploading-message">
-      <t-loading-indicator />
+      <t-loading />
       <span>文件上传中...</span>
     </div>
 
     <div v-else class="assistant-message">
-      <div class="message-meta">Agent</div>
-      <div class="message-content">{{ message.content }}</div>
+      <div class="avatar agent-avatar">
+        <span>🤖</span>
+      </div>
+      <div class="message-body">
+        <div class="message-content">{{ message.content }}</div>
+      </div>
     </div>
   </div>
 </template>
@@ -57,12 +75,40 @@ defineProps<{ message: Message }>();
 <style scoped>
 .message-renderer {
   max-width: min(820px, 88%);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.avatar {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.user-avatar {
+  background: linear-gradient(135deg, #0f766e, #0284c7);
+}
+
+.agent-avatar {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+}
+
+.message-body {
+  flex: 1;
+  min-width: 0;
 }
 
 .message-content {
-  padding: 16px 18px;
+  padding: 14px 18px;
   border-radius: 20px;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.75;
   word-break: break-word;
 }
@@ -90,8 +136,8 @@ defineProps<{ message: Message }>();
 
 .user-message {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  flex-direction: row-reverse;
+  align-items: flex-start;
 }
 
 .user-message .message-content {
@@ -101,16 +147,18 @@ defineProps<{ message: Message }>();
   box-shadow: 0 18px 40px rgba(2, 132, 199, 0.2);
 }
 
-.assistant-message,
-.assistant-message .message-content {
-  color: #16333e;
+.assistant-message {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
 }
 
 .assistant-message .message-content {
-  background: rgba(255, 255, 255, 0.92);
+  background: #f7f9fc;
+  color: #16333e;
   border-bottom-left-radius: 8px;
-  border: 1px solid rgba(19, 49, 59, 0.08);
-  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(19, 49, 59, 0.06);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
 }
 
 .clarify-message {
@@ -119,6 +167,19 @@ defineProps<{ message: Message }>();
   padding: 16px 18px;
   border: 1px solid rgba(250, 173, 20, 0.26);
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+}
+
+.result-message {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.result-message .message-content {
+  background: #f7f9fc;
+  border-bottom-left-radius: 8px;
+  border: 1px solid rgba(19, 49, 59, 0.06);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
 }
 
 .message-header {

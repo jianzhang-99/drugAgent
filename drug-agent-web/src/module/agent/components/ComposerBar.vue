@@ -9,7 +9,7 @@
         :autosize="{ minRows: 3, maxRows: 6 }"
         placeholder="描述您的监管需求，例如：检测这两份标书文件是否雷同..."
         :disabled="store.sending"
-        @keydown.enter.exact.prevent="handleSend"
+        @keydown.enter.prevent="handleSend"
       />
 
       <div class="action-row">
@@ -65,21 +65,31 @@ function handleSend() {
 }
 
 .composer-shell {
-  border-radius: 34px;
+  border-radius: 24px;
   background: #fff;
-  border: 1px solid #dfe7f2;
-  box-shadow: 0 -4px 24px -8px rgba(15, 23, 42, 0.12);
-  padding: 10px 10px 6px;
+  border: 1px solid #e8ecf1;
+  box-shadow: 0 4px 24px -4px rgba(15, 23, 42, 0.1);
+  padding: 12px 12px 8px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.composer-shell:focus-within {
+  border-color: #6366f1;
+  box-shadow: 0 4px 24px -4px rgba(99, 102, 241, 0.15);
 }
 
 .composer-textarea :deep(textarea) {
   border: none;
   box-shadow: none;
   resize: none;
-  padding: 18px 22px 16px;
-  font-size: 18px;
+  padding: 16px 20px 14px;
+  font-size: 15px;
   line-height: 1.7;
   color: #31435f;
+}
+
+.composer-textarea :deep(textarea::placeholder) {
+  color: #9aa9bf;
 }
 
 .action-row {
@@ -87,37 +97,46 @@ function handleSend() {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 8px 12px 10px;
-  border-top: 1px solid #eef3f9;
+  padding: 8px 12px 8px;
+  border-top: 1px solid #f0f3f7;
 }
 
 .left-actions {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 16px;
 }
 
 .tool-link {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   border: none;
   background: transparent;
-  color: #61748f;
-  font-size: 15px;
-  font-weight: 600;
+  color: #6b7a8f;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.tool-link:hover {
+  background: #f5f7fa;
+  color: #3b82f6;
 }
 
 .send-btn {
-  min-width: 160px;
+  min-width: 120px;
+  border-radius: 12px;
 }
 
 .composer-note {
   margin-top: 12px;
   text-align: center;
   font-size: 12px;
-  color: #a0aec0;
+  color: #b0bac6;
 }
 
 @media (max-width: 768px) {
@@ -127,7 +146,7 @@ function handleSend() {
   }
 
   .left-actions {
-    justify-content: space-between;
+    justify-content: center;
   }
 }
 </style>

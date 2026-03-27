@@ -33,9 +33,12 @@
         </div>
 
         <div v-if="store.sending" class="message-item message-assistant">
+          <div class="avatar agent-avatar">
+            <span>🤖</span>
+          </div>
           <div class="loading-indicator">
-            <t-loading-indicator />
-            <span>智能体正在执行深层编排工作流...</span>
+            <t-loading />
+            <span>智能体正在思考...</span>
           </div>
         </div>
       </div>
@@ -215,11 +218,11 @@ async function handleQuickAction(prompt: string) {
 .message-list {
   height: 100%;
   overflow-y: auto;
-  padding: 0 48px;
+  padding: 20px 48px;
 }
 
 .message-item {
-  margin-bottom: 18px;
+  margin-bottom: 24px;
 }
 
 .message-user {
@@ -235,12 +238,25 @@ async function handleQuickAction(prompt: string) {
 .loading-indicator {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   padding: 14px 18px;
   background: #f7f9fc;
   border-radius: 18px;
   color: #61748f;
   font-size: 14px;
+  border: 1px solid rgba(19, 49, 59, 0.06);
+}
+
+.agent-avatar {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
 }
 
 .composer-area {

@@ -2,7 +2,7 @@
  * 基于 axios 的请求封装
  */
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
-import { Message } from 'tdesign-vue-next';
+import { MessagePlugin } from 'tdesign-vue-next';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -29,7 +29,7 @@ instance.interceptors.response.use(
   },
   (error) => {
     const message = error.response?.data?.message || error.message || '请求失败';
-    Message.error(message);
+    MessagePlugin.error(message);
     return Promise.reject(error);
   }
 );

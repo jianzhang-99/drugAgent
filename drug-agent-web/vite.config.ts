@@ -12,10 +12,11 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      '/agent': {
-        target: 'http://localhost:8124/api',
+      '/api/agent': {
+        target: 'http://localhost:8124',
         changeOrigin: true
       }
-    }
+    },
+    historyApiFallback: true
   }
 })

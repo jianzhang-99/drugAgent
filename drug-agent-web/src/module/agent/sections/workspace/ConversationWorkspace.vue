@@ -34,7 +34,7 @@
 
         <div v-if="store.sending" class="message-row role-assistant">
           <div class="thinking-card">
-            <t-loading-indicator />
+            <t-loading />
             <span>智能体正在执行深层审查流程...</span>
           </div>
         </div>

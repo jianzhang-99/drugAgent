@@ -9,7 +9,7 @@
         :autosize="{ minRows: 3, maxRows: 6 }"
         :disabled="store.sending"
         placeholder="描述您的监管需求，例如：检测这两份标书文件是否雷同..."
-        @keydown.enter.exact.prevent="handleSend"
+        @keydown.enter.prevent="handleSend"
       />
 
       <div class="composer-footer">

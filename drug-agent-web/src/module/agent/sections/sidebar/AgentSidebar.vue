@@ -31,15 +31,22 @@
         <div v-for="group in groupedSessions" :key="group.label" class="history-group">
           <div v-if="group.items.length" class="group-title">{{ group.label }}</div>
 
-          <button
+          <div
             v-for="session in group.items"
             :key="session.id"
-            type="button"
             :class="['history-item', { active: session.id === store.activeSessionId }]"
             @click="store.selectSession(session.id)"
           >
             <span class="history-name">{{ session.title }}</span>
-          </button>
+            <button
+              type="button"
+              class="delete-btn"
+              title="删除会话"
+              @click.stop="handleDeleteSession(session.id)"
+            >
+              <t-icon name="delete" />
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -101,6 +108,10 @@ onMounted(async () => {
 function handleNewSession() {
   activeView.value = 'WORKSPACE';
   store.activeSessionId = null;
+}
+
+function handleDeleteSession(id: string) {
+  store.removeSession(id);
 }
 
 function formatTime(timeStr: string) {
@@ -236,7 +247,9 @@ function formatTime(timeStr: string) {
 }
 
 .history-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   width: 100%;
   border: none;
   background: transparent;
@@ -254,11 +267,38 @@ function formatTime(timeStr: string) {
   color: #425673;
   font-size: 15px;
   line-height: 1.6;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .history-item.active .history-name {
   color: #274269;
   font-weight: 700;
+}
+
+.delete-btn {
+  opacity: 0;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: #9aa9bf;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.history-item:hover .delete-btn {
+  opacity: 1;
+}
+
+.delete-btn:hover {
+  background: rgba(255, 77, 79, 0.1);
+  color: #ff4d4f;
 }
 
 .sidebar-footer {
