@@ -26,6 +26,11 @@ public enum SceneEnum {
     RISK_ALERT,
 
     /**
+     * 默认场景（通用药品监管专家）。
+     */
+    DEFAULT,
+
+    /**
      * 未知或未识别场景。
      */
     UNKNOWN;

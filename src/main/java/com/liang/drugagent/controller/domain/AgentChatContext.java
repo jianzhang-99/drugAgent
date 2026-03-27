@@ -68,9 +68,20 @@ public class AgentChatContext {
      * <p>sessionId 为空时使用默认值，保证链路稳定。
      */
     public static AgentChatContext from(AgentChatReq req) {
-        String sessionId = (req.getSessionId() == null || req.getSessionId().isBlank())
-                ? "default-drug-session"
-                : req.getSessionId();
+        return from(req, null);
+    }
+
+    /**
+     * 从请求构建上下文，并指定真实 sessionId。
+     *
+     * <p>当已创建或获取到真实 session 时，使用真实 sessionId 替代请求中的空值。
+     */
+    public static AgentChatContext from(AgentChatReq req, String realSessionId) {
+        String sessionId = (realSessionId != null && !realSessionId.isBlank())
+                ? realSessionId
+                : ((req.getSessionId() == null || req.getSessionId().isBlank())
+                        ? "default-drug-session"
+                        : req.getSessionId());
         return new AgentChatContext(
                 UUID.randomUUID().toString(),
                 sessionId,

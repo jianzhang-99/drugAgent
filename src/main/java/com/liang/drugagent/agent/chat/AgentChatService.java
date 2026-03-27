@@ -39,7 +39,7 @@ public class AgentChatService {
     private final AgentSceneService agentSceneService;
     private final AgentSessionService agentSessionService;
     private final AgentResponseService agentResponseService;
-    private final AgentChatMessageService agentChatMessageService;
+    private final AgentMessageService agentMessageService;
 
 
     /**
@@ -65,10 +65,9 @@ public class AgentChatService {
             String sessionId = session.getId();
 
             // 2. 读取最近消息和摘要，构建上下文
-            List<ChatMessage> recentMessages = agentChatMessageService.getRecentMessages(sessionId, 20);
-            AgentChatContext context = AgentChatContext.from(req);
+            List<ChatMessage> recentMessages = agentMessageService.getRecentMessages(sessionId, 20);
+            AgentChatContext context = AgentChatContext.from(req, sessionId);
             context.setSession(session);
-            context.setSessionId(sessionId);
             context.setHistoryMessages(recentMessages);
             context.setRecentSummary(session.getSummary());
             log.debug("[AgentChatService] 构建执行上下文: sessionId={}, traceId={}, historyCount={}",
@@ -85,12 +84,12 @@ public class AgentChatService {
             AgentExecutionResult executionResult = execution.getExecutionResult();
 
             // 5. 保存用户消息
-            agentChatMessageService.saveUserMessage(sessionId, req.getQuery(), null);
+            agentMessageService.saveUserMessage(sessionId, req.getQuery(), null);
 
             // 6. 保存助手消息
             String assistantContent = executionResult.getAnswer() != null ? executionResult.getAnswer() : executionResult.getSummary();
             String messageType = executionResult.isNeedsFallback() ? "assistant_clarify" : "assistant_text";
-            agentChatMessageService.saveAssistantMessage(sessionId, assistantContent, null, messageType);
+            agentMessageService.saveAssistantMessage(sessionId, assistantContent, null, messageType);
 
             // 7. 更新会话聚合状态
             String scene = execution.getDecision() != null ? execution.getDecision().getScene().name() : null;

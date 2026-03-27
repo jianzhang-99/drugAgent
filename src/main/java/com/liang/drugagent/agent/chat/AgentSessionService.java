@@ -24,7 +24,7 @@ import java.util.List;
  *   <li>维护会话摘要与标题</li>
  * </ul>
  *
- * <p>消息操作委托给 AgentChatMessageService
+ * <p>消息操作委托给 AgentMessageService
  *
  * @author liangjiajian
  */
@@ -38,7 +38,7 @@ public class AgentSessionService extends ServiceImpl<ChatSessionMapper, ChatSess
      */
     private static final String DEFAULT_SESSION_TITLE = "新对话";
 
-    private final AgentChatMessageService agentChatMessageService;
+    private final AgentMessageService agentMessageService;
 
     // ==================== 会话 CRUD ====================
 
@@ -62,24 +62,11 @@ public class AgentSessionService extends ServiceImpl<ChatSessionMapper, ChatSess
         return getSessionWithMessages(sessionId);
     }
 
-    /**
-     * 创建新会话。
-     */
-    public ChatSession createSession(CreateSessionReq request) {
-        String title = (request.getTitle() != null && !request.getTitle().isBlank())
-                ? request.getTitle()
-                : DEFAULT_SESSION_TITLE;
-        String scene = request.getScene() != null ? request.getScene() : "UNKNOWN";
-        String userId = request.getUserId() != null ? request.getUserId() : "default";
-
-        log.info("[AgentSessionService] 创建新会话，title={}，scene={}，userId={}", title, scene, userId);
-        return createSession(title, scene, userId);
-    }
 
     /**
      * 创建新会话。
      */
-    public ChatSession createSession(String title, String scene, String userId) {
+    public ChatSession createSession(String title, String userId) {
         ChatSession session = ChatSession.builder()
                 .title(title)
                 .userId(userId)
@@ -189,7 +176,7 @@ public class AgentSessionService extends ServiceImpl<ChatSessionMapper, ChatSess
             }
         }
         log.info("[AgentSessionService] 会话不存在或已删除，创建新会话");
-        return createSession(DEFAULT_SESSION_TITLE, "UNKNOWN", "default");
+        return createSession(DEFAULT_SESSION_TITLE, "default");
     }
 
     /**
@@ -209,7 +196,7 @@ public class AgentSessionService extends ServiceImpl<ChatSessionMapper, ChatSess
         }
 
         // 获取最近消息（限制条数）
-        List<ChatMessage> recentMessages = agentChatMessageService.getMessagesBySessionId(sessionId);
+        List<ChatMessage> recentMessages = agentMessageService.getMessagesBySessionId(sessionId);
         int maxMessages = 20;
         if (recentMessages.size() > maxMessages) {
             recentMessages = recentMessages.subList(recentMessages.size() - maxMessages, recentMessages.size());
@@ -219,7 +206,7 @@ public class AgentSessionService extends ServiceImpl<ChatSessionMapper, ChatSess
                 sessionId,
                 session,
                 recentMessages,
-                session.getTitle()
+                session.getSummary()
         );
     }
 
@@ -229,33 +216,36 @@ public class AgentSessionService extends ServiceImpl<ChatSessionMapper, ChatSess
     public ChatSession getSessionWithMessages(String sessionId) {
         ChatSession session = this.getById(sessionId);
         if (session != null) {
-            List<ChatMessage> messages = agentChatMessageService.getMessagesBySessionId(sessionId);
+            List<ChatMessage> messages = agentMessageService.getMessagesBySessionId(sessionId);
             session.setMessages(messages);
         }
         return session;
     }
 
-    // ==================== 消息保存（委托） ====================
+    // ==================== 消息保存（过渡方法，已委托给 AgentMessageService） ====================
 
     /**
-     * 保存用户消息。
+     * @deprecated 消息保存应直接调用 {@link AgentMessageService}，此方法仅用于过渡兼容。
      */
+    @Deprecated
     public ChatMessage saveUserMessage(String sessionId, String content, String metadata) {
-        return agentChatMessageService.saveUserMessage(sessionId, content, metadata);
+        return agentMessageService.saveUserMessage(sessionId, content, metadata);
     }
 
     /**
-     * 保存助手消息。
+     * @deprecated 消息保存应直接调用 {@link AgentMessageService}，此方法仅用于过渡兼容。
      */
+    @Deprecated
     public ChatMessage saveAssistantMessage(String sessionId, String content, String metadata, String type) {
-        return agentChatMessageService.saveAssistantMessage(sessionId, content, metadata, type);
+        return agentMessageService.saveAssistantMessage(sessionId, content, metadata, type);
     }
 
     /**
-     * 保存系统消息。
+     * @deprecated 消息保存应直接调用 {@link AgentMessageService}，此方法仅用于过渡兼容。
      */
+    @Deprecated
     public void saveSystemMessage(String sessionId, String content, String metadata) {
-        agentChatMessageService.saveSystemMessage(sessionId, content, metadata);
+        agentMessageService.saveSystemMessage(sessionId, content, metadata);
     }
 
     // ==================== 摘要与标题 ====================
@@ -355,7 +345,7 @@ public class AgentSessionService extends ServiceImpl<ChatSessionMapper, ChatSess
                 scene != null ? scene : "unknown",
                 resultMeta != null ? truncateContent(resultMeta, 100) : "N/A");
 
-        saveSystemMessage(sessionId, traceContent, null);
+        agentMessageService.saveSystemMessage(sessionId, traceContent, null);
     }
 
     /**

@@ -3,10 +3,8 @@ package com.liang.drugagent.agent.chat;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.liang.drugagent.agent.common.entity.ChatMessage;
-import com.liang.drugagent.agent.common.entity.ChatSession;
 import com.liang.drugagent.agent.common.entity.MessageRole;
 import com.liang.drugagent.agent.common.mapper.ChatMessageMapper;
-import com.liang.drugagent.agent.common.mapper.ChatSessionMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,7 +22,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AgentChatMessageService extends ServiceImpl<ChatMessageMapper, ChatMessage> {
+public class AgentMessageService extends ServiceImpl<ChatMessageMapper, ChatMessage> {
 
 
     /**
@@ -79,14 +77,14 @@ public class AgentChatMessageService extends ServiceImpl<ChatMessageMapper, Chat
      */
     public ChatMessage saveUserMessage(String sessionId, String content, String metadata) {
         if (sessionId == null || sessionId.isBlank()) {
-            log.warn("[AgentChatMessageService] 保存用户消息失败，sessionId 为空");
+            log.warn("[AgentMessageService] 保存用户消息失败，sessionId 为空");
             return null;
         }
         if (content == null || content.isBlank()) {
-            log.warn("[AgentChatMessageService] 保存用户消息失败，content 为空");
+            log.warn("[AgentMessageService] 保存用户消息失败，content 为空");
             return null;
         }
-        log.info("[AgentChatMessageService] 保存用户消息，sessionId={}", sessionId);
+        log.info("[AgentMessageService] 保存用户消息，sessionId={}", sessionId);
         return addMessage(sessionId, MessageRole.USER.getValue(), content, metadata);
     }
 
@@ -95,14 +93,14 @@ public class AgentChatMessageService extends ServiceImpl<ChatMessageMapper, Chat
      */
     public ChatMessage saveAssistantMessage(String sessionId, String content, String metadata, String type) {
         if (sessionId == null || sessionId.isBlank()) {
-            log.warn("[AgentChatMessageService] 保存助手消息失败，sessionId 为空");
+            log.warn("[AgentMessageService] 保存助手消息失败，sessionId 为空");
             return null;
         }
         if (content == null || content.isBlank()) {
-            log.warn("[AgentChatMessageService] 保存助手消息失败，content 为空");
+            log.warn("[AgentMessageService] 保存助手消息失败，content 为空");
             return null;
         }
-        log.info("[AgentChatMessageService] 保存助手消息，sessionId={}，type={}", sessionId, type != null ? type : "text");
+        log.info("[AgentMessageService] 保存助手消息，sessionId={}，type={}", sessionId, type != null ? type : "text");
         return addMessage(sessionId, MessageRole.ASSISTANT.getValue(), content, metadata, type);
     }
 
@@ -111,14 +109,14 @@ public class AgentChatMessageService extends ServiceImpl<ChatMessageMapper, Chat
      */
     public ChatMessage saveSystemMessage(String sessionId, String content, String metadata) {
         if (sessionId == null || sessionId.isBlank()) {
-            log.warn("[AgentChatMessageService] 保存系统消息失败，sessionId 为空");
+            log.warn("[AgentMessageService] 保存系统消息失败，sessionId 为空");
             return null;
         }
         if (content == null || content.isBlank()) {
-            log.warn("[AgentChatMessageService] 保存系统消息失败，content 为空");
+            log.warn("[AgentMessageService] 保存系统消息失败，content 为空");
             return null;
         }
-        log.info("[AgentChatMessageService] 保存系统消息，sessionId={}", sessionId);
+        log.info("[AgentMessageService] 保存系统消息，sessionId={}", sessionId);
         return addMessage(sessionId, MessageRole.SYSTEM.getValue(), content, metadata);
     }
 }

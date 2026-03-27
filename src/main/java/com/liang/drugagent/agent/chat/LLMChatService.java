@@ -1,13 +1,15 @@
 package com.liang.drugagent.agent.chat;
 
+import com.liang.drugagent.agent.prompt.SystemPrompt;
+import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.shared.advisor.LoggingAdvisor;
 import com.liang.drugagent.shared.advisor.PromptAdvisor;
 import com.liang.drugagent.shared.advisor.SafetyAdvisor;
-import com.liang.drugagent.agent.prompt.SystemPrompt;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
+
+import java.util.Map;
 
 /**
  * 基础模型对话服务。
@@ -21,16 +23,16 @@ import reactor.core.publisher.Flux;
  *
  * <p>支持两种对话模式：</p>
  * <ul>
- *   <li>同步对话 ({@code simpleChat}) - 适用于简单问答场景</li>
+ *   <li>同步对话 ({@code chatWithScene}) - 适用于简单问答场景</li>
  *   <li>流式对话 ({@code streamChatWithScene}) - 适用于SSE打字机效果</li>
  * </ul>
  *
- * <p>会根据{@code agentType}自动选择对应的System Prompt，当前支持：</p>
+ * <p>会根据{@link SceneEnum}自动选择对应的System Prompt，当前支持：</p>
  * <ul>
- *   <li>default - 默认医药监管专家角色</li>
- *   <li>risk_alert - 医疗耗材与药品合规风险预警</li>
- *   <li>contract_precheck - 合同文件AI预审核</li>
- *   <li>tender_review - 标书雷同与语义查重</li>
+ *   <li>{@link SceneEnum#DEFAULT} - 默认医药监管专家角色</li>
+ *   <li>{@link SceneEnum#RISK_ALERT} - 医疗耗材与药品合规风险预警</li>
+ *   <li>{@link SceneEnum#CONTRACT_PRECHECK} - 合同文件AI预审核</li>
+ *   <li>{@link SceneEnum#TENDER_REVIEW} - 标书雷同与语义查重</li>
  * </ul>
  *
  * @author liangjiajian
@@ -45,12 +47,21 @@ public class LLMChatService {
     private final ChatClient chatClient;
 
     /**
+     * 场景与 System Prompt 映射表。
+     */
+    private static final Map<SceneEnum, String> SCENE_PROMPT_MAP = Map.of(
+            SceneEnum.TENDER_REVIEW, SystemPrompt.TENDER_REVIEW_PROMPT,
+            SceneEnum.CONTRACT_PRECHECK, SystemPrompt.CONTRACT_PRECHECK_PROMPT,
+            SceneEnum.RISK_ALERT, SystemPrompt.RISK_ALERT_PROMPT,
+            SceneEnum.DEFAULT, SystemPrompt.DRUG_REGULATION_EXPERT_PROMPT
+    );
+
+    /**
      * 构造方法，注入ChatClient构建器并配置全局Advisor链。
      *
      * @param chatClientBuilder ChatClient构建器
      */
     public LLMChatService(ChatClient.Builder chatClientBuilder) {
-        // 1. 初始化 ChatClient 并附加全局 Advisor 链
         this.chatClient = chatClientBuilder
                 .defaultAdvisors(
                         new PromptAdvisor(),
@@ -60,26 +71,18 @@ public class LLMChatService {
                 .build();
     }
 
-    /**
-     * 基础的一问一答 (兼容性方法)
-     */
-    public String simpleChat(String userMessage) {
-        return chatWithScene(userMessage, "default", "default-user-session");
-    }
 
     /**
      * 根据场景和会话ID执行对话 (支持多轮记忆)
      */
-    public String chatWithScene(String userMessage, String agentType, String sessionId) {
-        String systemPromptText = resolveSystemPrompt(agentType);
+    public String chatWithScene(String userMessage, SceneEnum scene, String sessionId) {
+        String systemPromptText = resolveSystemPrompt(scene);
 
-        // 2. 调用模型
-        // Advisor 会自动根据 sessionId 从 chatMemory 提取历史消息拼接到 prompt 中
         return chatClient.prompt()
                 .system(systemPromptText)
                 .user(userMessage)
                 .advisors(a -> a.param("chat_memory_conversation_id", sessionId)
-                               .param("chat_memory_response_size", 10)) // 指定会话ID和记忆深度
+                               .param("chat_memory_response_size", 10))
                 .call()
                 .content();
     }
@@ -87,8 +90,8 @@ public class LLMChatService {
     /**
      * 根据场景和会话ID执行流式对话，适合前端 SSE 打字机效果。
      */
-    public Flux<String> streamChatWithScene(String userMessage, String agentType, String sessionId) {
-        String systemPromptText = resolveSystemPrompt(agentType);
+    public Flux<String> streamChatWithScene(String userMessage, SceneEnum scene, String sessionId) {
+        String systemPromptText = resolveSystemPrompt(scene);
 
         return chatClient.prompt()
                 .system(systemPromptText)
@@ -99,15 +102,10 @@ public class LLMChatService {
                 .content();
     }
 
-    private String resolveSystemPrompt(String agentType) {
-        // 根据场景选择 System Prompt
-        if ("risk_alert".equals(agentType)) {
-            return SystemPrompt.RISK_ALERT_PROMPT;
-        } else if ("contract_precheck".equals(agentType)) {
-            return SystemPrompt.CONTRACT_PRECHECK_PROMPT;
-        } else if ("tender_review".equals(agentType)) {
-            return SystemPrompt.TENDER_REVIEW_PROMPT;
+    private String resolveSystemPrompt(SceneEnum scene) {
+        if (scene == null) {
+            return SystemPrompt.DRUG_REGULATION_EXPERT_PROMPT;
         }
-        return SystemPrompt.DRUG_REGULATION_EXPERT_PROMPT;
+        return SCENE_PROMPT_MAP.getOrDefault(scene, SystemPrompt.DRUG_REGULATION_EXPERT_PROMPT);
     }
 }
