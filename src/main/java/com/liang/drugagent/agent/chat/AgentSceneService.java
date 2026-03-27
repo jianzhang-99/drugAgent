@@ -2,8 +2,9 @@ package com.liang.drugagent.agent.chat;
 
 import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
-import com.liang.drugagent.shared.domain.model.AgentExecutionResult;
+import com.liang.drugagent.shared.model.AgentExecutionResult;
 import com.liang.drugagent.shared.llm.LlmService;
+import com.liang.drugagent.shared.model.WorkflowRouteDecision;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -121,7 +122,7 @@ public class AgentSceneService {
         /**
          * 路由决策（当前版本为 null）。
          */
-        private com.liang.drugagent.shared.domain.model.WorkflowRouteDecision decision;
+        private WorkflowRouteDecision decision;
 
         /**
          * 执行结果。

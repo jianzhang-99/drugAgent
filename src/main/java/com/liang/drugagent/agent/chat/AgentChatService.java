@@ -6,7 +6,8 @@ import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.agent.common.entity.ChatMessage;
 import com.liang.drugagent.agent.common.entity.ChatSession;
-import com.liang.drugagent.shared.domain.model.AgentExecutionResult;
+import com.liang.drugagent.shared.model.AgentExecutionResult;
+import com.liang.drugagent.shared.model.WorkflowRouteDecision;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -118,7 +119,7 @@ public class AgentChatService {
      * 构建澄清响应。
      */
     private AgentChatResp buildClarificationResp(AgentChatContext context,
-                                                 com.liang.drugagent.shared.domain.model.WorkflowRouteDecision decision,
+                                                 WorkflowRouteDecision decision,
                                                  String clarifyQuestion) {
         log.info("[AgentChatService] 需要澄清: sessionId={}, question={}",
                 context.getSessionId(), clarifyQuestion);
@@ -136,7 +137,7 @@ public class AgentChatService {
     /**
      * 降级处理。
      */
-    private AgentChatResp fallback(AgentChatReq req, com.liang.drugagent.shared.domain.model.WorkflowRouteDecision decision, Exception e) {
+    private AgentChatResp fallback(AgentChatReq req, WorkflowRouteDecision decision, Exception e) {
         log.warn("[AgentChatService] 执行降级处理: {}", e.getMessage());
 
         AgentChatResp resp = new AgentChatResp();

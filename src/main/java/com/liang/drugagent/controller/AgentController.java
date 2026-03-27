@@ -3,7 +3,7 @@ package com.liang.drugagent.controller;
 import com.liang.drugagent.agent.chat.AgentChatService;
 import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
 import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
-import com.liang.drugagent.shared.domain.response.Result;
+import com.liang.drugagent.shared.model.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;

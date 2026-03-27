@@ -1,4 +1,4 @@
-package com.liang.drugagent.shared.domain.response;
+package com.liang.drugagent.shared.model;
 
 import lombok.Getter;
 import lombok.Setter;

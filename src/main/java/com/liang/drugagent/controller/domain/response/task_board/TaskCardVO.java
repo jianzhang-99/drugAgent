@@ -1,8 +1,8 @@
 package com.liang.drugagent.controller.domain.response.task_board;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.liang.drugagent.shared.domain.model.RiskLevelEnum;
-import com.liang.drugagent.shared.domain.model.TaskStatusEnum;
+import com.liang.drugagent.shared.model.RiskLevelEnum;
+import com.liang.drugagent.shared.model.TaskStatusEnum;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

@@ -3,8 +3,8 @@ package com.liang.drugagent.agent.chat;
 import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
 import com.liang.drugagent.scene.SceneEnum;
-import com.liang.drugagent.shared.domain.model.AgentExecutionResult;
-import com.liang.drugagent.shared.domain.model.WorkflowRouteDecision;
+import com.liang.drugagent.shared.model.AgentExecutionResult;
+import com.liang.drugagent.shared.model.WorkflowRouteDecision;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 

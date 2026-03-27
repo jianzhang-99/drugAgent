@@ -1,4 +1,4 @@
-package com.liang.drugagent.shared.domain.model;
+package com.liang.drugagent.shared.model;
 
 /**
  * 任务状态枚举

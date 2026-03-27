@@ -5,13 +5,12 @@ import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
 import com.liang.drugagent.scene.tender_review.tool.ReviewTenderToolRequest;
 import com.liang.drugagent.scene.tender_review.tool.ReviewTenderToolResult;
 import com.liang.drugagent.scene.tender_review.workflow.TenderReviewWorkflow;
-import com.liang.drugagent.shared.domain.model.WorkflowResult;
+import com.liang.drugagent.shared.model.WorkflowResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 

@@ -101,7 +101,7 @@ public class AgentMessageService extends ServiceImpl<ChatMessageMapper, ChatMess
             return null;
         }
         log.info("[AgentMessageService] 保存助手消息，sessionId={}，type={}", sessionId, type != null ? type : "text");
-        return addMessage(sessionId, MessageRole.ASSISTANT.getValue(), content, metadata, type);
+        return addMessage(sessionId, MessageRole.LLM.getValue(), content, metadata, type);
     }
 
     /**

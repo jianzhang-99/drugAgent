@@ -4,7 +4,7 @@ import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
 import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
 import com.liang.drugagent.agent.common.entity.ChatSession;
 import com.liang.drugagent.agent.common.mapper.ChatSessionMapper;
-import com.liang.drugagent.shared.domain.response.Result;
+import com.liang.drugagent.shared.model.Result;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

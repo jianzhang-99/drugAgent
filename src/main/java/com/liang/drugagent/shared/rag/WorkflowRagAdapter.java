@@ -2,8 +2,8 @@ package com.liang.drugagent.shared.rag;
 
 import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.scene.SceneEnum;
-import com.liang.drugagent.shared.domain.model.EvidenceItem;
-import com.liang.drugagent.shared.domain.model.RagOutcome;
+import com.liang.drugagent.shared.model.EvidenceItem;
+import com.liang.drugagent.shared.model.RagOutcome;
 import com.liang.drugagent.controller.domain.request.knowledge.KnowledgeAskReq;
 import com.liang.drugagent.controller.domain.response.knowledge.KnowledgeAskResp;
 import org.springframework.stereotype.Component;

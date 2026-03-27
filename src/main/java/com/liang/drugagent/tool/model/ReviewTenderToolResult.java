@@ -1,7 +1,7 @@
-package com.liang.drugagent.tool.dto;
+package com.liang.drugagent.tool.model;
 
-import com.liang.drugagent.shared.domain.model.EvidenceItem;
-import com.liang.drugagent.shared.domain.model.ReviewReport;
+import com.liang.drugagent.shared.model.EvidenceItem;
+import com.liang.drugagent.shared.model.ReviewReport;
 
 import java.util.List;
 

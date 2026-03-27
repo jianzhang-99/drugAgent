@@ -14,9 +14,9 @@ import com.liang.drugagent.scene.tender_review.service.RiskFusionService;
 import com.liang.drugagent.scene.tender_review.support.TenderExemptionEngine;
 import com.liang.drugagent.scene.tender_review.support.TenderRuleEngine;
 import com.liang.drugagent.scene.tender_review.support.assembler.TenderReviewDataAssembler;
-import com.liang.drugagent.shared.domain.model.EvidenceItem;
-import com.liang.drugagent.shared.domain.model.ReviewReport;
-import com.liang.drugagent.shared.domain.model.WorkflowResult;
+import com.liang.drugagent.shared.model.EvidenceItem;
+import com.liang.drugagent.shared.model.ReviewReport;
+import com.liang.drugagent.shared.model.WorkflowResult;
 import org.springframework.stereotype.Component;
 
 import java.util.List;

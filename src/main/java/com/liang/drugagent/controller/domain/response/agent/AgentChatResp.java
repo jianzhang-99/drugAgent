@@ -1,8 +1,8 @@
 package com.liang.drugagent.controller.domain.response.agent;
 
-import com.liang.drugagent.shared.domain.model.EvidenceItem;
-import com.liang.drugagent.shared.domain.model.EvidenceGroup;
-import com.liang.drugagent.shared.domain.model.ReviewReport;
+import com.liang.drugagent.shared.model.EvidenceItem;
+import com.liang.drugagent.shared.model.EvidenceGroup;
+import com.liang.drugagent.shared.model.ReviewReport;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

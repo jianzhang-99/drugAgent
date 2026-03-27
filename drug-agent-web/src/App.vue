@@ -9,10 +9,7 @@
 :root {
   color-scheme: light;
   font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
-  background:
-    radial-gradient(circle at top left, rgba(16, 185, 129, 0.16), transparent 28%),
-    radial-gradient(circle at top right, rgba(14, 165, 233, 0.14), transparent 30%),
-    linear-gradient(180deg, #f7fbfa 0%, #eef4f7 52%, #e8eef2 100%);
+  background: #f5f8fc;
 }
 
 * {
@@ -28,5 +25,12 @@ body,
 
 body {
   color: #13313b;
+  background: #f5f8fc;
+}
+
+button,
+textarea,
+input {
+  font: inherit;
 }
 </style>

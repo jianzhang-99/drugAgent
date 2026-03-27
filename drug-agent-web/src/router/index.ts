@@ -10,7 +10,7 @@ const router = createRouter({
     {
       path: '/agent',
       name: 'Agent',
-      component: () => import('@/module/agent/components/AgentPage.vue')
+      component: () => import('@/module/agent/pages/AgentWorkspacePage.vue')
     }
   ]
 })

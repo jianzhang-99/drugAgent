@@ -5,10 +5,10 @@ import com.liang.drugagent.scene.tender_review.model.RiskFusionResult;
 import com.liang.drugagent.scene.tender_review.model.RuleHit;
 import com.liang.drugagent.scene.tender_review.model.TenderCase;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
-import com.liang.drugagent.shared.domain.model.EvidenceAssemblyResult;
-import com.liang.drugagent.shared.domain.model.EvidenceGroup;
-import com.liang.drugagent.shared.domain.model.EvidenceItem;
-import com.liang.drugagent.shared.domain.model.ReviewReport;
+import com.liang.drugagent.shared.model.EvidenceAssemblyResult;
+import com.liang.drugagent.shared.model.EvidenceGroup;
+import com.liang.drugagent.shared.model.EvidenceItem;
+import com.liang.drugagent.shared.model.ReviewReport;
 import com.liang.drugagent.scene.tender_review.model.TenderDocument;
 import org.springframework.stereotype.Service;
 

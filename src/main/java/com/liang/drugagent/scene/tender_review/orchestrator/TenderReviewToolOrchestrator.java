@@ -1,7 +1,7 @@
 package com.liang.drugagent.scene.tender_review.orchestrator;
 
 import com.liang.drugagent.controller.domain.AgentChatContext;
-import com.liang.drugagent.shared.domain.model.AgentExecutionResult;
+import com.liang.drugagent.shared.model.AgentExecutionResult;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
 import com.liang.drugagent.scene.tender_review.tool.ReviewTenderToolResultMapper;
@@ -9,7 +9,7 @@ import com.liang.drugagent.shared.llm.LlmRequest;
 import com.liang.drugagent.shared.llm.LlmResponse;
 import com.liang.drugagent.shared.llm.LlmService;
 import com.liang.drugagent.scene.tender_review.tool.ReviewTenderTool;
-import com.liang.drugagent.tool.dto.ReviewTenderToolReq;
+import com.liang.drugagent.tool.model.ReviewTenderToolReq;
 import com.liang.drugagent.scene.tender_review.tool.ReviewTenderToolResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

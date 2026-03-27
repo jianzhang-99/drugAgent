@@ -118,13 +118,20 @@
     </dependencies>
 
     <repositories>
+        <!-- Spring Milestones 仓库（优先， Anthropic 支持在这里） -->
         <repository>
             <id>spring-milestones</id>
             <name>Spring Milestones</name>
             <url>https://repo.spring.io/milestone</url>
             <snapshots>
-                <enabled>false</enabled>
+                <enabled>true</enabled>
             </snapshots>
+        </repository>
+        <!-- 阿里云公共仓库 -->
+        <repository>
+            <id>aliyun</id>
+            <name>Aliyun Maven</name>
+            <url>https://maven.aliyun.com/repository/public</url>
         </repository>
     </repositories>
 

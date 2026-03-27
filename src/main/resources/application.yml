@@ -60,7 +60,7 @@ agent:
     confidence-threshold: 0.75  # 采纳阈值
     confidence-low-threshold: 0.5  # 回退阈值
 
-# MiniMax模型配置
+# MiniMax模型配置（Anthropic 兼容模式）
 minimax:
   enabled: true
   api-key: ${MINIMAX_API_KEY:}
@@ -70,6 +70,19 @@ minimax:
   max-tokens: 8192
   temperature: 0.7
   stream: true
+
+# Spring AI Anthropic 配置（MiniMax 兼容）
+spring:
+  ai:
+    anthropic:
+      enabled: true
+      base-url: ${minimax.base-url}
+      api-key: ${minimax.api-key}
+      chat:
+        options:
+          model: ${minimax.model}
+          max-tokens: ${minimax.max-tokens}
+          temperature: ${minimax.temperature}
 
 # LLM统一配置
 llm:

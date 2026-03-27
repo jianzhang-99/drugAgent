@@ -1,4 +1,4 @@
-package com.liang.drugagent.shared.domain.model;
+package com.liang.drugagent.shared.model;
 
 import com.liang.drugagent.scene.SceneEnum;
 import lombok.AllArgsConstructor;

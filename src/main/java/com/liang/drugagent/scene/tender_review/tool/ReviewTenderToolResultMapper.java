@@ -2,9 +2,9 @@ package com.liang.drugagent.scene.tender_review.tool;
 
 import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
 import com.liang.drugagent.scene.SceneEnum;
-import com.liang.drugagent.shared.domain.model.EvidenceItem;
-import com.liang.drugagent.shared.domain.model.ReviewReport;
-import com.liang.drugagent.shared.domain.model.WorkflowResult;
+import com.liang.drugagent.shared.model.EvidenceItem;
+import com.liang.drugagent.shared.model.ReviewReport;
+import com.liang.drugagent.shared.model.WorkflowResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 

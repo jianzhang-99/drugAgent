@@ -1,4 +1,4 @@
-package com.liang.drugagent.tool.dto;
+package com.liang.drugagent.tool.model;
 
 import java.util.ArrayList;
 import java.util.List;

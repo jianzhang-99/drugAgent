@@ -1,17 +1,20 @@
 package com.liang.drugagent.agent.common.entity;
 
+import lombok.Getter;
+
 /**
  * 消息角色枚举。
  *
  * @author liangjiajian
  */
+@Getter
 public enum MessageRole {
 
     /** 用户消息 */
     USER("user"),
 
-    /** 助手消息 */
-    ASSISTANT("assistant"),
+    /** 大模型消息 */
+    LLM("LLM"),
 
     /** 系统消息 */
     SYSTEM("system");
@@ -20,10 +23,6 @@ public enum MessageRole {
 
     MessageRole(String value) {
         this.value = value;
-    }
-
-    public String getValue() {
-        return value;
     }
 
     /**

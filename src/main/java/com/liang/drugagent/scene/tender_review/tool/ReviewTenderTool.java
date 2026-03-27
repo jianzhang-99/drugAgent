@@ -1,13 +1,13 @@
 package com.liang.drugagent.scene.tender_review.tool;
 
 import com.liang.drugagent.controller.domain.AgentChatContext;
-import com.liang.drugagent.tool.dto.ReviewTenderToolReq;
+import com.liang.drugagent.tool.model.ReviewTenderToolReq;
 import com.liang.drugagent.scene.tender_review.model.TenderDocument;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
 import com.liang.drugagent.scene.tender_review.service.TenderCaseService;
 import com.liang.drugagent.scene.tender_review.service.TenderDocumentParseService;
 import com.liang.drugagent.scene.tender_review.workflow.TenderReviewWorkflow;
-import com.liang.drugagent.shared.domain.model.WorkflowResult;
+import com.liang.drugagent.shared.model.WorkflowResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
