@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.scene.SceneWorkflow;
-import com.liang.drugagent.scene.common.service.ChatService;
+import com.liang.drugagent.agent.chat.LLMChatService;
 import com.liang.drugagent.scene.tender_review.model.RiskFusionResult;
 import com.liang.drugagent.scene.tender_review.model.RuleHit;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
@@ -31,7 +31,7 @@ import java.util.Map;
 @Component
 public class TenderReviewWorkflow implements SceneWorkflow {
 
-    private final ChatService chatService;
+    private final LLMChatService LLMChatService;
     private final TenderRuleEngine tenderRuleEngine;
     private final TenderExemptionEngine tenderExemptionEngine;
     private final RiskFusionService riskFusionService;
@@ -40,7 +40,7 @@ public class TenderReviewWorkflow implements SceneWorkflow {
     private final ObjectMapper objectMapper;
     private final TenderReviewDataAssembler tenderReviewDataResolver;
 
-    public TenderReviewWorkflow(ChatService chatService,
+    public TenderReviewWorkflow(LLMChatService LLMChatService,
                                 TenderRuleEngine tenderRuleEngine,
                                 TenderExemptionEngine tenderExemptionEngine,
                                 RiskFusionService riskFusionService,
@@ -48,7 +48,7 @@ public class TenderReviewWorkflow implements SceneWorkflow {
                                 ReportGenerationService reportGenerationService,
                                 ObjectMapper objectMapper,
                                 TenderReviewDataAssembler tenderReviewDataResolver) {
-        this.chatService = chatService;
+        this.LLMChatService = LLMChatService;
         this.tenderRuleEngine = tenderRuleEngine;
         this.tenderExemptionEngine = tenderExemptionEngine;
         this.riskFusionService = riskFusionService;
@@ -88,7 +88,7 @@ public class TenderReviewWorkflow implements SceneWorkflow {
             return executeRuleFlow(tenderReviewData);
         }
 
-        String answer = chatService.chatWithScene(context.getQuery(), "default", context.getSessionId());
+        String answer = LLMChatService.chatWithScene(context.getQuery(), "default", context.getSessionId());
         WorkflowResult result = WorkflowResult.of(SceneEnum.TENDER_REVIEW, answer);
         result.setRiskLevel("NONE");
         result.setScore(0);

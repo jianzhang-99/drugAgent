@@ -223,3 +223,19 @@
 {"level":30,"time":1774537853835,"pid":19358,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
 {"level":30,"time":1774537853912,"pid":19376,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
 {"level":30,"time":1774537853912,"pid":19376,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1774578126619,"pid":30961,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
+{"level":30,"time":1774578126619,"pid":30961,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1774578126803,"pid":30983,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
+{"level":30,"time":1774578126803,"pid":30983,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1774578657916,"pid":33127,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
+{"level":30,"time":1774578657916,"pid":33127,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1774578657953,"pid":33145,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
+{"level":30,"time":1774578657954,"pid":33145,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
+{"level":50,"time":1774579179172,"pid":30961,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"Query execution failed","sql":"SELECT COUNT(*) FROM chat_session","error":""}
+{"level":50,"time":1774579179178,"pid":30961,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"Query execution failed","sql":"SELECT COUNT(*) FROM chat_message","error":""}
+{"level":50,"time":1774579181878,"pid":30961,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"List tables failed","sql":"SHOW TABLES","error":""}
+{"level":50,"time":1774579184279,"pid":30961,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"Query execution failed","sql":"SELECT COUNT(*) AS cnt FROM chat_session","error":""}
+{"level":50,"time":1774579188368,"pid":30961,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"Describe table failed","sql":"DESCRIBE ??","params":["chat_session"],"error":""}
+{"level":50,"time":1774579190576,"pid":30961,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"SHOW 语句执行失败","sql":"SHOW TABLES","error":""}
+{"level":50,"time":1774579196294,"pid":30961,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"Query execution failed","sql":"SELECT COUNT(*) FROM chat_session","error":""}
+{"level":50,"time":1774579198982,"pid":30961,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"Query execution failed","sql":"SELECT 1","error":""}

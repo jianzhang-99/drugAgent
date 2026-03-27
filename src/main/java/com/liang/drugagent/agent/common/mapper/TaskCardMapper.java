@@ -1,7 +1,7 @@
-package com.liang.drugagent.scene.common.mapper;
+package com.liang.drugagent.agent.common.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.liang.drugagent.scene.common.entity.TaskCard;
+import com.liang.drugagent.agent.common.entity.TaskCard;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.List;

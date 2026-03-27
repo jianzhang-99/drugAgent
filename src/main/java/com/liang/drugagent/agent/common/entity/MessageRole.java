@@ -1,4 +1,4 @@
-package com.liang.drugagent.scene.common.entity;
+package com.liang.drugagent.agent.common.entity;
 
 /**
  * 消息角色枚举。

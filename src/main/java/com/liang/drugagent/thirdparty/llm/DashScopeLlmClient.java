@@ -6,12 +6,11 @@ import com.liang.drugagent.shared.llm.LlmRequest;
 import com.liang.drugagent.shared.llm.LlmResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
-import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
@@ -19,16 +18,14 @@ import java.util.List;
 
 @Slf4j
 @Component
+@ConditionalOnProperty(prefix = "dashscope", name = "enabled", havingValue = "true")
 public class DashScopeLlmClient implements LlmClient {
 
     private final ChatClient chatClient;
-    private final ChatMemory chatMemory;
 
-    public DashScopeLlmClient(ChatClient.Builder chatClientBuilder, ChatMemory chatMemory) {
-        this.chatMemory = chatMemory;
+    public DashScopeLlmClient(ChatClient.Builder chatClientBuilder) {
         this.chatClient = chatClientBuilder
                 .defaultAdvisors(
-                        new MessageChatMemoryAdvisor(chatMemory),
                         new SimpleLoggerAdvisor()
                 )
                 .build();

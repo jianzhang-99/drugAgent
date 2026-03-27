@@ -1,6 +1,6 @@
 package com.liang.drugagent.controller.domain.response.agent;
 
-import com.liang.drugagent.scene.common.entity.ChatMessage;
+import com.liang.drugagent.agent.common.entity.ChatMessage;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

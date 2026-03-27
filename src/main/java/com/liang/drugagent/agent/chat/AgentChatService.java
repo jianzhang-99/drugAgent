@@ -4,11 +4,14 @@ import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
 import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
 import com.liang.drugagent.scene.SceneEnum;
-import com.liang.drugagent.scene.common.entity.ChatSession;
+import com.liang.drugagent.agent.common.entity.ChatMessage;
+import com.liang.drugagent.agent.common.entity.ChatSession;
 import com.liang.drugagent.shared.domain.model.AgentExecutionResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 /**
  * Agent 主服务 - 上层会话编排服务。
@@ -36,6 +39,7 @@ public class AgentChatService {
     private final AgentSceneService agentSceneService;
     private final AgentSessionService agentSessionService;
     private final AgentResponseService agentResponseService;
+    private final AgentChatMessageService agentChatMessageService;
 
 
     /**
@@ -56,21 +60,19 @@ public class AgentChatService {
                 req != null ? req.getSessionId() : null);
 
         try {
-            // 1. 获取或创建会话，加载上下文
-            AgentSessionService.AgentSessionContext sessionContext = agentSessionService.loadSessionContext(req.getSessionId());
-            ChatSession session = sessionContext.session();
-            if (session == null) {
-                session = agentSessionService.getOrCreateSession(req.getSessionId());
-            }
+            // 1. 获取或创建会话
+            ChatSession session = agentSessionService.getOrCreateSession(req.getSessionId());
+            String sessionId = session.getId();
 
-            // 2. 构建本轮执行上下文
+            // 2. 读取最近消息和摘要，构建上下文
+            List<ChatMessage> recentMessages = agentChatMessageService.getRecentMessages(sessionId, 20);
             AgentChatContext context = AgentChatContext.from(req);
             context.setSession(session);
-            context.setHistoryMessages(sessionContext.recentMessages());
-            context.setRecentSummary(sessionContext.summary());
+            context.setSessionId(sessionId);
+            context.setHistoryMessages(recentMessages);
+            context.setRecentSummary(session.getSummary());
             log.debug("[AgentChatService] 构建执行上下文: sessionId={}, traceId={}, historyCount={}",
-                    context.getSessionId(), context.getTraceId(),
-                    sessionContext.recentMessages() != null ? sessionContext.recentMessages().size() : 0);
+                    sessionId, context.getTraceId(), recentMessages.size());
 
             // 3. 调用 AgentSceneService 执行场景判断与分发
             AgentSceneService.AgentSceneExecution execution = agentSceneService.decideAndExecute(context, req);
@@ -83,24 +85,29 @@ public class AgentChatService {
             AgentExecutionResult executionResult = execution.getExecutionResult();
 
             // 5. 保存用户消息
-            agentSessionService.saveUserMessage(context.getSessionId(), req.getQuery(), null);
+            agentChatMessageService.saveUserMessage(sessionId, req.getQuery(), null);
 
             // 6. 保存助手消息
             String assistantContent = executionResult.getAnswer() != null ? executionResult.getAnswer() : executionResult.getSummary();
             String messageType = executionResult.isNeedsFallback() ? "assistant_clarify" : "assistant_text";
-            agentSessionService.saveAssistantMessage(context.getSessionId(), assistantContent, null, messageType);
+            agentChatMessageService.saveAssistantMessage(sessionId, assistantContent, null, messageType);
 
-            // 7. 如需要更新标题
+            // 7. 更新会话聚合状态
+            String scene = execution.getDecision() != null ? execution.getDecision().getScene().name() : null;
+            agentSessionService.touchSession(sessionId, scene);
+            agentSessionService.increaseMessageCount(sessionId, 2);
+
+            // 8. 如需要更新标题
             if (executionResult.isShouldUpdateTitle()) {
-                agentSessionService.updateSessionTitleIfNeeded(context.getSessionId(), req.getQuery());
+                agentSessionService.updateSessionTitleIfNeeded(sessionId, req.getQuery());
             }
 
-            // 8. 更新会话摘要
+            // 9. 更新会话摘要（阈值策略可后续优化）
             if (executionResult.getSummary() != null) {
-                agentSessionService.updateSessionSummary(context.getSessionId(), executionResult.getSummary());
+                agentSessionService.updateSessionSummary(sessionId, executionResult.getSummary());
             }
 
-            // 9. 返回统一响应
+            // 10. 返回统一响应
             return agentResponseService.buildResponse(context, execution.getDecision(), executionResult);
         } catch (Exception e) {
             log.error("[AgentChatService] 对话执行失败: {}", e.getMessage(), e);

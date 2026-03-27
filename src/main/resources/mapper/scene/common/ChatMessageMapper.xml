@@ -2,10 +2,10 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.liang.drugagent.scene.common.mapper.ChatMessageMapper">
+<mapper namespace="com.liang.drugagent.agent.common.mapper.ChatMessageMapper">
 
     <select id="findByConversationIdOrderByCreatedAtDesc"
-            resultType="com.liang.drugagent.scene.common.entity.ChatMessage">
+            resultType="com.liang.drugagent.agent.common.entity.ChatMessage">
         SELECT id,
                session_id,
                role,

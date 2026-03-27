@@ -1,12 +1,11 @@
-package com.liang.drugagent.scene.common.service;
+package com.liang.drugagent.agent.chat;
 
 import com.liang.drugagent.shared.advisor.LoggingAdvisor;
 import com.liang.drugagent.shared.advisor.PromptAdvisor;
 import com.liang.drugagent.shared.advisor.SafetyAdvisor;
 import com.liang.drugagent.agent.prompt.SystemPrompt;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
-import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -15,7 +14,6 @@ import reactor.core.publisher.Flux;
  *
  * <p>作为AI对话的统一入口，封装Spring AI ChatClient并附加全局Advisor链：</p>
  * <ul>
- *   <li>{@link MessageChatMemoryAdvisor} - 会话记忆，支持多轮对话上下文</li>
  *   <li>{@link PromptAdvisor} - Prompt增强，优化输入提示词</li>
  *   <li>{@link SafetyAdvisor} - 安全审查，过滤敏感内容</li>
  *   <li>{@link LoggingAdvisor} - 请求日志，记录对话轨迹</li>
@@ -37,10 +35,9 @@ import reactor.core.publisher.Flux;
  *
  * @author liangjiajian
  * @see ChatClient
- * @see ChatMemory
  */
 @Service
-public class ChatService {
+public class LLMChatService {
 
     /**
      * Spring AI ChatClient 实例，用于与AI模型交互。
@@ -51,13 +48,11 @@ public class ChatService {
      * 构造方法，注入ChatClient构建器并配置全局Advisor链。
      *
      * @param chatClientBuilder ChatClient构建器
-     * @param chatMemory 会话记忆存储，用于多轮对话上下文管理
      */
-    public ChatService(ChatClient.Builder chatClientBuilder, ChatMemory chatMemory) {
+    public LLMChatService(ChatClient.Builder chatClientBuilder) {
         // 1. 初始化 ChatClient 并附加全局 Advisor 链
         this.chatClient = chatClientBuilder
                 .defaultAdvisors(
-                        new MessageChatMemoryAdvisor(chatMemory),
                         new PromptAdvisor(),
                         new SafetyAdvisor(),
                         new LoggingAdvisor()

@@ -2,8 +2,8 @@ package com.liang.drugagent.controller.domain;
 
 import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
 import com.liang.drugagent.scene.SceneEnum;
-import com.liang.drugagent.scene.common.entity.ChatMessage;
-import com.liang.drugagent.scene.common.entity.ChatSession;
+import com.liang.drugagent.agent.common.entity.ChatMessage;
+import com.liang.drugagent.agent.common.entity.ChatSession;
 import lombok.Getter;
 import lombok.Setter;
 

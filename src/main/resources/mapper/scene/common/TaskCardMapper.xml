@@ -2,7 +2,7 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.liang.drugagent.scene.common.mapper.TaskCardMapper">
+<mapper namespace="com.liang.drugagent.agent.common.mapper.TaskCardMapper">
 
     <select id="countTodayNew" resultType="int">
         SELECT COUNT(*)
@@ -20,7 +20,7 @@
     </select>
 
     <select id="findTopHighRiskTasks"
-            resultType="com.liang.drugagent.scene.common.entity.TaskCard">
+            resultType="com.liang.drugagent.agent.common.entity.TaskCard">
         SELECT id,
                case_id,
                task_name,
@@ -53,7 +53,7 @@
     </select>
 
     <select id="findUpcomingDeadlineTasks"
-            resultType="com.liang.drugagent.scene.common.entity.TaskCard">
+            resultType="com.liang.drugagent.agent.common.entity.TaskCard">
         SELECT id,
                case_id,
                task_name,

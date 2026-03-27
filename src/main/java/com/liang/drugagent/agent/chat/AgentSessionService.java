@@ -1,52 +1,53 @@
 package com.liang.drugagent.agent.chat;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.liang.drugagent.agent.common.entity.ChatMessage;
+import com.liang.drugagent.agent.common.entity.ChatSession;
+import com.liang.drugagent.agent.common.mapper.ChatSessionMapper;
 import com.liang.drugagent.controller.domain.request.agent.CreateSessionReq;
 import com.liang.drugagent.controller.domain.request.agent.UpdateSessionTitleReq;
-import com.liang.drugagent.scene.SceneEnum;
-import com.liang.drugagent.scene.common.entity.ChatMessage;
-import com.liang.drugagent.scene.common.entity.ChatSession;
-import com.liang.drugagent.scene.common.entity.MessageRole;
-import com.liang.drugagent.scene.common.service.ChatMemoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * Agent 会话应用服务。
+ * Agent 会话服务。
  *
- * <p>职责划分：
+ * <p>职责：
  * <ul>
  *   <li>会话 CRUD 与基础管理</li>
- *   <li>消息存储与查询</li>
  *   <li>加载会话上下文供 Agent 执行使用</li>
  *   <li>维护会话摘要与标题</li>
  * </ul>
  *
- * <p>不负责：场景判断、工作流执行、Tool 调用。
+ * <p>消息操作委托给 AgentChatMessageService
  *
  * @author liangjiajian
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AgentSessionService {
+public class AgentSessionService extends ServiceImpl<ChatSessionMapper, ChatSession> {
 
     /**
      * 默认会话标题。
      */
     private static final String DEFAULT_SESSION_TITLE = "新对话";
 
-    private final ChatMemoryService chatMemoryService;
+    private final AgentChatMessageService agentChatMessageService;
+
+    // ==================== 会话 CRUD ====================
 
     /**
      * 获取所有会话列表（按最近更新时间倒序）。
      */
     public List<ChatSession> getAllSessions() {
-        // MVP 单用户场景，直接返回所有未删除会话
         log.info("[AgentSessionService] 获取所有会话列表");
-        return chatMemoryService.list()
+        return this.list()
                 .stream()
                 .filter(s -> s.getIsDeleted() == 0)
                 .sorted((a, b) -> b.getUpdatedAt().compareTo(a.getUpdatedAt()))
@@ -54,11 +55,11 @@ public class AgentSessionService {
     }
 
     /**
-     * 根据会话ID获取会话详情（含消息列表）。
+     * 根据会话ID获取会话详情。
      */
     public ChatSession getSessionById(String sessionId) {
         log.info("[AgentSessionService] 获取会话详情，sessionId={}", sessionId);
-        return chatMemoryService.getSessionWithMessages(sessionId);
+        return getSessionWithMessages(sessionId);
     }
 
     /**
@@ -68,12 +69,26 @@ public class AgentSessionService {
         String title = (request.getTitle() != null && !request.getTitle().isBlank())
                 ? request.getTitle()
                 : DEFAULT_SESSION_TITLE;
-        String scene = request.getScene() != null ? request.getScene() : SceneEnum.UNKNOWN.name();
-        // MVP 单用户场景，userId 使用默认值或空字符串
+        String scene = request.getScene() != null ? request.getScene() : "UNKNOWN";
         String userId = request.getUserId() != null ? request.getUserId() : "default";
 
         log.info("[AgentSessionService] 创建新会话，title={}，scene={}，userId={}", title, scene, userId);
-        return chatMemoryService.createSession(title, scene, userId);
+        return createSession(title, scene, userId);
+    }
+
+    /**
+     * 创建新会话。
+     */
+    public ChatSession createSession(String title, String scene, String userId) {
+        ChatSession session = ChatSession.builder()
+                .title(title)
+                .userId(userId)
+                .isDeleted(0)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        this.save(session);
+        return session;
     }
 
     /**
@@ -90,7 +105,18 @@ public class AgentSessionService {
         }
 
         log.info("[AgentSessionService] 更新会话标题，sessionId={}，title={}", sessionId, request.getTitle());
-        chatMemoryService.updateSessionTitle(sessionId, request.getTitle());
+        updateSessionTitle(sessionId, request.getTitle());
+    }
+
+    /**
+     * 更新会话标题。
+     */
+    public boolean updateSessionTitle(String sessionId, String title) {
+        ChatSession session = new ChatSession();
+        session.setId(sessionId);
+        session.setTitle(title);
+        session.setUpdatedAt(LocalDateTime.now());
+        return this.updateById(session);
     }
 
     /**
@@ -102,19 +128,28 @@ public class AgentSessionService {
             return;
         }
         log.info("[AgentSessionService] 删除会话，sessionId={}", sessionId);
-        chatMemoryService.deleteSession(sessionId);
+        softDeleteSession(sessionId);
+    }
+
+    /**
+     * 软删除会话。
+     */
+    private boolean softDeleteSession(String sessionId) {
+        ChatSession session = new ChatSession();
+        session.setId(sessionId);
+        session.setIsDeleted(1);
+        return this.updateById(session);
     }
 
     /**
      * 删除当前用户的全部会话（软删除）。
-     * MVP 单用户场景，删除所有未删除会话。
      */
     public void deleteAllSessions() {
         log.info("[AgentSessionService] 删除所有会话");
-        chatMemoryService.list()
+        this.list()
                 .stream()
                 .filter(s -> s.getIsDeleted() == 0)
-                .forEach(s -> chatMemoryService.deleteSession(s.getId()));
+                .forEach(s -> softDeleteSession(s.getId()));
     }
 
     /**
@@ -125,46 +160,40 @@ public class AgentSessionService {
             return getAllSessions();
         }
         log.info("[AgentSessionService] 搜索会话，keyword={}", keyword);
-        // MVP 单用户场景，userId 使用默认值
-        return chatMemoryService.searchSessions("default", keyword);
+        return searchSessions("default", keyword);
     }
 
     /**
-     * 获取某个会话下的消息列表（按时间顺序）。
+     * 搜索会话。
      */
-    public List<ChatMessage> getMessages(String sessionId) {
-        if (sessionId == null || sessionId.isBlank()) {
-            log.warn("[AgentSessionService] 获取消息列表失败，sessionId 为空");
-            return List.of();
-        }
-        log.info("[AgentSessionService] 获取消息列表，sessionId={}", sessionId);
-        return chatMemoryService.getMessagesBySessionId(sessionId);
+    public List<ChatSession> searchSessions(String userId, String keyword) {
+        LambdaQueryWrapper<ChatSession> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ChatSession::getUserId, userId)
+               .eq(ChatSession::getIsDeleted, 0)
+               .like(ChatSession::getTitle, keyword)
+               .orderByDesc(ChatSession::getUpdatedAt);
+        return this.list(wrapper);
     }
+
+    // ==================== 会话上下文 ====================
 
     /**
      * 获取或创建会话。
-     * 若 sessionId 有效则直接返回；否则创建新会话。
      */
     public ChatSession getOrCreateSession(String sessionId) {
         if (sessionId != null && !sessionId.isBlank()) {
-            ChatSession existing = chatMemoryService.getById(sessionId);
+            ChatSession existing = this.getById(sessionId);
             if (existing != null && existing.getIsDeleted() == 0) {
                 log.info("[AgentSessionService] 会话已存在，直接返回，sessionId={}", sessionId);
                 return existing;
             }
         }
-        // 创建新会话
         log.info("[AgentSessionService] 会话不存在或已删除，创建新会话");
-        CreateSessionReq request = CreateSessionReq.builder()
-                .title(DEFAULT_SESSION_TITLE)
-                .scene(SceneEnum.UNKNOWN.name())
-                .build();
-        return createSession(request);
+        return createSession(DEFAULT_SESSION_TITLE, "UNKNOWN", "default");
     }
 
     /**
      * 加载会话运行时上下文。
-     * 包含 session、最近消息、摘要、最近场景等信息。
      */
     public AgentSessionContext loadSessionContext(String sessionId) {
         log.info("[AgentSessionService] 加载会话上下文，sessionId={}", sessionId);
@@ -173,14 +202,14 @@ public class AgentSessionService {
             return AgentSessionContext.empty(sessionId);
         }
 
-        ChatSession session = chatMemoryService.getSessionWithMessages(sessionId);
+        ChatSession session = getSessionWithMessages(sessionId);
         if (session == null) {
             log.warn("[AgentSessionService] 会话不存在，sessionId={}", sessionId);
             return AgentSessionContext.empty(sessionId);
         }
 
         // 获取最近消息（限制条数）
-        List<ChatMessage> recentMessages = chatMemoryService.getMessagesBySessionId(sessionId);
+        List<ChatMessage> recentMessages = agentChatMessageService.getMessagesBySessionId(sessionId);
         int maxMessages = 20;
         if (recentMessages.size() > maxMessages) {
             recentMessages = recentMessages.subList(recentMessages.size() - maxMessages, recentMessages.size());
@@ -195,57 +224,45 @@ public class AgentSessionService {
     }
 
     /**
+     * 获取会话详情（含消息列表）。
+     */
+    public ChatSession getSessionWithMessages(String sessionId) {
+        ChatSession session = this.getById(sessionId);
+        if (session != null) {
+            List<ChatMessage> messages = agentChatMessageService.getMessagesBySessionId(sessionId);
+            session.setMessages(messages);
+        }
+        return session;
+    }
+
+    // ==================== 消息保存（委托） ====================
+
+    /**
      * 保存用户消息。
      */
     public ChatMessage saveUserMessage(String sessionId, String content, String metadata) {
-        if (sessionId == null || sessionId.isBlank()) {
-            log.warn("[AgentSessionService] 保存用户消息失败，sessionId 为空");
-            return null;
-        }
-        if (content == null || content.isBlank()) {
-            log.warn("[AgentSessionService] 保存用户消息失败，content 为空");
-            return null;
-        }
-        log.info("[AgentSessionService] 保存用户消息，sessionId={}，content={}",
-                sessionId, truncateContent(content));
-        return chatMemoryService.addMessage(sessionId, MessageRole.USER.getValue(), content, metadata);
+        return agentChatMessageService.saveUserMessage(sessionId, content, metadata);
     }
 
     /**
      * 保存助手消息。
      */
     public ChatMessage saveAssistantMessage(String sessionId, String content, String metadata, String type) {
-        if (sessionId == null || sessionId.isBlank()) {
-            log.warn("[AgentSessionService] 保存助手消息失败，sessionId 为空");
-            return null;
-        }
-        if (content == null || content.isBlank()) {
-            log.warn("[AgentSessionService] 保存助手消息失败，content 为空");
-            return null;
-        }
-        log.info("[AgentSessionService] 保存助手消息，sessionId={}，type={}",
-                sessionId, type != null ? type : "text");
-        return chatMemoryService.addMessage(sessionId, MessageRole.ASSISTANT.getValue(), content, metadata, type);
+        return agentChatMessageService.saveAssistantMessage(sessionId, content, metadata, type);
     }
 
     /**
      * 保存系统消息。
      */
     public void saveSystemMessage(String sessionId, String content, String metadata) {
-        if (sessionId == null || sessionId.isBlank()) {
-            log.warn("[AgentSessionService] 保存系统消息失败，sessionId 为空");
-            return;
-        }
-        if (content == null || content.isBlank()) {
-            log.warn("[AgentSessionService] 保存系统消息失败，content 为空");
-            return;
-        }
-        log.info("[AgentSessionService] 保存系统消息，sessionId={}", sessionId);
-        chatMemoryService.addMessage(sessionId, MessageRole.SYSTEM.getValue(), content, metadata);
+        agentChatMessageService.saveSystemMessage(sessionId, content, metadata);
     }
+
+    // ==================== 摘要与标题 ====================
 
     /**
      * 更新会话摘要。
+     * <p>只更新 summary 字段，不更新 title。
      */
     public void updateSessionSummary(String sessionId, String summary) {
         if (sessionId == null || sessionId.isBlank()) {
@@ -255,16 +272,51 @@ public class AgentSessionService {
         if (summary == null || summary.isBlank()) {
             return;
         }
-        log.info("[AgentSessionService] 更新会话摘要，sessionId={}，summary={}",
-                sessionId, truncateContent(summary));
-        // 摘要存储在 title 字段或专门的 summary 字段，这里暂用 title 字段存储摘要
-        // 实际生产中应扩展 ChatSession 表添加 summary 字段
-        chatMemoryService.updateSessionTitle(sessionId, truncateContent(summary, 100));
+        log.info("[AgentSessionService] 更新会话摘要，sessionId={}", sessionId);
+        ChatSession session = new ChatSession();
+        session.setId(sessionId);
+        session.setSummary(truncateContent(summary, 500));
+        session.setUpdatedAt(LocalDateTime.now());
+        this.updateById(session);
+    }
+
+    /**
+     * 更新会话活跃状态。
+     * <p>更新 lastScene、lastMessageAt、updatedAt。
+     */
+    public void touchSession(String sessionId, String scene) {
+        if (sessionId == null || sessionId.isBlank()) {
+            return;
+        }
+        ChatSession session = new ChatSession();
+        session.setId(sessionId);
+        session.setLastScene(scene);
+        session.setLastMessageAt(LocalDateTime.now());
+        session.setUpdatedAt(LocalDateTime.now());
+        this.updateById(session);
+    }
+
+    /**
+     * 增加会话消息计数。
+     */
+    public void increaseMessageCount(String sessionId, int delta) {
+        if (sessionId == null || sessionId.isBlank()) {
+            return;
+        }
+        ChatSession existing = this.getById(sessionId);
+        if (existing == null) {
+            return;
+        }
+        int currentCount = existing.getMessageCount() != null ? existing.getMessageCount() : 0;
+        ChatSession session = new ChatSession();
+        session.setId(sessionId);
+        session.setMessageCount(currentCount + delta);
+        session.setUpdatedAt(LocalDateTime.now());
+        this.updateById(session);
     }
 
     /**
      * 如有必要则更新会话标题。
-     * 若当前仍是默认标题，则根据首轮问题自动生成标题。
      */
     public void updateSessionTitleIfNeeded(String sessionId, String query) {
         if (sessionId == null || sessionId.isBlank()) {
@@ -274,32 +326,33 @@ public class AgentSessionService {
             return;
         }
 
-        ChatSession session = chatMemoryService.getById(sessionId);
+        ChatSession session = this.getById(sessionId);
         if (session == null) {
             return;
         }
 
-        // 如果标题仍是默认标题，则根据首轮问题生成标题
         if (DEFAULT_SESSION_TITLE.equals(session.getTitle()) || session.getTitle() == null) {
             String newTitle = truncateContent(query, 30);
             log.info("[AgentSessionService] 自动生成会话标题，sessionId={}，title={}", sessionId, newTitle);
-            chatMemoryService.updateSessionTitle(sessionId, newTitle);
+            updateSessionTitle(sessionId, newTitle);
         }
     }
+
+    // ==================== 辅助方法 ====================
 
     /**
      * 记录一次执行链路的元信息。
      */
-    public void appendExecutionTrace(String sessionId, String traceId, SceneEnum scene, String resultMeta) {
+    public void appendExecutionTrace(String sessionId, String traceId, String scene, String resultMeta) {
         if (sessionId == null || sessionId.isBlank()) {
             return;
         }
         log.info("[AgentSessionService] 记录执行链路，sessionId={}，traceId={}，scene={}",
-                sessionId, traceId, scene != null ? scene.name() : null);
+                sessionId, traceId, scene);
 
         String traceContent = String.format("【执行链路】traceId=%s，scene=%s，结果=%s",
                 traceId,
-                scene != null ? scene.name() : "unknown",
+                scene != null ? scene : "unknown",
                 resultMeta != null ? truncateContent(resultMeta, 100) : "N/A");
 
         saveSystemMessage(sessionId, traceContent, null);
@@ -322,10 +375,6 @@ public class AgentSessionService {
     /**
      * 截断内容用于日志展示。
      */
-    private String truncateContent(String content) {
-        return truncateContent(content, 100);
-    }
-
     private String truncateContent(String content, int maxLength) {
         if (content == null) {
             return null;

@@ -1,4 +1,4 @@
-package com.liang.drugagent.scene.common;
+package com.liang.drugagent.agent.common;
 
 /**
  * AI 助手消息类型枚举。

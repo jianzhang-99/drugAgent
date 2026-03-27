@@ -7,7 +7,7 @@ import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication
 @ComponentScan(basePackages = "com.liang.drugagent")
-@MapperScan("com.liang.drugagent.scene.common.mapper")
+@MapperScan({"com.liang.drugagent.scene.common.mapper", "com.liang.drugagent.agent.common.mapper"})
 public class DrugAgentApplication {
 
     public static void main(String[] args) {
