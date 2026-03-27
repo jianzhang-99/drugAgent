@@ -29,6 +29,9 @@ public class AgentChatReq {
     /** 已上传文件的ID列表 */
     private List<String> fileIds;
 
+    /** 模型选择（minimax/dashscope），为空则使用默认 */
+    private String model;
+
     /** 扩展元数据 */
     private Map<String, Object> metadata;
 

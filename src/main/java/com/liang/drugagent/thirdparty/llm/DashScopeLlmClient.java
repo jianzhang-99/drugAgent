@@ -10,24 +10,29 @@ import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.openai.api.OpenAiApi;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
 import java.util.List;
 
+/**
+ * 阿里云百炼(DashScope) LLM 客户端。
+ *
+ * <p>使用 Spring AI OpenAI 客户端接入百炼 API，利用其 OpenAI 兼容协议。
+ * 统一使用 Spring AI 原生方式，与 MiniMaxLlmClient 风格一致。
+ */
 @Slf4j
 @Component
-@ConditionalOnProperty(prefix = "dashscope", name = "enabled", havingValue = "true")
 public class DashScopeLlmClient implements LlmClient {
 
     private final ChatClient chatClient;
 
-    public DashScopeLlmClient(ChatClient.Builder chatClientBuilder) {
-        this.chatClient = chatClientBuilder
-                .defaultAdvisors(
-                        new SimpleLoggerAdvisor()
-                )
+    public DashScopeLlmClient(OpenAiApi openAiApi, @Qualifier("openAiChatModel") ChatModel chatModel) {
+        this.chatClient = ChatClient.builder(chatModel)
+                .defaultAdvisors(new SimpleLoggerAdvisor())
                 .build();
     }
 
@@ -83,33 +88,5 @@ public class DashScopeLlmClient implements LlmClient {
             );
         }
         return List.of(new UserMessage(request.getMessages().get(0).getContent()));
-    }
-
-    public String chat(String userMessage, String systemPrompt, String sessionId) {
-        LlmRequest request = LlmRequest.builder()
-                .sessionId(sessionId)
-                .systemPrompt(systemPrompt)
-                .messages(List.of(LlmRequest.ChatMessage.builder()
-                        .role("user")
-                        .content(userMessage)
-                        .build()))
-                .build();
-        LlmResponse response = chat(request);
-        if (Boolean.TRUE.equals(response.getSuccess())) {
-            return response.getContent();
-        }
-        throw new RuntimeException(response.getErrorMessage());
-    }
-
-    public Flux<String> streamChat(String userMessage, String systemPrompt, String sessionId) {
-        LlmRequest request = LlmRequest.builder()
-                .sessionId(sessionId)
-                .systemPrompt(systemPrompt)
-                .messages(List.of(LlmRequest.ChatMessage.builder()
-                        .role("user")
-                        .content(userMessage)
-                        .build()))
-                .build();
-        return streamChat(request).map(LlmResponse::getContent);
     }
 }

@@ -5,14 +5,13 @@ import com.liang.drugagent.shared.llm.LlmProviderType;
 import com.liang.drugagent.shared.llm.LlmRequest;
 import com.liang.drugagent.shared.llm.LlmResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.anthropic.AnthropicApi;
-import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
@@ -26,15 +25,12 @@ import java.util.List;
  */
 @Slf4j
 @Component
-@ConditionalOnProperty(prefix = "spring.ai.anthropic", name = "enabled", havingValue = "true", matchIfMissing = false)
 public class MiniMaxLlmClient implements LlmClient {
 
     private final ChatClient chatClient;
-    private final AnthropicApi anthropicApi;
 
-    public MiniMaxLlmClient(AnthropicApi anthropicApi, ChatClient.Builder chatClientBuilder) {
-        this.anthropicApi = anthropicApi;
-        this.chatClient = chatClientBuilder
+    public MiniMaxLlmClient(@Qualifier("anthropicChatModel") ChatModel chatModel) {
+        this.chatClient = ChatClient.builder(chatModel)
                 .defaultAdvisors(new SimpleLoggerAdvisor())
                 .build();
     }

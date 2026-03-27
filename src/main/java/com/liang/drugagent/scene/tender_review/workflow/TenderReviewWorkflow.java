@@ -88,7 +88,7 @@ public class TenderReviewWorkflow implements SceneWorkflow {
             return executeRuleFlow(tenderReviewData);
         }
 
-        String answer = LLMChatService.chatWithScene(context.getQuery(), "default", context.getSessionId());
+        String answer = LLMChatService.chatWithScene(context.getQuery(), SceneEnum.DEFAULT, context.getSessionId(), context.getModel());
         WorkflowResult result = WorkflowResult.of(SceneEnum.TENDER_REVIEW, answer);
         result.setRiskLevel("NONE");
         result.setScore(0);

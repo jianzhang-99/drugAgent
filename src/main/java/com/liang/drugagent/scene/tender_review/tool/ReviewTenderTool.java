@@ -198,6 +198,7 @@ public class ReviewTenderTool {
         return AgentChatContext.fromToolRequest(
                 request.sessionId(),
                 query,
+                null,
                 request.fileIds(),
                 null
         );
@@ -216,6 +217,7 @@ public class ReviewTenderTool {
         return AgentChatContext.fromToolRequest(
                 request.sessionId(),
                 query,
+                null,
                 request.fileIds(),
                 metadata
         );
@@ -557,6 +559,7 @@ public class ReviewTenderTool {
         return AgentChatContext.fromToolRequest(
                 request.sessionId(),
                 query,
+                null,
                 request.fileIds(),
                 metadata
         );

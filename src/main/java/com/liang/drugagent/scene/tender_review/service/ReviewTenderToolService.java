@@ -115,6 +115,7 @@ public class ReviewTenderToolService {
         return AgentChatContext.fromToolRequest(
                 request.sessionId(),
                 query,
+                null,
                 request.fileIds(),
                 metadata
         );

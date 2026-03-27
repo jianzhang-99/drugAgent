@@ -9,14 +9,25 @@ spring:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
   ai:
-    dashscope:
-      api-key: ${aliyun.dashscope.api-key}
+    # 阿里云百炼(DashScope) - OpenAI 兼容模式
+    openai:
+      enabled: true
+      api-key: ${aliyun.dashscope.api-key:}
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
       chat:
         options:
           model: qwen-plus
-      embedding:
+    # MiniMax - Anthropic 兼容模式
+    anthropic:
+      enabled: true
+      base-url: https://api.minimaxi.com
+      api-key: ${minimax.api-key:}
+      chat:
         options:
-          model: text-embedding-v3
+          model: ${minimax.model:MiniMax-M2.7}
+          max-tokens: ${minimax.max-tokens:8192}
+          temperature: ${minimax.temperature:0.7}
+
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
 
@@ -50,43 +61,26 @@ logging:
 # 阿里云百炼(DashScope) 千问模型配置
 aliyun:
   dashscope:
-    api-key: ${DASHscope_API_KEY:} # 优先从环境变量读取，本地开发则由 application-local.yml 覆盖
+    api-key: ${DASHSCOPE_API_KEY:}
+
+# MiniMax模型配置
+minimax:
+  api-key: ${MINIMAX_API_KEY:}
+  model: MiniMax-M2.7
+  max-tokens: 8192
+  temperature: 0.7
 
 # Agent 路由配置
 agent:
   routing:
-    llm-enabled: true  # 百炼路由开关
-    llm-timeout: 10000 # 百炼调用超时(ms)
-    confidence-threshold: 0.75  # 采纳阈值
-    confidence-low-threshold: 0.5  # 回退阈值
-
-# MiniMax模型配置（Anthropic 兼容模式）
-minimax:
-  enabled: true
-  api-key: ${MINIMAX_API_KEY:}
-  base-url: https://api.minimaxi.com
-  model: MiniMax-M2.7
-  timeout: 60000
-  max-tokens: 8192
-  temperature: 0.7
-  stream: true
-
-# Spring AI Anthropic 配置（MiniMax 兼容）
-spring:
-  ai:
-    anthropic:
-      enabled: true
-      base-url: ${minimax.base-url}
-      api-key: ${minimax.api-key}
-      chat:
-        options:
-          model: ${minimax.model}
-          max-tokens: ${minimax.max-tokens}
-          temperature: ${minimax.temperature}
+    llm-enabled: true
+    llm-timeout: 10000
+    confidence-threshold: 0.75
+    confidence-low-threshold: 0.5
 
 # LLM统一配置
 llm:
-  default-provider: MINIMAX  # 默认Provider: DASHSCOPE 或 MINIMAX
-  routing-provider: MINIMAX   # 路由场景使用的Provider
-  chat-provider: MINIMAX      # 通用问答使用的Provider
-  report-provider: MINIMAX    # 报告生成使用的Provider
+  default-provider: MINIMAX
+  routing-provider: MINIMAX
+  chat-provider: MINIMAX
+  report-provider: MINIMAX

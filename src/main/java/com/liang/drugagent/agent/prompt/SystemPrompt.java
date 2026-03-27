@@ -82,7 +82,7 @@ public class SystemPrompt {
             - 专业、严谨、客观
             - 永远使用中文回答
             - 如数据不足，明确说明无法判断
-            """.formatted(JSON_PREFIX + BASE_JSON_SCHEMA + JSON_SUFFIX);
+            """ + JSON_PREFIX + BASE_JSON_SCHEMA + JSON_SUFFIX;
 
     // ==================== 场景一：标书雷同与语义查重 ====================
 
@@ -207,7 +207,7 @@ public class SystemPrompt {
             - 触发条件：用户上传了2份或多份标书文件
             - 必需参数：fileIds (至少2个文件ID)
             - 可选参数：reviewFocus (围标风险/技术方案雷同/商务条款/全面审查)
-            """.formatted(JSON_PREFIX + BASE_JSON_SCHEMA + JSON_SUFFIX);
+            """ + JSON_PREFIX + BASE_JSON_SCHEMA + JSON_SUFFIX;
 
     // ==================== 场景二：合同文件AI预审核 ====================
 
@@ -340,7 +340,7 @@ public class SystemPrompt {
             - 触发条件：用户提交了合同文件或文本
             - 必需参数：fileId 或 contractText
             - 可选参数：contractType, checkScope (合规性/风险条款/知识产权等)
-            """.formatted(JSON_PREFIX + BASE_JSON_SCHEMA + JSON_SUFFIX);
+            """ + JSON_PREFIX + BASE_JSON_SCHEMA + JSON_SUFFIX;
 
     // ==================== 场景三：医疗耗材与药品合规风险预警 ====================
 
@@ -479,5 +479,5 @@ public class SystemPrompt {
             当用户提供药品/耗材数据并要求分析时：
             - 当前版本主要依赖对话能力进行分析
             - 后续将接入真实数据分析服务进行指标计算和异常检测
-            """.formatted(JSON_PREFIX + BASE_JSON_SCHEMA + JSON_SUFFIX);
+            """ + JSON_PREFIX + BASE_JSON_SCHEMA + JSON_SUFFIX;
 }

@@ -2,23 +2,23 @@ package com.liang.drugagent.agent.chat;
 
 import com.liang.drugagent.agent.prompt.SystemPrompt;
 import com.liang.drugagent.scene.SceneEnum;
-import com.liang.drugagent.shared.advisor.LoggingAdvisor;
-import com.liang.drugagent.shared.advisor.PromptAdvisor;
-import com.liang.drugagent.shared.advisor.SafetyAdvisor;
-import org.springframework.ai.chat.client.ChatClient;
+import com.liang.drugagent.shared.llm.LlmClient;
+import com.liang.drugagent.shared.llm.LlmProviderType;
+import com.liang.drugagent.shared.llm.LlmRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
+import java.util.List;
 import java.util.Map;
 
 /**
  * 基础模型对话服务。
  *
- * <p>作为AI对话的统一入口，封装Spring AI ChatClient并附加全局Advisor链：</p>
+ * <p>作为AI对话的统一入口，支持多Provider动态路由：
  * <ul>
- *   <li>{@link PromptAdvisor} - Prompt增强，优化输入提示词</li>
- *   <li>{@link SafetyAdvisor} - 安全审查，过滤敏感内容</li>
- *   <li>{@link LoggingAdvisor} - 请求日志，记录对话轨迹</li>
+ *   <li>前端传入 model 参数（如 "minimax", "dashscope"）选择使用的 LLM</li>
+ *   <li>默认使用 MiniMax</li>
  * </ul>
  *
  * <p>支持两种对话模式：</p>
@@ -36,15 +36,10 @@ import java.util.Map;
  * </ul>
  *
  * @author liangjiajian
- * @see ChatClient
  */
+@Slf4j
 @Service
 public class LLMChatService {
-
-    /**
-     * Spring AI ChatClient 实例，用于与AI模型交互。
-     */
-    private final ChatClient chatClient;
 
     /**
      * 场景与 System Prompt 映射表。
@@ -56,50 +51,79 @@ public class LLMChatService {
             SceneEnum.DEFAULT, SystemPrompt.DRUG_REGULATION_EXPERT_PROMPT
     );
 
+    private final List<LlmClient> llmClients;
+
+    public LLMChatService(List<LlmClient> llmClients) {
+        this.llmClients = llmClients;
+    }
+
     /**
-     * 构造方法，注入ChatClient构建器并配置全局Advisor链。
+     * 根据场景、会话ID和模型选择执行对话 (支持多轮记忆)
      *
-     * @param chatClientBuilder ChatClient构建器
+     * @param userMessage 用户消息
+     * @param scene 场景枚举
+     * @param sessionId 会话ID
+     * @param model 模型标识（minimax/dashscope），为空则使用默认
+     * @return AI响应内容
      */
-    public LLMChatService(ChatClient.Builder chatClientBuilder) {
-        this.chatClient = chatClientBuilder
-                .defaultAdvisors(
-                        new PromptAdvisor(),
-                        new SafetyAdvisor(),
-                        new LoggingAdvisor()
-                )
+    public String chatWithScene(String userMessage, SceneEnum scene, String sessionId, String model) {
+        LlmClient client = selectClient(model);
+        String systemPromptText = resolveSystemPrompt(scene);
+
+        LlmRequest request = LlmRequest.builder()
+                .provider(client.getProvider())
+                .model(model)
+                .sessionId(sessionId)
+                .systemPrompt(systemPromptText)
+                .messages(List.of(LlmRequest.ChatMessage.builder()
+                        .role("user")
+                        .content(userMessage)
+                        .build()))
+                .stream(false)
                 .build();
-    }
 
-
-    /**
-     * 根据场景和会话ID执行对话 (支持多轮记忆)
-     */
-    public String chatWithScene(String userMessage, SceneEnum scene, String sessionId) {
-        String systemPromptText = resolveSystemPrompt(scene);
-
-        return chatClient.prompt()
-                .system(systemPromptText)
-                .user(userMessage)
-                .advisors(a -> a.param("chat_memory_conversation_id", sessionId)
-                               .param("chat_memory_response_size", 10))
-                .call()
-                .content();
+        return client.chat(request).getContent();
     }
 
     /**
-     * 根据场景和会话ID执行流式对话，适合前端 SSE 打字机效果。
+     * 根据场景、会话ID和模型执行流式对话，适合前端 SSE 打字机效果。
      */
-    public Flux<String> streamChatWithScene(String userMessage, SceneEnum scene, String sessionId) {
+    public Flux<String> streamChatWithScene(String userMessage, SceneEnum scene, String sessionId, String model) {
+        LlmClient client = selectClient(model);
         String systemPromptText = resolveSystemPrompt(scene);
 
-        return chatClient.prompt()
-                .system(systemPromptText)
-                .user(userMessage)
-                .advisors(a -> a.param("chat_memory_conversation_id", sessionId)
-                        .param("chat_memory_response_size", 10))
-                .stream()
-                .content();
+        LlmRequest request = LlmRequest.builder()
+                .provider(client.getProvider())
+                .model(model)
+                .sessionId(sessionId)
+                .systemPrompt(systemPromptText)
+                .messages(List.of(LlmRequest.ChatMessage.builder()
+                        .role("user")
+                        .content(userMessage)
+                        .build()))
+                .stream(true)
+                .build();
+
+        return client.streamChat(request)
+                .map(r -> r.getContent() != null ? r.getContent() : "");
+    }
+
+    /**
+     * 根据模型标识选择对应的 LLM Client
+     */
+    private LlmClient selectClient(String model) {
+        if (model == null || model.isBlank()) {
+            return llmClients.stream()
+                    .filter(c -> c.supports(LlmProviderType.MINIMAX))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException("未找到可用的 MiniMax LLM Client"));
+        }
+
+        LlmProviderType providerType = LlmProviderType.fromConfigKey(model);
+        return llmClients.stream()
+                .filter(c -> c.supports(providerType))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("未找到可用的 LLM Client: " + model));
     }
 
     private String resolveSystemPrompt(SceneEnum scene) {

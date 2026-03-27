@@ -28,6 +28,8 @@ public class AgentChatContext {
     private final String sessionId;
     /** 用户query。 */
     private final String query;
+    /** 模型选择（minimax/dashscope）。 */
+    private final String model;
     /** 文件ID列表。 */
     private final List<String> fileIds;
     /** 请求元数据。 */
@@ -53,11 +55,12 @@ public class AgentChatContext {
     @Setter
     private Map<String, Object> attributes;
 
-    private AgentChatContext(String traceId, String sessionId, String query, List<String> fileIds,
+    private AgentChatContext(String traceId, String sessionId, String query, String model, List<String> fileIds,
                              Map<String, Object> metadata) {
         this.traceId = traceId;
         this.sessionId = sessionId;
         this.query = query;
+        this.model = model;
         this.fileIds = fileIds;
         this.metadata = metadata == null ? Map.of() : metadata;
     }
@@ -86,6 +89,7 @@ public class AgentChatContext {
                 UUID.randomUUID().toString(),
                 sessionId,
                 req.getQuery(),
+                req.getModel(),
                 req.getFileIds(),
                 req.getMetadata()
         );
@@ -94,12 +98,13 @@ public class AgentChatContext {
     /**
      * 从标书审查请求构建上下文。
      */
-    public static AgentChatContext fromToolRequest(String sessionId, String query,
+    public static AgentChatContext fromToolRequest(String sessionId, String query, String model,
                                                     List<String> fileIds, Map<String, Object> metadata) {
         return new AgentChatContext(
                 UUID.randomUUID().toString(),
                 sessionId != null ? sessionId : "default-drug-session",
                 query,
+                model,
                 fileIds != null ? fileIds : List.of(),
                 metadata
         );
