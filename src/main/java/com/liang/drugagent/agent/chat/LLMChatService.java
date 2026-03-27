@@ -69,10 +69,11 @@ public class LLMChatService {
     public String chatWithScene(String userMessage, SceneEnum scene, String sessionId, String model) {
         LlmClient client = selectClient(model);
         String systemPromptText = resolveSystemPrompt(scene);
+        String effectiveModel = resolveEffectiveModel(model, client.getProvider());
 
         LlmRequest request = LlmRequest.builder()
                 .provider(client.getProvider())
-                .model(model)
+                .model(effectiveModel)
                 .sessionId(sessionId)
                 .systemPrompt(systemPromptText)
                 .messages(List.of(LlmRequest.ChatMessage.builder()
@@ -91,10 +92,11 @@ public class LLMChatService {
     public Flux<String> streamChatWithScene(String userMessage, SceneEnum scene, String sessionId, String model) {
         LlmClient client = selectClient(model);
         String systemPromptText = resolveSystemPrompt(scene);
+        String effectiveModel = resolveEffectiveModel(model, client.getProvider());
 
         LlmRequest request = LlmRequest.builder()
                 .provider(client.getProvider())
-                .model(model)
+                .model(effectiveModel)
                 .sessionId(sessionId)
                 .systemPrompt(systemPromptText)
                 .messages(List.of(LlmRequest.ChatMessage.builder()
@@ -106,6 +108,17 @@ public class LLMChatService {
 
         return client.streamChat(request)
                 .map(r -> r.getContent() != null ? r.getContent() : "");
+    }
+
+    /**
+     * 根据模型标识和provider解析最终使用的模型名称。
+     * 当模型标识为空时，使用provider对应的默认模型。
+     */
+    private String resolveEffectiveModel(String model, LlmProviderType provider) {
+        if (model != null && !model.isBlank()) {
+            return model;
+        }
+        return LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7" : "qwen-plus";
     }
 
     /**

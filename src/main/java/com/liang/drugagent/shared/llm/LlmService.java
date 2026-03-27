@@ -48,6 +48,7 @@ public class LlmService {
      */
     public LlmResponse chat(LlmRequest request) {
         LlmProviderType provider = resolveProvider(request);
+        ensureModel(request, provider);
         log.info("LLM对话请求 - provider: {}, 模型: {}", provider, request.getModel());
         return getClient(provider).chat(request);
     }
@@ -77,6 +78,7 @@ public class LlmService {
      */
     public Flux<LlmResponse> streamChat(LlmRequest request) {
         LlmProviderType provider = resolveProvider(request);
+        ensureModel(request, provider);
         log.info("LLM流式对话请求 - provider: {}, 模型: {}", provider, request.getModel());
         return getClient(provider).streamChat(request);
     }
@@ -86,6 +88,7 @@ public class LlmService {
      */
     public LlmResponse chatForRouting(LlmRequest request) {
         request.setProvider(routingProvider);
+        ensureModel(request, routingProvider);
         log.info("LLM路由请求 - provider: {}", routingProvider);
         return getClient(routingProvider).chat(request);
     }
@@ -95,6 +98,7 @@ public class LlmService {
      */
     public LlmResponse chatForReport(LlmRequest request) {
         request.setProvider(reportProvider);
+        ensureModel(request, reportProvider);
         log.info("LLM报告请求 - provider: {}", reportProvider);
         return getClient(reportProvider).chat(request);
     }
@@ -104,6 +108,7 @@ public class LlmService {
      */
     public LlmResponse chatForChat(LlmRequest request) {
         request.setProvider(chatProvider);
+        ensureModel(request, chatProvider);
         log.info("LLM对话请求 - provider: {}", chatProvider);
         return getClient(chatProvider).chat(request);
     }
@@ -116,6 +121,16 @@ public class LlmService {
             return request.getProvider();
         }
         return defaultProvider;
+    }
+
+    /**
+     * 当请求中模型为空时，根据provider设置默认模型
+     */
+    private void ensureModel(LlmRequest request, LlmProviderType provider) {
+        if (request.getModel() == null || request.getModel().isBlank()) {
+            String defaultModel = LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7" : "qwen-plus";
+            request.setModel(defaultModel);
+        }
     }
 
     private LlmClient getClient(LlmProviderType provider) {
