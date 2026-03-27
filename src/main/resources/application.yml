@@ -20,7 +20,7 @@ spring:
     # MiniMax - Anthropic 兼容模式
     anthropic:
       enabled: true
-      base-url: https://api.minimaxi.com
+      base-url: https://api.minimaxi.com/anthropic
       api-key: ${minimax.api-key:}
       chat:
         options:
