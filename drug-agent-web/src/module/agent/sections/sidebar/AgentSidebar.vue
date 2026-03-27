@@ -37,15 +37,38 @@
             :class="['history-item', { active: session.id === store.activeSessionId }]"
             @click="store.selectSession(session.id)"
           >
-            <span class="history-name">{{ session.title }}</span>
-            <button
-              type="button"
-              class="delete-btn"
-              title="删除会话"
-              @click.stop="handleDeleteSession(session.id)"
-            >
-              <t-icon name="delete" />
-            </button>
+            <template v-if="editingSessionId === session.id">
+              <input
+                v-model="editingTitle"
+                class="title-input"
+                @keydown.enter.prevent="saveTitle"
+                @keydown.esc.prevent="cancelEdit"
+                @blur="saveTitle"
+                @click.stop
+                ref="titleInputRef"
+              />
+            </template>
+            <template v-else>
+              <span class="history-name">{{ session.title }}</span>
+              <div class="item-actions">
+                <button
+                  type="button"
+                  class="action-btn"
+                  title="修改标题"
+                  @click.stop="startEditTitle(session.id, session.title)"
+                >
+                  <t-icon name="edit" />
+                </button>
+                <button
+                  type="button"
+                  class="action-btn delete-btn"
+                  title="删除会话"
+                  @click.stop="handleDeleteSession(session.id)"
+                >
+                  <t-icon name="delete" />
+                </button>
+              </div>
+            </template>
           </div>
         </div>
       </div>
@@ -65,13 +88,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import { useAgentStore } from '../../store/agentStore';
 
 type ViewMode = 'WORKSPACE' | 'TASKS' | 'KNOWLEDGE';
 
 const store = useAgentStore();
 const activeView = ref<ViewMode>('WORKSPACE');
+const editingSessionId = ref<string | null>(null);
+const editingTitle = ref('');
+const titleInputRef = ref<HTMLInputElement>();
 
 const navItems = [
   { id: 'TASKS' as ViewMode, label: '全局任务看板', icon: '◎' },
@@ -112,6 +138,27 @@ function handleNewSession() {
 
 function handleDeleteSession(id: string) {
   store.removeSession(id);
+}
+
+function startEditTitle(id: string, title: string) {
+  editingSessionId.value = id;
+  editingTitle.value = title;
+  nextTick(() => {
+    titleInputRef.value?.focus();
+    titleInputRef.value?.select();
+  });
+}
+
+function saveTitle() {
+  if (editingSessionId.value && editingTitle.value.trim()) {
+    store.updateSessionTitle(editingSessionId.value, editingTitle.value.trim());
+  }
+  cancelEdit();
+}
+
+function cancelEdit() {
+  editingSessionId.value = null;
+  editingTitle.value = '';
 }
 
 function formatTime(timeStr: string) {
@@ -278,9 +325,38 @@ function formatTime(timeStr: string) {
   font-weight: 700;
 }
 
-.delete-btn {
+.title-input {
+  flex: 1;
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+  color: #31435f;
+}
+
+.title-input:focus {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.item-actions {
+  display: flex;
+  gap: 2px;
   opacity: 0;
-  padding: 4px 8px;
+  transition: opacity 0.2s;
+}
+
+.history-item:hover .item-actions {
+  opacity: 1;
+}
+
+.history-item:not(:hover) .item-actions {
+  opacity: 0;
+}
+
+.action-btn {
+  padding: 4px 6px;
   border: none;
   background: transparent;
   color: #9aa9bf;
@@ -292,8 +368,9 @@ function formatTime(timeStr: string) {
   justify-content: center;
 }
 
-.history-item:hover .delete-btn {
-  opacity: 1;
+.action-btn:hover {
+  background: #f0f3f7;
+  color: #3b82f6;
 }
 
 .delete-btn:hover {

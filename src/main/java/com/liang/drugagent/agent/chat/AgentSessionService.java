@@ -122,29 +122,9 @@ public class AgentSessionService extends ServiceImpl<ChatSessionMapper, ChatSess
             return;
         }
         log.info("[AgentSessionService] 删除会话，sessionId={}", sessionId);
-        softDeleteSession(sessionId);
+        this.baseMapper.deleteById(sessionId);
     }
 
-    /**
-     * 软删除会话。
-     */
-    private boolean softDeleteSession(String sessionId) {
-        ChatSession session = new ChatSession();
-        session.setId(sessionId);
-        session.setIsDeleted(1);
-        return this.updateById(session);
-    }
-
-    /**
-     * 删除当前用户的全部会话（软删除）。
-     */
-    public void deleteAllSessions() {
-        log.info("[AgentSessionService] 删除所有会话");
-        this.list()
-                .stream()
-                .filter(s -> s.getIsDeleted() == 0)
-                .forEach(s -> softDeleteSession(s.getId()));
-    }
 
     /**
      * 搜索会话（按标题模糊搜索）。
