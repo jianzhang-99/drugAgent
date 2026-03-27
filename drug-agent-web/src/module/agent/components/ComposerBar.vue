@@ -9,7 +9,7 @@
         :autosize="{ minRows: 3, maxRows: 6 }"
         placeholder="描述您的监管需求，例如：检测这两份标书文件是否雷同..."
         :disabled="store.sending"
-        @keydown.enter.prevent="handleSend"
+        @keydown="handleKeydown"
       />
 
       <div class="action-row">
@@ -56,6 +56,13 @@ function handleSend() {
   if (!inputText.value.trim()) return;
   store.sendMessage(inputText.value.trim());
   inputText.value = '';
+}
+
+function handleKeydown(e: KeyboardEvent) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    handleSend();
+  }
 }
 </script>
 

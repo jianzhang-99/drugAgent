@@ -3,14 +3,14 @@
     <UploadPanel v-if="showUploadPanel" @close="showUploadPanel = false" />
 
     <div class="composer-panel">
-      <t-textarea
+      <textarea
         v-model="inputText"
         class="composer-input"
-        :autosize="{ minRows: 3, maxRows: 6 }"
         :disabled="store.sending"
         placeholder="描述您的监管需求，例如：检测这两份标书文件是否雷同..."
+        rows="3"
         @keydown.enter.prevent="handleSend"
-      />
+      ></textarea>
 
       <div class="composer-footer">
         <div class="composer-tools">
@@ -72,7 +72,8 @@ function handleSend() {
   padding: 10px 10px 6px;
 }
 
-.composer-input :deep(textarea) {
+.composer-input {
+  width: 100%;
   border: none;
   box-shadow: none;
   padding: 18px 22px 16px;
@@ -80,6 +81,13 @@ function handleSend() {
   color: #31435f;
   font-size: 18px;
   line-height: 1.7;
+  background: transparent;
+  outline: none;
+  font-family: inherit;
+}
+
+.composer-input::placeholder {
+  color: #9aa9bf;
 }
 
 .composer-footer {
