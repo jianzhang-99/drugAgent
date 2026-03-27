@@ -1,16 +1,11 @@
 package com.liang.drugagent.agent.chat;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
 import com.liang.drugagent.controller.domain.request.agent.CreateSessionReq;
-import com.liang.drugagent.controller.domain.request.agent.SessionMessageReq;
 import com.liang.drugagent.controller.domain.request.agent.UpdateSessionTitleReq;
-import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
-import com.liang.drugagent.controller.domain.response.agent.SessionMessageResp;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.scene.common.entity.ChatMessage;
 import com.liang.drugagent.scene.common.entity.ChatSession;
+import com.liang.drugagent.scene.common.entity.MessageRole;
 import com.liang.drugagent.scene.common.service.ChatMemoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,24 +38,7 @@ public class AgentSessionService {
      */
     private static final String DEFAULT_SESSION_TITLE = "新对话";
 
-    /**
-     * 消息角色：用户。
-     */
-    private static final String ROLE_USER = "user";
-
-    /**
-     * 消息角色：助手。
-     */
-    private static final String ROLE_ASSISTANT = "assistant";
-
-    /**
-     * 消息角色：系统。
-     */
-    private static final String ROLE_SYSTEM = "system";
-
     private final ChatMemoryService chatMemoryService;
-    private final AgentChatService agentChatService;
-    private final ObjectMapper objectMapper;
 
     /**
      * 获取所有会话列表（按最近更新时间倒序）。
@@ -164,55 +142,6 @@ public class AgentSessionService {
     }
 
     /**
-     * Controller 层完整消息交互入口。
-     * 保存用户消息 -> 调用 AgentChatService.chat -> 保存助手消息 -> 组装响应。
-     */
-    public SessionMessageResp addMessage(String sessionId, SessionMessageReq request) {
-        if (sessionId == null || sessionId.isBlank()) {
-            log.warn("[AgentSessionService] 发送消息失败，sessionId 为空");
-            return null;
-        }
-
-        log.info("[AgentSessionService] 处理用户消息，sessionId={}，content={}",
-                sessionId, truncateContent(request.getContent()));
-
-        // 1. 保存用户消息
-        ChatMessage userMessage = saveUserMessage(sessionId, request.getContent(), serializeMetadata(request.getMetadata()));
-
-        // 2. 调用 AgentChatService 执行对话
-        AgentChatReq chatReq = AgentChatReq.builder()
-                .sessionId(sessionId)
-                .query(request.getContent())
-                .metadata(request.getMetadata())
-                .build();
-
-        AgentChatResp chatResp = agentChatService.chat(chatReq);
-
-        // 3. 保存助手消息
-        String assistantContent = chatResp != null ? chatResp.getAnswer() : "抱歉，发生了错误。";
-        ChatMessage assistantMessage = saveAssistantMessage(
-                sessionId,
-                assistantContent,
-                serializeResultMeta(chatResp),
-                request.getType()
-        );
-
-        // 4. 更新会话摘要
-        if (chatResp != null && chatResp.getSummary() != null) {
-            updateSessionSummary(sessionId, chatResp.getSummary());
-        }
-
-        // 5. 组装响应
-        return SessionMessageResp.builder()
-                .message(assistantMessage)
-                .userMessage(userMessage)
-                .aiResponse(assistantContent)
-                .traceId(chatResp != null ? chatResp.getTraceId() : null)
-                .scene(chatResp != null ? chatResp.getScene() : null)
-                .build();
-    }
-
-    /**
      * 获取或创建会话。
      * 若 sessionId 有效则直接返回；否则创建新会话。
      */
@@ -257,15 +186,11 @@ public class AgentSessionService {
             recentMessages = recentMessages.subList(recentMessages.size() - maxMessages, recentMessages.size());
         }
 
-        // 获取最后场景
-        SceneEnum lastScene = SceneEnum.fromHint(session.getScene());
-
         return new AgentSessionContext(
                 sessionId,
                 session,
                 recentMessages,
-                session.getTitle(),
-                lastScene
+                session.getTitle()
         );
     }
 
@@ -283,7 +208,7 @@ public class AgentSessionService {
         }
         log.info("[AgentSessionService] 保存用户消息，sessionId={}，content={}",
                 sessionId, truncateContent(content));
-        return chatMemoryService.addMessage(sessionId, ROLE_USER, content, metadata);
+        return chatMemoryService.addMessage(sessionId, MessageRole.USER.getValue(), content, metadata);
     }
 
     /**
@@ -300,7 +225,7 @@ public class AgentSessionService {
         }
         log.info("[AgentSessionService] 保存助手消息，sessionId={}，type={}",
                 sessionId, type != null ? type : "text");
-        return chatMemoryService.addMessage(sessionId, ROLE_ASSISTANT, content, metadata, type);
+        return chatMemoryService.addMessage(sessionId, MessageRole.ASSISTANT.getValue(), content, metadata, type);
     }
 
     /**
@@ -316,7 +241,7 @@ public class AgentSessionService {
             return;
         }
         log.info("[AgentSessionService] 保存系统消息，sessionId={}", sessionId);
-        chatMemoryService.addMessage(sessionId, ROLE_SYSTEM, content, metadata);
+        chatMemoryService.addMessage(sessionId, MessageRole.SYSTEM.getValue(), content, metadata);
     }
 
     /**
@@ -387,41 +312,10 @@ public class AgentSessionService {
             String sessionId,
             ChatSession session,
             List<ChatMessage> recentMessages,
-            String summary,
-            SceneEnum lastScene
+            String summary
     ) {
         public static AgentSessionContext empty(String sessionId) {
-            return new AgentSessionContext(sessionId, null, List.of(), null, null);
-        }
-    }
-
-    /**
-     * 将元数据对象序列化为 JSON 字符串。
-     */
-    private String serializeMetadata(Object metadata) {
-        if (metadata == null) {
-            return null;
-        }
-        try {
-            return objectMapper.writeValueAsString(metadata);
-        } catch (JsonProcessingException e) {
-            log.warn("[AgentSessionService] 序列化元数据失败", e);
-            return null;
-        }
-    }
-
-    /**
-     * 将 AgentChatResp 结果序列化为元数据字符串。
-     */
-    private String serializeResultMeta(AgentChatResp resp) {
-        if (resp == null) {
-            return null;
-        }
-        try {
-            return objectMapper.writeValueAsString(resp);
-        } catch (JsonProcessingException e) {
-            log.warn("[AgentSessionService] 序列化响应结果失败", e);
-            return null;
+            return new AgentSessionContext(sessionId, null, List.of(), null);
         }
     }
 

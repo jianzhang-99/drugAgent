@@ -4,15 +4,11 @@ import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
 import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
 import com.liang.drugagent.scene.SceneEnum;
-import com.liang.drugagent.scene.common.entity.ChatMessage;
 import com.liang.drugagent.scene.common.entity.ChatSession;
-import com.liang.drugagent.scene.common.service.ChatMemoryService;
 import com.liang.drugagent.shared.domain.model.AgentExecutionResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 /**
  * Agent 主服务 - 上层会话编排服务。
@@ -40,11 +36,17 @@ public class AgentChatService {
     private final AgentSceneService agentSceneService;
     private final AgentSessionService agentSessionService;
     private final AgentResponseService agentResponseService;
-    private final ChatMemoryService chatMemoryService;
 
 
     /**
-     * 同步对话处理，后续修改为 SSE 流对话。
+     * 同步对话处理主入口。
+     *
+     * <p>完整流程：
+     * 1. 通过 AgentSessionService 加载会话上下文
+     * 2. 构建本轮执行上下文
+     * 3. 调用 AgentSceneService 执行场景判断与分发
+     * 4. 保存用户消息和助手消息
+     * 5. 返回统一响应
      *
      * @param req 对话请求
      * @return 统一响应
@@ -54,22 +56,21 @@ public class AgentChatService {
                 req != null ? req.getSessionId() : null);
 
         try {
-            // 1. 查看会话信息，提取上下文
-            ChatSession session = agentSessionService.getOrCreateSession(
-                    req.getSessionId()
-            );
-            List<ChatMessage> historyMessages = chatMemoryService.getMessagesBySessionId(session.getId());
-            log.info("[AgentChatService] 读取会话历史: sessionId={}, historyCount={}",
-                    session.getId(), historyMessages.size());
+            // 1. 获取或创建会话，加载上下文
+            AgentSessionService.AgentSessionContext sessionContext = agentSessionService.loadSessionContext(req.getSessionId());
+            ChatSession session = sessionContext.session();
+            if (session == null) {
+                session = agentSessionService.getOrCreateSession(req.getSessionId());
+            }
 
-            // 2. 结合本次对话信息，重新构建上下文
+            // 2. 构建本轮执行上下文
             AgentChatContext context = AgentChatContext.from(req);
             context.setSession(session);
-            context.setHistoryMessages(historyMessages);
-            String recentSummary = buildConversationSummary(historyMessages);
-            context.setRecentSummary(recentSummary);
-            log.debug("[AgentChatService] 构建执行上下文: sessionId={}, traceId={}",
-                    context.getSessionId(), context.getTraceId());
+            context.setHistoryMessages(sessionContext.recentMessages());
+            context.setRecentSummary(sessionContext.summary());
+            log.debug("[AgentChatService] 构建执行上下文: sessionId={}, traceId={}, historyCount={}",
+                    context.getSessionId(), context.getTraceId(),
+                    sessionContext.recentMessages() != null ? sessionContext.recentMessages().size() : 0);
 
             // 3. 调用 AgentSceneService 执行场景判断与分发
             AgentSceneService.AgentSceneExecution execution = agentSceneService.decideAndExecute(context, req);
@@ -81,16 +82,25 @@ public class AgentChatService {
 
             AgentExecutionResult executionResult = execution.getExecutionResult();
 
-            // 5. 整理本次对话的精炼上下文并持久化到会话中
+            // 5. 保存用户消息
             agentSessionService.saveUserMessage(context.getSessionId(), req.getQuery(), null);
+
+            // 6. 保存助手消息
             String assistantContent = executionResult.getAnswer() != null ? executionResult.getAnswer() : executionResult.getSummary();
             String messageType = executionResult.isNeedsFallback() ? "assistant_clarify" : "assistant_text";
             agentSessionService.saveAssistantMessage(context.getSessionId(), assistantContent, null, messageType);
+
+            // 7. 如需要更新标题
             if (executionResult.isShouldUpdateTitle()) {
                 agentSessionService.updateSessionTitleIfNeeded(context.getSessionId(), req.getQuery());
             }
 
-            // 6. 拿到模型处理完成的结果返回，封装交给前端
+            // 8. 更新会话摘要
+            if (executionResult.getSummary() != null) {
+                agentSessionService.updateSessionSummary(context.getSessionId(), executionResult.getSummary());
+            }
+
+            // 9. 返回统一响应
             return agentResponseService.buildResponse(context, execution.getDecision(), executionResult);
         } catch (Exception e) {
             log.error("[AgentChatService] 对话执行失败: {}", e.getMessage(), e);
@@ -115,25 +125,6 @@ public class AgentChatService {
                 .build();
 
         return agentResponseService.buildResponse(context, decision, clarifyResult);
-    }
-
-    /**
-     * 构建会话摘要。
-     */
-    private String buildConversationSummary(List<ChatMessage> historyMessages) {
-        if (historyMessages == null || historyMessages.isEmpty()) {
-            return null;
-        }
-        int maxChars = 500;
-        StringBuilder sb = new StringBuilder();
-        for (ChatMessage msg : historyMessages) {
-            if (sb.length() > maxChars) {
-                break;
-            }
-            sb.append(msg.getContent()).append(" ");
-        }
-        String summary = sb.toString().trim();
-        return summary.length() > maxChars ? summary.substring(0, maxChars) + "..." : summary;
     }
 
     /**

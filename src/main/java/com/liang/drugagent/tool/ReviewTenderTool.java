@@ -1,8 +1,6 @@
 package com.liang.drugagent.tool;
 
 import com.liang.drugagent.controller.domain.AgentChatContext;
-import com.liang.drugagent.common.log.BusinessLogger;
-import com.liang.drugagent.common.log.LogConstants;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
 import com.liang.drugagent.scene.tender_review.workflow.TenderReviewWorkflow;
 import com.liang.drugagent.shared.domain.model.WorkflowResult;
@@ -72,8 +70,6 @@ public class ReviewTenderTool {
 
     private final TenderReviewWorkflow tenderReviewWorkflow;
 
-    private static final BusinessLogger bizLog = BusinessLogger.forScene(LogConstants.Scene.TENDER_REVIEW);
-
     /**
      * 执行标书审查。
      *
@@ -90,7 +86,7 @@ public class ReviewTenderTool {
      */
     public ReviewTenderToolResult execute(ReviewTenderToolReq request) {
         long startTime = System.currentTimeMillis();
-        bizLog.info(LogConstants.Step.EXECUTE, "开始标书审查请求");
+        log.info("开始标书审查请求");
 
         // 1. 参数校验
         if (request == null) {
@@ -103,23 +99,23 @@ public class ReviewTenderTool {
             AgentChatContext context = buildContext(request);
 
             // 3. 调用 TenderReviewWorkflow.execute()
-            bizLog.info(LogConstants.Step.COMPARE, "执行标书审查工作流");
+            log.info("执行标书审查工作流");
             WorkflowResult workflowResult = tenderReviewWorkflow.execute(context);
 
             // 4. 转换为 ReviewTenderToolResult 返回
             long executionTimeMs = System.currentTimeMillis() - startTime;
             ReviewTenderToolResult result = mapToToolResult(workflowResult, executionTimeMs);
 
-            bizLog.info(LogConstants.Step.REPORT,
-                    "标书审查完成, riskLevel=" + result.riskLevel() + ", score=" + result.score() + ", executionTimeMs=" + executionTimeMs);
+            log.info("标书审查完成, riskLevel={}, score={}, executionTimeMs={}",
+                    result.riskLevel(), result.score(), executionTimeMs);
 
             return result;
 
         } catch (IllegalArgumentException e) {
-            bizLog.warn(LogConstants.Step.EXECUTE, "参数校验失败: " + e.getMessage());
+            log.warn("参数校验失败: " + e.getMessage());
             return ReviewTenderToolResult.failure("参数校验失败: " + e.getMessage());
         } catch (Exception e) {
-            bizLog.error(LogConstants.Step.EXECUTE, "标书审查执行失败", e);
+            log.error("标书审查执行失败", e);
             return ReviewTenderToolResult.failure("审查执行失败: " + e.getMessage());
         }
     }

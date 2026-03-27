@@ -1,18 +1,16 @@
 package com.liang.drugagent.scene.tender_review.orchestrator;
 
 import com.liang.drugagent.controller.domain.AgentChatContext;
-import com.liang.drugagent.agent.chat.AgentExecutionResult;
-import com.liang.drugagent.common.log.BusinessLogger;
-import com.liang.drugagent.common.log.LogConstants;
+import com.liang.drugagent.shared.domain.model.AgentExecutionResult;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
 import com.liang.drugagent.scene.tender_review.tool.ReviewTenderToolResultMapper;
 import com.liang.drugagent.shared.llm.LlmRequest;
 import com.liang.drugagent.shared.llm.LlmResponse;
 import com.liang.drugagent.shared.llm.LlmService;
-import com.liang.drugagent.tool.ReviewTenderTool;
+import com.liang.drugagent.scene.tender_review.tool.ReviewTenderTool;
 import com.liang.drugagent.tool.dto.ReviewTenderToolReq;
-import com.liang.drugagent.tool.dto.ReviewTenderToolResult;
+import com.liang.drugagent.scene.tender_review.tool.ReviewTenderToolResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -53,8 +51,6 @@ public class TenderReviewToolOrchestrator {
     private final ReviewTenderToolResultMapper resultMapper;
     private final LlmService llmService;
 
-    private static final BusinessLogger bizLog = BusinessLogger.forScene(LogConstants.Scene.TENDER_REVIEW);
-
     /**
      * 工具名称（与 ReviewTenderTool 一致）。
      */
@@ -82,12 +78,12 @@ public class TenderReviewToolOrchestrator {
                                             String userQuestion,
                                             AgentChatContext context) {
         long startTime = System.currentTimeMillis();
-        bizLog.info(LogConstants.Step.EXECUTE, "开始标书审查编排");
+        log.info("开始标书审查编排");
 
         // 1. 参数校验
         if (tenderReviewData == null || tenderReviewData.getDocuments() == null || tenderReviewData.getDocuments().isEmpty()) {
-            bizLog.warn(LogConstants.Step.EXECUTE, "标书审查数据为空");
-            return AgentExecutionResult.failure("无标书审查数据，请先上传文件");
+            log.warn("标书审查数据为空");
+            return AgentExecutionResult.failure(SceneEnum.TENDER_REVIEW, "无标书审查数据，请先上传文件");
         }
 
         try {
@@ -98,7 +94,7 @@ public class TenderReviewToolOrchestrator {
             ReviewTenderToolResult toolResult = reviewTenderTool.execute(toolRequest, tenderReviewData);
 
             if (!toolResult.success()) {
-                bizLog.warn(LogConstants.Step.EXECUTE, "工具执行失败: {}", toolResult.message());
+                log.warn("工具执行失败: {}", toolResult.message());
                 return AgentExecutionResult.builder()
                         .success(false)
                         .errorMessage(toolResult.message())
@@ -127,8 +123,8 @@ public class TenderReviewToolOrchestrator {
                     .build();
 
         } catch (Exception e) {
-            bizLog.error(LogConstants.Step.EXECUTE, "标书审查编排失败", e);
-            return AgentExecutionResult.failure("标书审查执行失败: " + e.getMessage());
+            log.error("标书审查编排失败", e);
+            return AgentExecutionResult.failure(SceneEnum.TENDER_REVIEW, "标书审查执行失败: " + e.getMessage());
         }
     }
 

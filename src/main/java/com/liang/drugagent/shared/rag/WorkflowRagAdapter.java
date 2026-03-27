@@ -65,9 +65,7 @@ public class WorkflowRagAdapter {
         if (fromMetadata != null && !fromMetadata.isBlank()) {
             return fromMetadata;
         }
-        return context.getUserId() == null || context.getUserId().isBlank()
-                ? "default-org"
-                : context.getUserId();
+        return "default-org";
     }
 
     private String readMetadata(AgentChatContext context, String key) {

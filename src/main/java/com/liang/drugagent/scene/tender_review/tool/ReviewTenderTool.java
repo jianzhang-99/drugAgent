@@ -1,8 +1,7 @@
 package com.liang.drugagent.scene.tender_review.tool;
 
 import com.liang.drugagent.controller.domain.AgentChatContext;
-import com.liang.drugagent.common.log.BusinessLogger;
-import com.liang.drugagent.common.log.LogConstants;
+import com.liang.drugagent.tool.dto.ReviewTenderToolReq;
 import com.liang.drugagent.scene.tender_review.model.TenderDocument;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
 import com.liang.drugagent.scene.tender_review.service.TenderCaseService;
@@ -69,8 +68,6 @@ public class ReviewTenderTool {
     private final TenderDocumentParseService parseService;
     private final TenderCaseService caseService;
 
-    private static final BusinessLogger bizLog = BusinessLogger.forScene(LogConstants.Scene.TENDER_REVIEW);
-
     /**
      * 执行标书审查。
      *
@@ -88,27 +85,27 @@ public class ReviewTenderTool {
      */
     public ReviewTenderToolResult reviewTender(ReviewTenderToolRequest request) {
         long startTime = System.currentTimeMillis();
-        bizLog.info(LogConstants.Step.EXECUTE, "开始标书审查请求");
+        log.info("开始标书审查请求");
 
         // 1. 参数校验
         validateRequest(request);
 
         try {
             // 2. 根据 sessionId/fileIds 获取文件
-            bizLog.info(LogConstants.Step.PARSE, "获取待审查文件, fileIds=" + request.fileIds());
+            log.info("获取待审查文件, fileIds=" + request.fileIds());
             List<TenderDocument> documents = fetchDocuments(request);
 
             if (documents == null || documents.size() < 2) {
-                bizLog.warn(LogConstants.Step.PARSE, "文件数量不足, count=" + (documents != null ? documents.size() : 0));
+                log.warn("文件数量不足, count=" + (documents != null ? documents.size() : 0));
                 return ReviewTenderToolResult.failure("至少需要 2 份标书文件进行比对审查，当前可用文件数量不足");
             }
 
             // 3. 组装 TenderReviewData
-            bizLog.info(LogConstants.Step.EXTRACT, "组装标书审查数据");
+            log.info("组装标书审查数据");
             TenderReviewData reviewData = assembleTenderReviewData(request, documents);
 
             // 4. 调用 TenderReviewWorkflow.execute()
-            bizLog.info(LogConstants.Step.COMPARE, "执行标书审查工作流");
+            log.info("执行标书审查工作流");
             AgentChatContext context = buildAgentChatContext(request, reviewData);
             WorkflowResult workflowResult = tenderReviewWorkflow.execute(context);
 
@@ -116,19 +113,19 @@ public class ReviewTenderTool {
             long executionTimeMs = System.currentTimeMillis() - startTime;
             ReviewTenderToolResult result = mapToToolResult(workflowResult, request, executionTimeMs);
 
-            bizLog.info(LogConstants.Step.REPORT,
-                    "标书审查完成, riskLevel=" + result.riskLevel() + ", score=" + result.score() + ", executionTimeMs=" + executionTimeMs);
+            log.info("标书审查完成, riskLevel={}, score={}, executionTimeMs={}",
+                    result.riskLevel(), result.score(), executionTimeMs);
 
             return result;
 
         } catch (IllegalArgumentException e) {
-            bizLog.warn(LogConstants.Step.EXECUTE, "参数校验失败: " + e.getMessage());
+            log.warn("参数校验失败: " + e.getMessage());
             return ReviewTenderToolResult.failure("参数校验失败: " + e.getMessage());
         } catch (IOException e) {
-            bizLog.error(LogConstants.Step.PARSE, "文件读取失败", e);
+            log.error("文件读取失败", e);
             return ReviewTenderToolResult.failure("文件读取失败: " + e.getMessage());
         } catch (Exception e) {
-            bizLog.error(LogConstants.Step.EXECUTE, "标书审查执行失败", e);
+            log.error("标书审查执行失败", e);
             return ReviewTenderToolResult.failure("审查执行失败: " + e.getMessage());
         }
     }
@@ -163,6 +160,20 @@ public class ReviewTenderTool {
             log.error("[ReviewTenderTool] 使用预加载数据执行审查失败: {}", e.getMessage(), e);
             return ReviewTenderToolResult.failure("标书审查执行失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 执行标书审查（供外部调用的入口方法）。
+     */
+    public ReviewTenderToolResult execute(ReviewTenderToolReq request, TenderReviewData tenderReviewData) {
+        ReviewTenderToolRequest convertedRequest = new ReviewTenderToolRequest(
+                request.sessionId(),
+                request.fileIds(),
+                request.reviewFocus(),
+                request.userInstruction(),
+                request.needStructuredReport()
+        );
+        return reviewTender(convertedRequest, tenderReviewData);
     }
 
     /**

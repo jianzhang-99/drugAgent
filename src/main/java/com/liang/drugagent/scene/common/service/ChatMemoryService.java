@@ -49,7 +49,6 @@ public class ChatMemoryService extends ServiceImpl<ChatSessionMapper, ChatSessio
     public ChatSession createSession(String title, String scene, String userId) {
         ChatSession session = ChatSession.builder()
                 .title(title)
-                .scene(scene)
                 .userId(userId)
                 .isDeleted(0)
                 .createdAt(LocalDateTime.now())

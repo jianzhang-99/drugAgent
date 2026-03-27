@@ -1,0 +1,18 @@
+# LLM 配置 - 使用 MiniMax 进行集成测试
+llm:
+  default-provider: MINIMAX
+  routing-provider: MINIMAX
+  chat-provider: MINIMAX
+  report-provider: MINIMAX
+
+minimax:
+  enabled: true
+  api-key: sk-cp-pp0lySoRcTbY72cTSzSyx6-bYCG1LDHziPMNYdd0F6_Eo5jhh9r_LMqLLSZiQTONH0cgfsLALgO7wgXVmdPvp85wyAb2RJN9y6IJcqtrAckSINmuZbVgPy4
+  base-url: https://api.minimaxi.com
+  model: MiniMax-Text-01
+  timeout: 60000
+  max-tokens: 8192
+  temperature: 0.7
+
+dashscope:
+  enabled: false
