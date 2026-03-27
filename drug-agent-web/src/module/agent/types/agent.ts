@@ -91,6 +91,7 @@ export interface ChatRequest {
   userId?: string;
   sceneHint?: string;
   fileIds?: string[];
+  model?: string;
 }
 
 export interface SubmitRequest {
@@ -171,4 +172,12 @@ export interface ApiResponse<T> {
   code: number;
   message: string;
   data: T;
+}
+
+// 模型信息
+export interface ModelInfo {
+  model: string;
+  name: string;
+  description?: string;
+  isDefault?: boolean;
 }

@@ -50,6 +50,6 @@ public enum LlmProviderType {
                 return type;
             }
         }
-        return DASHSCOPE;
+        return MINIMAX;
     }
 }

@@ -22,6 +22,13 @@
             <span>◫</span>
             <span>引用知识</span>
           </button>
+          <t-select
+            v-model="store.currentModel"
+            :options="modelOptions"
+            size="small"
+            class="model-select"
+            @change="handleModelChange"
+          />
         </div>
 
         <t-button
@@ -44,13 +51,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useAgentStore } from '../store/agentStore';
 import UploadPanel from './UploadPanel.vue';
 
 const store = useAgentStore();
 const inputText = ref('');
 const showUploadPanel = ref(false);
+
+const modelOptions = computed(() =>
+  store.availableModels.map((m) => ({
+    value: m.model,
+    label: m.name,
+  }))
+);
 
 function handleSend() {
   if (!inputText.value.trim()) return;
@@ -64,6 +78,14 @@ function handleKeydown(e: KeyboardEvent) {
     handleSend();
   }
 }
+
+function handleModelChange(model: string) {
+  store.setCurrentModel(model);
+}
+
+onMounted(() => {
+  store.loadModels();
+});
 </script>
 
 <style scoped>
@@ -137,6 +159,14 @@ function handleKeydown(e: KeyboardEvent) {
 .send-btn {
   min-width: 120px;
   border-radius: 12px;
+}
+
+.model-select {
+  width: 120px;
+}
+
+.model-select :deep(.t-select__placeholder) {
+  font-size: 13px;
 }
 
 .composer-note {

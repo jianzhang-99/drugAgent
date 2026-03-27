@@ -11,6 +11,7 @@ import type {
   CreateSessionRequest,
   Attachment,
   ChatSession,
+  ModelInfo,
 } from '../types/agent';
 import * as agentApi from '../api/agentApi';
 import {
@@ -47,6 +48,15 @@ export const useAgentStore = defineStore('agent', () => {
 
   /** 当前上传的文件列表 */
   const pendingFiles = ref<Attachment[]>([]);
+
+  /** 可用模型列表 */
+  const availableModels: ModelInfo[] = [
+    { model: 'minimax', name: 'MiniMax', isDefault: true },
+    { model: 'dashscope', name: '阿里云百炼', isDefault: false },
+  ];
+
+  /** 当前选中的模型 */
+  const currentModel = ref<string>('minimax');
 
   // ==================== 计算属性 ====================
 
@@ -198,6 +208,7 @@ export const useAgentStore = defineStore('agent', () => {
         sessionId: activeSessionId.value,
         userId: 'default_user',
         sceneHint: activeSession.value?.scene,
+        model: currentModel.value,
       });
 
       if (res.data.code === 200 || res.data.code === 0) {
@@ -349,6 +360,23 @@ export const useAgentStore = defineStore('agent', () => {
     pendingFiles.value = [];
   }
 
+  /**
+   * 加载可用模型列表（使用预定义列表）
+   */
+  function loadModels() {
+    const defaultModel = availableModels.find((m) => m.isDefault);
+    if (defaultModel) {
+      currentModel.value = defaultModel.model;
+    }
+  }
+
+  /**
+   * 切换当前模型
+   */
+  function setCurrentModel(model: string) {
+    currentModel.value = model;
+  }
+
   return {
     // 状态
     sessions,
@@ -359,6 +387,8 @@ export const useAgentStore = defineStore('agent', () => {
     uploading,
     currentResult,
     pendingFiles,
+    availableModels,
+    currentModel,
 
     // 计算属性
     activeSession,
@@ -379,5 +409,7 @@ export const useAgentStore = defineStore('agent', () => {
     addUploadFile,
     removeUploadFile,
     clearUploadFiles,
+    loadModels,
+    setCurrentModel,
   };
 });
