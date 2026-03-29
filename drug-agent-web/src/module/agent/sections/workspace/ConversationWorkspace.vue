@@ -35,9 +35,17 @@
         </div>
 
         <div v-if="store.sending" class="message-row role-assistant">
+          <div class="avatar agent-avatar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+          </div>
           <div class="thinking-card">
-            <t-loading />
-            <span>智能体正在执行深层审查流程...</span>
+             <div class="pulsing-halo">
+               <div class="pulse-core"></div>
+             </div>
+             <div class="thinking-text">
+               <div class="thinking-main">智能体调度与推理中...</div>
+               <div class="thinking-sub">正在调用文档解析引擎并组装知识上下文</div>
+             </div>
           </div>
         </div>
       </div>
@@ -238,16 +246,81 @@ async function handleQuickAction(prompt: string) {
   justify-content: flex-start;
 }
 
+.avatar {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+}
+
+.agent-avatar {
+  background: linear-gradient(135deg, #818cf8, #c084fc);
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(139, 92, 246, 0.2);
+}
+
 .thinking-card {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 14px 18px;
-  border: 1px solid rgba(19, 49, 59, 0.08);
-  border-radius: 18px;
-  background: #f7f9fc;
-  color: #64758e;
+  gap: 16px;
+  padding: 16px 20px;
+  border: 1px solid rgba(59, 130, 246, 0.16);
+  border-radius: 12px;
+  border-bottom-left-radius: 4px;
+  background: #f8fafc;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.05);
+}
+
+.pulsing-halo {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pulse-core {
+  width: 8px;
+  height: 8px;
+  background: #3b82f6;
+  border-radius: 50%;
+}
+
+.pulsing-halo::before {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #3b82f6;
+  border-radius: 50%;
+  animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+.thinking-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.thinking-main {
+  color: #1e293b;
   font-size: 14px;
+  font-weight: 600;
+}
+
+.thinking-sub {
+  color: #64748b;
+  font-size: 12px;
 }
 
 .composer-dock {
