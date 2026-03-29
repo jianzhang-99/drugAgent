@@ -603,3 +603,173 @@ AgentSceneService
 `AgentSceneService 统一编排，各 workflow 自由返回，最后由 AgentSceneService 统一整理成前端响应。`
 
 这样更轻，也更符合你现在项目的实际阶段。
+
+---
+
+## 15. 标书审查 Workflow 收敛建议
+
+### 15.1 推荐链路
+
+标书审查场景在 MVP 阶段，建议收敛为下面这条主链路：
+
+```text
+AgentChatService
+-> AgentSceneService
+-> TenderReviewSceneService
+   -> 参数校验
+   -> TenderReviewPreparationService
+   -> TenderReviewWorkflow
+   -> 返回 TenderReviewResult
+-> AgentSceneService
+   -> 输出校验
+   -> 适配 AgentChatResp
+-> 前端
+```
+
+这条链路强调两点：
+
+1. 标书审查场景内部尽量保持确定性 workflow
+2. 上层统一由 `AgentSceneService` 做结果收口
+
+### 15.2 为什么不建议当前继续保留过多层级
+
+如果当前标书审查链路是：
+
+```text
+AgentSceneService
+-> TenderReviewSceneService
+-> TenderReviewPreparationService
+-> TenderReviewToolOrchestrator
+-> ReviewTenderTool
+-> TenderReviewWorkflow
+```
+
+那么对于 MVP 来说偏重，主要问题有：
+
+1. `TenderReviewSceneService`、`TenderReviewToolOrchestrator`、`ReviewTenderTool` 职责容易重叠
+2. 当前如果没有真实的多 Tool Calling，`Tool` 和 `Orchestrator` 的价值还没有真正体现
+3. 标书审查本质上是强确定性业务流，更适合固定 workflow，而不是多层 agent 化编排
+4. 层级过多后，问题排查、规则调整、链路理解都会变重
+
+因此，MVP 阶段更适合收敛成：
+
+`SceneService -> PreparationService -> Workflow`
+
+而不是：
+
+`SceneService -> Orchestrator -> Tool -> Workflow`
+
+### 15.3 各层职责建议
+
+#### AgentSceneService
+
+职责：
+
+1. 识别当前请求是否进入标书审查场景
+2. 抽取标书审查所需参数
+3. 调用 `TenderReviewSceneService`
+4. 拿到 `TenderReviewResult`
+5. 做输出校验
+6. 适配成 `AgentChatResp`
+
+不负责：
+
+1. 标书规则命中
+2. 风险计算
+3. 证据生成
+
+#### TenderReviewSceneService
+
+职责：
+
+1. 作为标书审查场景唯一入口
+2. 做最低限度参数校验
+3. 调用 `TenderReviewPreparationService`
+4. 调用 `TenderReviewWorkflow`
+5. 返回 `TenderReviewResult`
+
+不负责：
+
+1. 上层场景路由
+2. 通用输出校验
+3. 前端响应最终装配
+
+#### TenderReviewPreparationService
+
+职责：
+
+1. 整理文件、上下文、前端参数
+2. 构建标书审查所需输入数据
+3. 补齐 workflow 所需最小数据集
+
+不负责：
+
+1. 风险判断
+2. 审查结论生成
+
+#### TenderReviewWorkflow
+
+职责：
+
+1. 执行标书审查主链路
+2. 完成文档解析、规则命中、风险融合、报告生成
+3. 返回 `TenderReviewResult`
+
+它是标书审查场景的核心确定性执行引擎。
+
+### 15.4 TenderReviewResult 建议
+
+标书审查结果不必统一进通用 `WorkflowResult`，建议单独定义 `TenderReviewResult`。
+
+建议至少包含：
+
+- `caseId`
+- `summary`
+- `answer`
+- `riskLevel`
+- `score`
+- `report`
+- `evidenceList`
+- `steps`
+
+如果后续需要，可继续补充：
+
+- `evidenceGroups`
+- `documentIds`
+- `managementSummary`
+- `suggestedActions`
+
+### 15.5 对现有类的处理建议
+
+建议保留：
+
+- `TenderReviewSceneService`
+- `TenderReviewPreparationService`
+- `TenderReviewWorkflow`
+
+建议弱化或暂时去掉：
+
+- `ReviewTenderTool`
+- `TenderReviewToolOrchestrator`
+
+判断标准如下：
+
+1. 如果当前只有一个主审查流程，则优先去掉 `Tool/Orchestrator`
+2. 只有当后续真的拆成多个可独立编排的工具时，再恢复 `Tool/Orchestrator`
+
+例如未来如果标书审查拆成：
+
+- 相似片段检测工具
+- 围标规则检测工具
+- 证据归并工具
+- 报告生成工具
+
+这时再引入 `Orchestrator` 才更合理。
+
+### 15.6 一句话总结
+
+标书审查在 MVP 阶段最合理的形态是：
+
+`TenderReviewSceneService -> TenderReviewPreparationService -> TenderReviewWorkflow`
+
+然后由 `AgentSceneService` 在场景外层做统一收口和输出适配。

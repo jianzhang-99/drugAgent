@@ -77,7 +77,7 @@
     </section>
 
     <footer class="sidebar-footer">
-      <button class="footer-link" type="button" :class="{ collapsed: store.isSidebarCollapsed }">
+      <button class="footer-link" type="button" :class="{ collapsed: store.isSidebarCollapsed }" @click="showSettings = true">
         <span class="footer-icon">⚙</span>
         <span v-show="!store.isSidebarCollapsed">偏好与系统配置</span>
       </button>
@@ -87,12 +87,15 @@
         <span v-show="!store.isSidebarCollapsed">收起侧边栏</span>
       </button>
     </footer>
+
+    <SystemSettingsDialog v-model="showSettings" />
   </aside>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue';
 import { useAgentStore } from '../../store/agentStore';
+import SystemSettingsDialog from '../../components/SystemSettingsDialog.vue';
 
 type ViewMode = 'WORKSPACE' | 'TASKS' | 'KNOWLEDGE';
 
@@ -100,6 +103,7 @@ const store = useAgentStore();
 const editingSessionId = ref<string | null>(null);
 const editingTitle = ref('');
 const titleInputRef = ref<HTMLInputElement>();
+const showSettings = ref(false);
 
 const navItems = [
   { id: 'TASKS' as ViewMode, label: '全局任务看板', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>' },
