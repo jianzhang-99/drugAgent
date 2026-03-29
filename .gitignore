@@ -38,9 +38,6 @@ drug-agent-web/node_modules/
 drug-agent-web/dist/
 drug-agent-web/.vite/
 
-### Local Configuration ###
-src/main/resources/application-local.yml
-
 ### Logs ###
 doc/log/
 
