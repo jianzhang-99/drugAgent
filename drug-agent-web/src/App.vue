@@ -33,4 +33,23 @@ textarea,
 input {
   font: inherit;
 }
+
+/* 简约定制化滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.3);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(148, 163, 184, 0.6);
+}
 </style>

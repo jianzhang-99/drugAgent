@@ -79,6 +79,18 @@ defineProps<{ message: Message }>();
   align-items: flex-start;
   gap: 12px;
   margin-bottom: 20px;
+  animation: slide-up-fade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slide-up-fade {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .avatar {

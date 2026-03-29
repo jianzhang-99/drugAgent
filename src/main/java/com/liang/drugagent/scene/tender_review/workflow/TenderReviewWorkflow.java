@@ -3,7 +3,6 @@ package com.liang.drugagent.scene.tender_review.workflow;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.scene.SceneEnum;
-import com.liang.drugagent.scene.SceneWorkflow;
 import com.liang.drugagent.agent.chat.LLMChatService;
 import com.liang.drugagent.scene.tender_review.model.RiskFusionResult;
 import com.liang.drugagent.scene.tender_review.model.RuleHit;
@@ -29,7 +28,7 @@ import java.util.Map;
  * @author liangjiajian
  */
 @Component
-public class TenderReviewWorkflow implements SceneWorkflow {
+public class TenderReviewWorkflow {
 
     private final LLMChatService LLMChatService;
     private final TenderRuleEngine tenderRuleEngine;
@@ -58,7 +57,6 @@ public class TenderReviewWorkflow implements SceneWorkflow {
         this.tenderReviewDataResolver = tenderReviewDataResolver;
     }
 
-    @Override
     public SceneEnum support() {
         return SceneEnum.TENDER_REVIEW;
     }
@@ -81,7 +79,6 @@ public class TenderReviewWorkflow implements SceneWorkflow {
      * @param context Agent 上下文
      * @return 工作流执行结果
      */
-    @Override
     public WorkflowResult execute(AgentChatContext context) {
         TenderReviewData tenderReviewData = readTenderReviewData(context);
         if (tenderReviewData != null) {
