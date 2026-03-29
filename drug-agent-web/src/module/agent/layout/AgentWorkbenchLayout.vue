@@ -1,24 +1,34 @@
 <template>
   <div class="agent-workbench">
-    <AgentSidebar class="workbench-sidebar" />
+    <AgentSidebar
+      class="workbench-sidebar"
+      :style="{ flexBasis: store.isSidebarCollapsed ? '80px' : '396px', overflow: 'hidden', transition: 'flex-basis 0.3s' }"
+    />
 
     <div class="workbench-main">
-      <WorkspaceHeader />
+      <WorkspaceHeader v-if="store.activeView === 'WORKSPACE'" />
 
       <main class="workbench-content">
-        <ConversationWorkspace />
+        <ConversationWorkspace v-if="store.activeView === 'WORKSPACE'" />
+        <TaskBoardMock v-else-if="store.activeView === 'TASKS'" />
+        <KnowledgeBaseMock v-else-if="store.activeView === 'KNOWLEDGE'" />
       </main>
 
-      <ResultDrawer />
+      <ResultDrawer v-if="store.activeView === 'WORKSPACE'" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useAgentStore } from '../store/agentStore';
 import AgentSidebar from '../sections/sidebar/AgentSidebar.vue';
 import WorkspaceHeader from '../sections/workspace/WorkspaceHeader.vue';
 import ConversationWorkspace from '../sections/workspace/ConversationWorkspace.vue';
 import ResultDrawer from '../components/ResultDrawer.vue';
+import TaskBoardMock from '../pages/TaskBoardMock.vue';
+import KnowledgeBaseMock from '../pages/KnowledgeBaseMock.vue';
+
+const store = useAgentStore();
 </script>
 
 <style scoped>
@@ -31,6 +41,7 @@ import ResultDrawer from '../components/ResultDrawer.vue';
 }
 
 .workbench-sidebar {
+  /* flex-basis handled dynamically */
   flex: 0 0 396px;
 }
 
@@ -40,6 +51,7 @@ import ResultDrawer from '../components/ResultDrawer.vue';
   min-width: 0;
   flex-direction: column;
   background: rgba(255, 255, 255, 0.92);
+  transition: width 0.3s;
 }
 
 .workbench-content {
@@ -49,7 +61,7 @@ import ResultDrawer from '../components/ResultDrawer.vue';
 
 @media (max-width: 1120px) {
   .workbench-sidebar {
-    flex-basis: 320px;
+    /* overridden by inline style if collapsed */
   }
 }
 
@@ -59,7 +71,7 @@ import ResultDrawer from '../components/ResultDrawer.vue';
   }
 
   .workbench-sidebar {
-    flex-basis: auto;
+    flex-basis: auto !important;
   }
 }
 </style>

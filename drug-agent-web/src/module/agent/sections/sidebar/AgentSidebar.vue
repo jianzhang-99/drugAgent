@@ -2,11 +2,11 @@
   <aside class="sidebar-shell">
     <div class="brand-card">
       <div class="brand-mark">✦</div>
-      <div class="brand-copy">
+      <div class="brand-copy" v-if="!store.isSidebarCollapsed">
         <h1>横渡智能体</h1>
         <p>监管任务统一入口</p>
       </div>
-      <button class="brand-action" type="button" @click="handleNewSession">✎</button>
+      <button v-if="!store.isSidebarCollapsed" class="brand-action" type="button" @click="handleNewSession">✎</button>
     </div>
 
     <nav class="nav-block">
@@ -14,15 +14,15 @@
         v-for="item in navItems"
         :key="item.id"
         type="button"
-        :class="['nav-item', { active: item.id === activeView }]"
-        @click="activeView = item.id"
+        :class="['nav-item', { active: item.id === store.activeView }]"
+        @click="store.activeView = item.id"
       >
         <span class="nav-icon">{{ item.icon }}</span>
-        <span class="nav-label">{{ item.label }}</span>
+        <span v-if="!store.isSidebarCollapsed" class="nav-label">{{ item.label }}</span>
       </button>
     </nav>
 
-    <section class="history-block">
+    <section class="history-block" v-show="!store.isSidebarCollapsed">
       <header class="block-header">
         <span class="block-kicker">历史审查会话</span>
       </header>
@@ -75,13 +75,14 @@
     </section>
 
     <footer class="sidebar-footer">
-      <button class="footer-link" type="button">
+      <button class="footer-link" type="button" v-if="!store.isSidebarCollapsed">
         <span>⚙</span>
         <span>偏好与系统配置</span>
       </button>
-      <button class="footer-link muted" type="button">
+      <button class="footer-link muted" type="button" @click="store.isSidebarCollapsed = !store.isSidebarCollapsed">
         <span>☰</span>
-        <span>收起侧边栏</span>
+        <span v-if="!store.isSidebarCollapsed">收起侧边栏</span>
+        <span v-else>展开</span>
       </button>
     </footer>
   </aside>
@@ -94,7 +95,6 @@ import { useAgentStore } from '../../store/agentStore';
 type ViewMode = 'WORKSPACE' | 'TASKS' | 'KNOWLEDGE';
 
 const store = useAgentStore();
-const activeView = ref<ViewMode>('WORKSPACE');
 const editingSessionId = ref<string | null>(null);
 const editingTitle = ref('');
 const titleInputRef = ref<HTMLInputElement>();
@@ -132,7 +132,7 @@ onMounted(async () => {
 });
 
 function handleNewSession() {
-  activeView.value = 'WORKSPACE';
+  store.activeView = 'WORKSPACE';
   store.activeSessionId = null;
 }
 
@@ -252,6 +252,10 @@ function formatTime(timeStr: string) {
 .nav-item.active {
   background: rgba(255, 255, 255, 0.74);
   color: #20314c;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .nav-icon {

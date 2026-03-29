@@ -3,14 +3,16 @@
     <UploadPanel v-if="showUploadPanel" @close="showUploadPanel = false" />
 
     <div class="composer-panel">
-      <textarea
-        v-model="inputText"
-        class="composer-input"
-        :disabled="store.sending"
-        placeholder="描述您的监管需求，例如：检测这两份标书文件是否雷同..."
-        rows="3"
-        @keydown.enter.prevent="handleSend"
-      ></textarea>
+      <div class="composer-input-wrapper">
+        <t-textarea
+          v-model="inputText"
+          class="composer-input"
+          :disabled="store.sending"
+          placeholder="描述您的监管需求，例如：检测这两份标书文件是否雷同..."
+          :autosize="{ minRows: 1, maxRows: 8 }"
+          @keydown.enter.prevent="handleSend"
+        />
+      </div>
 
       <div class="composer-footer">
         <div class="composer-tools">
@@ -18,7 +20,7 @@
             <span>⇪</span>
             <span>上传材料</span>
           </button>
-          <button class="tool-button" type="button">
+          <button class="tool-button" type="button" @click="handleKnowledgeClick">
             <span>◫</span>
             <span>引用知识</span>
           </button>
@@ -47,6 +49,7 @@
 import { ref } from 'vue';
 import { useAgentStore } from '../../store/agentStore';
 import UploadPanel from '../../components/UploadPanel.vue';
+import { MessagePlugin } from 'tdesign-vue-next';
 
 const store = useAgentStore();
 const inputText = ref('');
@@ -56,6 +59,10 @@ function handleSend() {
   if (!inputText.value.trim()) return;
   store.sendMessage(inputText.value.trim());
   inputText.value = '';
+}
+
+function handleKnowledgeClick() {
+  MessagePlugin.info('知识库关联对话功能建设中，后续可支持从右侧面板拖拽法务条款');
 }
 </script>
 
@@ -72,21 +79,27 @@ function handleSend() {
   padding: 10px 10px 6px;
 }
 
-.composer-input {
-  width: 100%;
-  border: none;
-  box-shadow: none;
-  padding: 18px 22px 16px;
-  resize: none;
-  color: #31435f;
-  font-size: 18px;
-  line-height: 1.7;
-  background: transparent;
-  outline: none;
-  font-family: inherit;
+.composer-input-wrapper {
+  padding: 8px 10px 2px;
 }
 
-.composer-input::placeholder {
+:deep(.t-textarea__inner) {
+  border: none !important;
+  box-shadow: none !important;
+  padding: 10px 12px;
+  resize: none;
+  color: #31435f;
+  font-size: 16px;
+  line-height: 1.7;
+  background: transparent !important;
+  outline: none;
+}
+
+:deep(.t-textarea__inner:focus) {
+  box-shadow: none !important;
+}
+
+:deep(.t-textarea__inner::placeholder) {
   color: #9aa9bf;
 }
 
