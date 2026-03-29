@@ -7,7 +7,7 @@ import lombok.Getter;
  * 场景化 RAG 策略。
  */
 @Getter
-@Builder
+@Builder(toBuilder = true)
 public class RagPolicy {
 
     private int topK;

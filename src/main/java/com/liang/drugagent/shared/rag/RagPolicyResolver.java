@@ -3,18 +3,51 @@ package com.liang.drugagent.shared.rag;
 import com.liang.drugagent.scene.SceneEnum;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 /**
  * 按场景解析 RAG 策略。
- *
- * 设计原则：
- * - 合同场景偏关键词（条款号、术语）
- * - 风险预警场景关键词与语义均衡
- * - 标书场景偏语义（雷同/近义改写）
  */
 @Component
 public class RagPolicyResolver {
 
     public RagPolicy resolve(SceneEnum scene) {
+        return resolve(scene, null, null, null);
+    }
+
+    public RagPolicy resolve(SceneEnum scene,
+                             String strategyCode,
+                             String reviewFocus,
+                             List<String> tags) {
+        RagPolicy base = buildBasePolicy(scene);
+        if (strategyCode == null || strategyCode.isBlank()) {
+            return base;
+        }
+
+        RagPolicy.RagPolicyBuilder builder = base.toBuilder();
+        switch (strategyCode) {
+            case "PLAGIARISM" -> builder.keywordWeight(0.35)
+                    .vectorWeight(0.65)
+                    .minScore(base.getMinScore() - 0.02)
+                    .minEvidence(Math.max(2, base.getMinEvidence() - 1));
+            case "TEMPLATE_HOMOLOGY" -> builder.keywordWeight(0.55)
+                    .vectorWeight(0.45)
+                    .minScore(base.getMinScore())
+                    .minEvidence(base.getMinEvidence());
+            default -> {
+            }
+        }
+
+        if (reviewFocus != null && reviewFocus.contains("严格")) {
+            builder.minScore(base.getMinScore() + 0.02);
+        }
+        if (tags != null && tags.contains("high-risk")) {
+            builder.minEvidence(base.getMinEvidence() + 1);
+        }
+        return builder.build();
+    }
+
+    private RagPolicy buildBasePolicy(SceneEnum scene) {
         if (scene == SceneEnum.CONTRACT_PRECHECK) {
             return RagPolicy.builder()
                     .topK(6)
