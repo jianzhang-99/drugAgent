@@ -113,7 +113,7 @@ async function handleQuickAction(prompt: string) {
   flex: 1;
   align-items: center;
   justify-content: center;
-  padding: 40px 48px 228px;
+  padding: 40px 48px 120px;
 }
 
 .empty-content {

@@ -30,7 +30,10 @@
       "Bash(curl -s -X POST http://localhost:8124/api/sessions/test123/messages -H \"Content-Type: application/json\" -d '{\"\"\"\"role\"\"\"\":\"\"\"\"user\"\"\"\",\"\"\"\"content\"\"\"\":\"\"\"\"你好，你是什么模型？\"\"\"\"}')",
       "Bash(curl -s http://localhost:8124/actuator/health)",
       "Bash(curl:*)",
-      "Bash(./mvnw dependency:tree)"
+      "Bash(./mvnw dependency:tree)",
+      "Bash(mvn compile:*)",
+      "Bash(mkdir -p support)",
+      "Bash(mv DocumentTextNormalizer.java DocumentSectionRecognizer.java support/)"
     ]
   }
 }

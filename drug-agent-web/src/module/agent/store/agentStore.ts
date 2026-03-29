@@ -31,6 +31,10 @@ export const useAgentStore = defineStore('agent', () => {
   /** 当前激活的会话 ID */
   const activeSessionId = ref<string | null>(null);
 
+  /** 侧边栏及主视图状态 */
+  const activeView = ref<'WORKSPACE' | 'TASKS' | 'KNOWLEDGE'>('WORKSPACE');
+  const isSidebarCollapsed = ref(false);
+
   /** 按会话 ID 存储的消息映射 */
   const messagesBySession = ref<Record<string, Message[]>>({});
 
@@ -381,6 +385,8 @@ export const useAgentStore = defineStore('agent', () => {
     // 状态
     sessions,
     activeSessionId,
+    activeView,
+    isSidebarCollapsed,
     messagesBySession,
     loading,
     sending,
