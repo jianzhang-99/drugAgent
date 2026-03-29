@@ -2,7 +2,7 @@
   <div class="agent-workbench">
     <AgentSidebar
       class="workbench-sidebar"
-      :style="{ flexBasis: store.isSidebarCollapsed ? '80px' : '396px', overflow: 'hidden', transition: 'flex-basis 0.3s' }"
+      :style="{ flexBasis: store.isSidebarCollapsed ? '80px' : '396px', overflow: 'hidden', transition: 'flex-basis 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }"
     />
 
     <div class="workbench-main">
@@ -51,7 +51,7 @@ const store = useAgentStore();
   min-width: 0;
   flex-direction: column;
   background: rgba(255, 255, 255, 0.92);
-  transition: width 0.3s;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .workbench-content {

@@ -2,7 +2,9 @@
   <section class="workspace-shell">
     <div v-if="!store.activeSessionId" class="workspace-empty">
       <div class="empty-content">
-        <div class="hero-mark">✦</div>
+        <div class="hero-mark">
+          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+        </div>
         <h2>有什么我可以帮您分析的?</h2>
         <p>直接描述您的监管需求，智能体将自动分发到对应的工作流</p>
 
@@ -14,7 +16,7 @@
             class="task-card"
             @click="handleQuickAction(action.prompt)"
           >
-            <div :class="['task-icon', action.color]">{{ action.icon }}</div>
+            <div :class="['task-icon', action.color]" v-html="action.icon"></div>
             <div class="task-title">{{ action.label }}</div>
             <div class="task-desc">{{ action.desc }}</div>
           </button>
@@ -58,21 +60,21 @@ const messageListRef = ref<HTMLElement>();
 
 const quickActions = [
   {
-    icon: '▣',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>',
     color: 'indigo',
     label: '标书审查',
     desc: '帮我对比新上传的这几份标书文件，检查是否有雷同或围标嫌疑。',
     prompt: '帮我对比新上传的这几份标书文件，检查是否有雷同或围标嫌疑。',
   },
   {
-    icon: '◈',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10.4 12.6a2 2 0 1 1 3 3L8 21l-4 1 1-4Z"/><path d="M16 10.5 22 16"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M22 6l-6-6"/><path d="M7 21h10a2 2 0 0 0 2-2V8m0 0H14a2 2 0 0 1-2-2V2H7a2 2 0 0 0-2 2v10.5"/></svg>',
     color: 'green',
     label: '合同预审',
     desc: '审查最新版采购合同，基于合规知识库提取潜在风险条款。',
     prompt: '审查最新版采购合同，基于合规知识库提取潜在风险条款。',
   },
   {
-    icon: '△',
+    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>',
     color: 'amber',
     label: '合规预警',
     desc: '分析近 3 个月骨科耗材采购数据，生成异常波动预警报告。',
@@ -123,22 +125,21 @@ async function handleQuickAction(prompt: string) {
 
 .hero-mark {
   display: flex;
-  width: 92px;
-  height: 92px;
+  width: 72px;
+  height: 72px;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 30px;
-  border-radius: 28px;
-  background: linear-gradient(135deg, #3d79f7, #4b4de7);
+  margin: 0 auto 24px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #38bdf8, #818cf8, #c084fc);
   color: #fff;
-  font-size: 40px;
-  box-shadow: 0 24px 48px rgba(76, 93, 235, 0.24);
+  box-shadow: 0 16px 32px rgba(129, 140, 248, 0.25);
 }
 
 .empty-content h2 {
-  margin: 0 0 10px;
-  color: #20314c;
-  font-size: clamp(40px, 4.2vw, 60px);
+  margin: 0 0 12px;
+  color: #0f172a;
+  font-size: clamp(32px, 3.5vw, 48px);
   line-height: 1.08;
   font-weight: 800;
 }
@@ -157,59 +158,58 @@ async function handleQuickAction(prompt: string) {
 }
 
 .task-card {
-  border: 1px solid #dbe5f0;
-  border-radius: 28px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.04);
-  padding: 22px 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  padding: 24px;
   text-align: left;
   cursor: pointer;
-  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .task-card:hover {
-  transform: translateY(-2px);
-  border-color: #ccd9ea;
-  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.07);
+  transform: translateY(-4px);
+  border-color: #cbd5e1;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
 }
 
 .task-icon {
   display: flex;
-  width: 54px;
-  height: 54px;
+  width: 48px;
+  height: 48px;
   align-items: center;
   justify-content: center;
-  border-radius: 18px;
-  margin-bottom: 18px;
-  font-size: 24px;
+  border-radius: 14px;
+  margin-bottom: 20px;
 }
 
 .task-icon.indigo {
-  background: #eef2ff;
-  color: #595bf0;
+  background: #e0e7ff;
+  color: #6366f1;
 }
 
 .task-icon.green {
-  background: #eafaf3;
-  color: #18a571;
+  background: #dcfce7;
+  color: #22c55e;
 }
 
 .task-icon.amber {
-  background: #fff7eb;
-  color: #e89a11;
+  background: #fef3c7;
+  color: #f59e0b;
 }
 
 .task-title {
-  color: #233450;
-  font-size: 21px;
-  font-weight: 800;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 700;
   margin-bottom: 8px;
 }
 
 .task-desc {
-  color: #6f82a0;
-  font-size: 16px;
-  line-height: 1.7;
+  color: #64748b;
+  font-size: 15px;
+  line-height: 1.6;
 }
 
 .conversation-shell {

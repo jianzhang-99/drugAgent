@@ -2,7 +2,7 @@
   <div :class="['message-renderer', `type-${message.type}`]">
     <div v-if="message.role === 'user'" class="user-message">
       <div class="avatar user-avatar">
-        <span>👤</span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </div>
       <div class="message-body">
         <div class="message-content">
@@ -18,7 +18,7 @@
 
     <div v-else-if="message.type === 'assistant_text'" class="assistant-message">
       <div class="avatar agent-avatar">
-        <span>🤖</span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
       </div>
       <div class="message-body">
         <div class="message-content">{{ message.content }}</div>
@@ -35,7 +35,7 @@
 
     <div v-else-if="message.type === 'assistant_result_card'" class="result-message">
       <div class="avatar agent-avatar">
-        <span>🤖</span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
       </div>
       <div class="message-body">
         <div class="message-content">
@@ -56,7 +56,7 @@
 
     <div v-else class="assistant-message">
       <div class="avatar agent-avatar">
-        <span>🤖</span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
       </div>
       <div class="message-body">
         <div class="message-content">{{ message.content }}</div>
@@ -93,11 +93,15 @@ defineProps<{ message: Message }>();
 }
 
 .user-avatar {
-  background: linear-gradient(135deg, #0f766e, #0284c7);
+  background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.2);
 }
 
 .agent-avatar {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #818cf8, #c084fc);
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(139, 92, 246, 0.2);
 }
 
 .message-body {
@@ -107,7 +111,7 @@ defineProps<{ message: Message }>();
 
 .message-content {
   padding: 14px 18px;
-  border-radius: 20px;
+  border-radius: 18px;
   font-size: 15px;
   line-height: 1.75;
   word-break: break-word;
@@ -141,10 +145,10 @@ defineProps<{ message: Message }>();
 }
 
 .user-message .message-content {
-  background: linear-gradient(135deg, #0f766e, #0284c7);
+  background: linear-gradient(135deg, #0ea5e9, #3b82f6);
   color: #fff;
-  border-bottom-right-radius: 8px;
-  box-shadow: 0 18px 40px rgba(2, 132, 199, 0.2);
+  border-bottom-right-radius: 6px;
+  box-shadow: 0 8px 24px -6px rgba(59, 130, 246, 0.35);
 }
 
 .assistant-message {
@@ -154,19 +158,19 @@ defineProps<{ message: Message }>();
 }
 
 .assistant-message .message-content {
-  background: #f7f9fc;
-  color: #16333e;
-  border-bottom-left-radius: 8px;
-  border: 1px solid rgba(19, 49, 59, 0.06);
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+  background: #ffffff;
+  color: #0f172a;
+  border-bottom-left-radius: 6px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.04);
 }
 
 .clarify-message {
-  background: rgba(255, 255, 255, 0.94);
-  border-radius: 22px;
+  background: #ffffff;
+  border-radius: 18px;
   padding: 16px 18px;
-  border: 1px solid rgba(250, 173, 20, 0.26);
-  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(250, 173, 20, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .result-message {
