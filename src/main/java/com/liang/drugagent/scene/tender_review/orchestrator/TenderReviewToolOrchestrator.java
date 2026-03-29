@@ -4,7 +4,6 @@ import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.shared.model.AgentExecutionResult;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
-import com.liang.drugagent.scene.tender_review.tool.ReviewTenderToolResultMapper;
 import com.liang.drugagent.shared.llm.LlmRequest;
 import com.liang.drugagent.shared.llm.LlmResponse;
 import com.liang.drugagent.shared.llm.LlmService;
@@ -48,7 +47,6 @@ import java.util.List;
 public class TenderReviewToolOrchestrator {
 
     private final ReviewTenderTool reviewTenderTool;
-    private final ReviewTenderToolResultMapper resultMapper;
     private final LlmService llmService;
 
     /**

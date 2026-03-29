@@ -224,6 +224,19 @@ async function handleQuickAction(prompt: string) {
   flex: 1;
   min-height: 0;
   padding: 22px 0 228px;
+  position: relative;
+}
+
+.conversation-shell::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  background: linear-gradient(180deg, #ffffff 10%, rgba(255, 255, 255, 0) 100%);
+  z-index: 10;
+  pointer-events: none;
 }
 
 .message-list {
