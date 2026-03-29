@@ -10,7 +10,7 @@
           :disabled="store.sending"
           placeholder="描述您的监管需求，例如：检测这两份标书文件是否雷同..."
           :autosize="{ minRows: 1, maxRows: 8 }"
-          @keydown.enter.prevent="handleSend"
+          @keydown="handleKeydown"
         />
       </div>
 
@@ -59,6 +59,14 @@ function handleSend() {
   if (!inputText.value.trim()) return;
   store.sendMessage(inputText.value.trim());
   inputText.value = '';
+}
+
+function handleKeydown(value: string, context: { e: KeyboardEvent }) {
+  const e = context.e || (value as unknown as KeyboardEvent);
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    handleSend();
+  }
 }
 
 function handleKnowledgeClick() {

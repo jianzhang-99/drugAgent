@@ -1,7 +1,9 @@
 <template>
-  <aside class="sidebar-shell">
+  <aside class="sidebar-shell" :class="{ collapsed: store.isSidebarCollapsed }">
     <div class="brand-card">
-      <div class="brand-mark">✦</div>
+      <div class="brand-mark">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      </div>
       <div class="brand-copy" v-if="!store.isSidebarCollapsed">
         <h1>横渡智能体</h1>
         <p>监管任务统一入口</p>
@@ -17,12 +19,12 @@
         :class="['nav-item', { active: item.id === store.activeView }]"
         @click="store.activeView = item.id"
       >
-        <span class="nav-icon">{{ item.icon }}</span>
-        <span v-if="!store.isSidebarCollapsed" class="nav-label">{{ item.label }}</span>
+        <span class="nav-icon" v-html="item.icon"></span>
+        <span class="nav-label" v-show="!store.isSidebarCollapsed">{{ item.label }}</span>
       </button>
     </nav>
 
-    <section class="history-block" v-show="!store.isSidebarCollapsed">
+    <section class="history-block" :class="{ 'is-hidden': store.isSidebarCollapsed }">
       <header class="block-header">
         <span class="block-kicker">历史审查会话</span>
       </header>
@@ -75,14 +77,14 @@
     </section>
 
     <footer class="sidebar-footer">
-      <button class="footer-link" type="button" v-if="!store.isSidebarCollapsed">
-        <span>⚙</span>
-        <span>偏好与系统配置</span>
+      <button class="footer-link" type="button" :class="{ collapsed: store.isSidebarCollapsed }">
+        <span class="footer-icon">⚙</span>
+        <span v-show="!store.isSidebarCollapsed">偏好与系统配置</span>
       </button>
-      <button class="footer-link muted" type="button" @click="store.isSidebarCollapsed = !store.isSidebarCollapsed">
-        <span>☰</span>
-        <span v-if="!store.isSidebarCollapsed">收起侧边栏</span>
-        <span v-else>展开</span>
+      <button class="footer-link muted" type="button" @click="store.isSidebarCollapsed = !store.isSidebarCollapsed" :class="{ collapsed: store.isSidebarCollapsed }">
+        <span class="footer-icon" v-if="!store.isSidebarCollapsed">☰</span>
+        <span class="footer-icon" v-else>▤</span>
+        <span v-show="!store.isSidebarCollapsed">收起侧边栏</span>
       </button>
     </footer>
   </aside>
@@ -100,8 +102,8 @@ const editingTitle = ref('');
 const titleInputRef = ref<HTMLInputElement>();
 
 const navItems = [
-  { id: 'TASKS' as ViewMode, label: '全局任务看板', icon: '◎' },
-  { id: 'KNOWLEDGE' as ViewMode, label: '合规知识库', icon: '▣' },
+  { id: 'TASKS' as ViewMode, label: '全局任务看板', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>' },
+  { id: 'KNOWLEDGE' as ViewMode, label: '合规知识库', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>' },
 ];
 
 const groupedSessions = computed(() => {
@@ -181,6 +183,9 @@ function formatTime(timeStr: string) {
   flex-direction: column;
   border-right: 1px solid #dfe7f1;
   background: linear-gradient(180deg, #f8fbff 0%, #f5f7fb 100%);
+  width: 100%;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
 }
 
 .brand-card {
@@ -190,34 +195,41 @@ function formatTime(timeStr: string) {
   padding: 18px 20px 14px;
 }
 
+.sidebar-shell.collapsed .brand-card {
+  padding: 18px 20px;
+  justify-content: center;
+}
+
 .brand-mark {
   display: flex;
-  height: 42px;
-  width: 42px;
+  height: 38px;
+  width: 38px;
   align-items: center;
   justify-content: center;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #2e6cf6, #4b54e8);
+  border-radius: 12px;
+  background: linear-gradient(135deg, #10b981, #0ea5e9);
   color: #fff;
-  font-size: 20px;
-  box-shadow: 0 14px 30px rgba(47, 108, 246, 0.2);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 .brand-copy {
   flex: 1;
+  overflow: hidden;
 }
 
 .brand-copy h1 {
   margin: 0;
-  font-size: 21px;
-  font-weight: 700;
-  color: #23324d;
+  font-size: 19px;
+  font-weight: 800;
+  color: #0f172a;
+  white-space: nowrap;
 }
 
 .brand-copy p {
-  margin: 3px 0 0;
-  color: #8292ab;
+  margin: 2px 0 0;
+  color: #64748b;
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .brand-action {
@@ -234,34 +246,53 @@ function formatTime(timeStr: string) {
   padding: 10px 16px 28px;
 }
 
+.sidebar-shell.collapsed .nav-block {
+  padding: 10px 14px 28px;
+}
+
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   border: none;
-  border-radius: 14px;
-  padding: 14px 12px;
+  border-radius: 12px;
+  padding: 12px 14px;
   background: transparent;
-  color: #384b67;
-  font-size: 16px;
+  color: #475569;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   text-align: left;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.sidebar-shell.collapsed .nav-item {
+  padding: 12px;
+  justify-content: center;
 }
 
 .nav-item.active {
-  background: rgba(255, 255, 255, 0.74);
-  color: #20314c;
+  background: #fff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
-.nav-item:hover {
+.nav-item:hover:not(.active) {
   background: rgba(255, 255, 255, 0.5);
 }
 
 .nav-icon {
-  width: 28px;
-  text-align: center;
-  color: #5a5df0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3b82f6;
+}
+
+.nav-item.active .nav-icon {
+  color: #10b981;
 }
 
 .history-block {
@@ -269,6 +300,15 @@ function formatTime(timeStr: string) {
   min-height: 0;
   flex: 1;
   flex-direction: column;
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.2s;
+  opacity: 1;
+  visibility: visible;
+}
+
+.history-block.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .block-header {
@@ -304,14 +344,19 @@ function formatTime(timeStr: string) {
   width: 100%;
   border: none;
   background: transparent;
-  border-radius: 14px;
-  padding: 11px 12px;
+  border-radius: 10px;
+  padding: 10px 12px;
   text-align: left;
   cursor: pointer;
+  transition: background 0.2s;
+}
+
+.history-item:hover {
+  background: rgba(255, 255, 255, 0.6);
 }
 
 .history-item.active {
-  background: #edf3ff;
+  background: #f1f5f9;
 }
 
 .history-name {
@@ -387,6 +432,7 @@ function formatTime(timeStr: string) {
   gap: 12px;
   border-top: 1px solid #dfe7f1;
   padding: 18px 18px 24px;
+  margin-top: auto;
 }
 
 .footer-link {
@@ -398,6 +444,28 @@ function formatTime(timeStr: string) {
   color: #60748f;
   font-size: 15px;
   cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.footer-link:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.footer-link.collapsed {
+  justify-content: center;
+  padding: 8px;
+}
+
+.footer-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  font-size: 16px;
 }
 
 .footer-link.muted {
