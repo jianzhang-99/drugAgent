@@ -17,20 +17,18 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
- * 标书审查工具类。
+ * 标书审查工具类（已废弃）。
  *
- * <p>单职责工具类，负责执行标书审查的具体业务逻辑。
- * 内部调用 {@link TenderReviewWorkflow} 完成完整的审查流程。</p>
+ * <p><strong>已废弃：</strong>本类于 2026-03-30 被标书审查轻量化 MVP 方案替代。
+ * Tool 层已被从调用链中移除，当前简化为：
+ * <pre>
+ * AgentSceneService -> TenderReviewSceneService -> TenderReviewWorkflow
+ * </pre>
+ * 本类不再被主链路调用，仅作向后兼容保留。</p>
  *
- * <p>设计原则：
- * <ul>
- *   <li>单职责：仅负责标书审查，不涉及 LLM 调用和编排</li>
- *   <li>可测试：输入输出都是结构化对象，便于单元测试</li>
- *   <li>可复用：可以被 orchestrator 或其他组件独立调用</li>
- * </ul>
- *
- * <p>该工具作为 LLM Tool Calling 的执行载体，
- * 由 {@link TenderReviewToolOrchestrator} 负责调用和管理。</p>
+ * <p>原 Tool 职责（参数校验、请求转换、调用 Workflow）现由
+ * {@link com.liang.drugagent.scene.tender_review.facade.TenderReviewSceneService}
+ * 直接承担。</p>
  *
  * @author liangjiajian
  * @see TenderReviewToolOrchestrator
@@ -39,6 +37,7 @@ import java.util.*;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@Deprecated
 public class ReviewTenderTool {
 
     public static final String TOOL_NAME = "review_tender";

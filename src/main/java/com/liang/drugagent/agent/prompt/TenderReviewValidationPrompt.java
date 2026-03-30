@@ -1,4 +1,4 @@
-package com.liang.drugagent.agent.llm.prompt;
+package com.liang.drugagent.agent.prompt;
 
 /**
  * 标书审查输出校验 Prompt 模板。

@@ -1,9 +1,5 @@
-package com.liang.drugagent.thirdparty.llm;
+package com.liang.drugagent.shared.llm;
 
-import com.liang.drugagent.shared.llm.LlmClient;
-import com.liang.drugagent.shared.llm.LlmProviderType;
-import com.liang.drugagent.shared.llm.LlmRequest;
-import com.liang.drugagent.shared.llm.LlmResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;

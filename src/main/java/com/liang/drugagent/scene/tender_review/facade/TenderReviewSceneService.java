@@ -4,9 +4,10 @@ import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
-import com.liang.drugagent.scene.tender_review.orchestrator.TenderReviewToolOrchestrator;
 import com.liang.drugagent.scene.tender_review.preparation.TenderReviewPreparationService;
+import com.liang.drugagent.scene.tender_review.workflow.TenderReviewWorkflow;
 import com.liang.drugagent.shared.model.AgentExecutionResult;
+import com.liang.drugagent.shared.model.WorkflowResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -18,23 +19,23 @@ import org.springframework.stereotype.Service;
  * <ul>
  *   <li>调用 {@link TenderReviewPreparationService} 补齐场景数据</li>
  *   <li>校验数据是否满足最低要求</li>
- *   <li>调用 {@link TenderReviewToolOrchestrator} 执行审查</li>
+ *   <li>调用 {@link TenderReviewWorkflow} 执行审查</li>
  *   <li>返回统一的 {@link AgentExecutionResult}</li>
  * </ul>
  *
- * <p>调用链：
+ * <p>调用链（轻量化 MVP 方案）：
  * <pre>
  * AgentSceneService -> TenderReviewSceneService
  *   -> TenderReviewPreparationService
- *   -> TenderReviewToolOrchestrator
+ *   -> TenderReviewWorkflow
  * </pre>
  *
  * <p>该类是标书场景在通用层唯一的感知点，
- * 通用层不应该直接依赖 Orchestrator 或 Workflow。
+ * 通用层不应该直接依赖 Workflow。
  *
  * @author liangjiajian
  * @see TenderReviewPreparationService
- * @see TenderReviewToolOrchestrator
+ * @see TenderReviewWorkflow
  * @see AgentExecutionResult
  */
 @Slf4j
@@ -43,16 +44,17 @@ import org.springframework.stereotype.Service;
 public class TenderReviewSceneService {
 
     private final TenderReviewPreparationService preparationService;
-    private final TenderReviewToolOrchestrator orchestrator;
+    private final TenderReviewWorkflow tenderReviewWorkflow;
 
     /**
      * 执行标书审查场景。
      *
-     * <p>完整流程：
+     * <p>完整流程（轻量化 MVP 方案）：
      * <ol>
      *   <li>调用 PreparationService 准备 TenderReviewData</li>
      *   <li>校验数据是否满足最低要求（至少 2 份文档）</li>
-     *   <li>调用 Orchestrator 执行工具编排</li>
+     *   <li>调用 TenderReviewWorkflow 执行审查</li>
+     *   <li>将 WorkflowResult 转换为 AgentExecutionResult</li>
      *   <li>返回统一执行结果</li>
      * </ol>
      *
@@ -78,10 +80,16 @@ public class TenderReviewSceneService {
                 );
             }
 
-            // 3. 调用 Orchestrator 执行审查
-            log.info("[TenderReviewSceneService] 数据准备完成, docCount={}，开始执行编排",
+            // 3. 将数据设置到上下文中，供 Workflow 直接使用
+            context.getMetadata().put("tenderReviewData", data);
+
+            // 4. 调用 Workflow 执行审查
+            log.info("[TenderReviewSceneService] 数据准备完成, docCount={}，开始执行 Workflow",
                     data.getDocuments().size());
-            AgentExecutionResult result = orchestrator.orchestrate(data, req.getQuery(), context);
+            WorkflowResult workflowResult = tenderReviewWorkflow.execute(context);
+
+            // 5. 转换为 AgentExecutionResult
+            AgentExecutionResult result = AgentExecutionResult.fromWorkflowResult(workflowResult);
 
             log.info("[TenderReviewSceneService] 标书审查完成, success={}, riskLevel={}",
                     result.isSuccess(), result.getRiskLevel());

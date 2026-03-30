@@ -18,24 +18,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 标书审查工具编排器。
+ * 标书审查工具编排器（已废弃）。
  *
- * <p>负责标书场景下的 Tool 调用编排，是标书审查场景的主入口。</p>
- *
- * <p>核心职责：
- * <ul>
- *   <li>注册 reviewTenderTool 给 LLM</li>
- *   <li>向 LLM 提供工具调用上下文</li>
- *   <li>接受工具执行结果 ReviewTenderToolResult</li>
- *   <li>调用 LLM 整理最终回复</li>
- *   <li>输出统一结果对象 AgentExecutionResult</li>
- * </ul>
- *
- * <p>调用链路：
+ * <p><strong>已废弃：</strong>本类于 2026-03-30 被标书审查轻量化 MVP 方案替代。
+ * 当前调用链已简化为：
  * <pre>
- * AgentSceneService -> TenderReviewToolOrchestrator
- *   -> ReviewTenderTool -> TenderReviewWorkflow
+ * AgentSceneService -> TenderReviewSceneService -> TenderReviewWorkflow
  * </pre>
+ * 本类不再被主链路调用，仅作向后兼容保留。</p>
+ *
+ * <p>原核心职责现由以下组件承担：
+ * <ul>
+ *   <li>场景入口：{@link com.liang.drugagent.scene.tender_review.facade.TenderReviewSceneService}</li>
+ *   <li>数据准备：{@link com.liang.drugagent.scene.tender_review.preparation.TenderReviewPreparationService}</li>
+ *   <li>业务执行：{@link com.liang.drugagent.scene.tender_review.workflow.TenderReviewWorkflow}</li>
+ * </ul>
  *
  * @author liangjiajian
  * @see ReviewTenderTool
@@ -44,6 +41,7 @@ import java.util.List;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@Deprecated
 public class TenderReviewToolOrchestrator {
 
     private final ReviewTenderTool reviewTenderTool;
