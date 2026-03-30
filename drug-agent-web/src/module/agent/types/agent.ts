@@ -137,6 +137,7 @@ export interface DrugAgentResp {
   structuredData?: Record<string, any>;
   requiresClarification?: boolean;
   clarificationQuestion?: string;
+  sessionTitle?: string;
 }
 
 export interface EvidenceGroup {

@@ -54,10 +54,7 @@ export const useAgentStore = defineStore('agent', () => {
   const pendingFiles = ref<Attachment[]>([]);
 
   /** 可用模型列表 */
-  const availableModels: ModelInfo[] = [
-    { model: 'minimax', name: 'MiniMax', isDefault: true },
-    { model: 'dashscope', name: '阿里云百炼', isDefault: false },
-  ];
+  const availableModels = ref<ModelInfo[]>([]);
 
   /** 当前选中的模型 */
   const currentModel = ref<string>('minimax');
@@ -280,6 +277,7 @@ export const useAgentStore = defineStore('agent', () => {
         activeSessionId.value,
         'default_user',
         submittedBy,
+        currentModel.value,
         files
       );
 
@@ -381,12 +379,22 @@ export const useAgentStore = defineStore('agent', () => {
   }
 
   /**
-   * 加载可用模型列表（使用预定义列表）
+   * 加载可用模型列表
    */
-  function loadModels() {
-    const defaultModel = availableModels.find((m) => m.isDefault);
-    if (defaultModel) {
-      currentModel.value = defaultModel.model;
+  async function loadModels() {
+    try {
+      const res = await agentApi.getModels();
+      if (res.data.code === 200 || res.data.code === 0) {
+        availableModels.value = res.data.data || [];
+        const defaultModel = availableModels.value.find((m) => m.isDefault);
+        if (defaultModel) {
+          currentModel.value = defaultModel.model;
+        } else if (availableModels.value.length > 0) {
+          currentModel.value = availableModels.value[0].model;
+        }
+      }
+    } catch (error) {
+      console.error('加载模型列表失败:', error);
     }
   }
 

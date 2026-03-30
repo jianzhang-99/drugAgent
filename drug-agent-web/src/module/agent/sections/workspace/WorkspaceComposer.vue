@@ -33,6 +33,18 @@
         </div>
 
         <div class="composer-actions">
+          <t-select
+            v-model="store.currentModel"
+            :options="modelOptions"
+            size="small"
+            style="width: 140px; margin-right: 12px"
+            placeholder="选择模型"
+          >
+            <template #valueDisplay="{ value }">
+              <span style="font-size: 13px">{{ value === 'minimax' ? 'MiniMax' : (value === 'dashscope' ? '阿里云百炼' : value) }}</span>
+            </template>
+          </t-select>
+
           <button 
             class="send-btn" 
             :class="{ active: inputText.trim() && !store.sending }" 
@@ -54,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useAgentStore } from '../../store/agentStore';
 import UploadPanel from '../../components/UploadPanel.vue';
 import { MessagePlugin } from 'tdesign-vue-next';
@@ -62,6 +74,16 @@ import { MessagePlugin } from 'tdesign-vue-next';
 const store = useAgentStore();
 const inputText = ref('');
 const showUploadPanel = ref(false);
+
+const modelOptions = computed(() => {
+  return store.availableModels.map(m => ({ label: m.name, value: m.model }));
+});
+
+onMounted(() => {
+  if (store.availableModels.length === 0) {
+    store.loadModels();
+  }
+});
 
 function handleSend() {
   if (!inputText.value.trim()) return;

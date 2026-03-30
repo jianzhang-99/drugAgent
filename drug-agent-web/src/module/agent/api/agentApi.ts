@@ -12,6 +12,7 @@ import type {
   ChatSession,
   ChatMessage,
   ApiResponse,
+  ModelInfo,
 } from '../types/agent';
 import * as mockAgentApi from './mockAgentApi';
 
@@ -27,6 +28,15 @@ export function chat(req: ChatRequest) {
 }
 
 /**
+ * 获取可用模型列表
+ * GET /api/agent/models
+ */
+export function getModels() {
+  if (USE_MOCK) return mockAgentApi.getModels();
+  return request.get<ApiResponse<ModelInfo[]>>('/api/agent/models');
+}
+
+/**
  * 文件上传对话
  * POST /api/agent/submit (multipart/form-data)
  */
@@ -36,6 +46,7 @@ export function submit(
   sessionId: string | undefined,
   userId: string | undefined,
   submittedBy: string,
+  model: string | undefined,
   files: File[]
 ) {
   if (USE_MOCK) {
@@ -45,6 +56,7 @@ export function submit(
       sessionId,
       userId,
       submittedBy,
+      model,
       files
     );
   }
@@ -55,6 +67,7 @@ export function submit(
     sessionId,
     userId,
     submittedBy,
+    model,
   };
   const formData = new FormData();
   formData.append('req', JSON.stringify(req));
