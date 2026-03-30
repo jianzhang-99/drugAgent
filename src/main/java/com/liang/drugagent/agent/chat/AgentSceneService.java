@@ -11,6 +11,7 @@ import com.liang.drugagent.shared.model.WorkflowRouteDecision;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,7 +43,6 @@ public class AgentSceneService {
 
     private final LlmService llmService;
     private final TenderReviewSceneService tenderReviewSceneService;
-    private final OutputValidationService outputValidationService;
 
     /**
      * 执行对话并返回结果。
@@ -103,30 +103,7 @@ public class AgentSceneService {
             // 1. 调用场景服务获取 workflow 结果
             AgentExecutionResult result = tenderReviewSceneService.execute(context, req);
 
-            // 2. 调用输出校验 LLM
-            OutputValidationService.ValidationResult validationResult =
-                    outputValidationService.validate(SceneEnum.TENDER_REVIEW, decision.getReason(), result);
-
-            // 3. 如果校验失败，标记需要澄清
-            if (!validationResult.isPassed()) {
-                log.warn("[AgentSceneService] 输出校验未通过: warnings={}", validationResult.getWarnings());
-                return AgentSceneExecution.builder()
-                        .decision(decision)
-                        .executionResult(result)
-                        .needsClarification(true)
-                        .clarificationQuestion("输出结果存在异常，请稍后重试或联系管理员")
-                        .build();
-            }
-
-            // 4. 更新 result 中的 summary 和 answer（可能被校验修改了）
-            if (validationResult.getSummary() != null) {
-                result.setSummary(validationResult.getSummary());
-            }
-            if (validationResult.getAnswer() != null) {
-                result.setAnswer(validationResult.getAnswer());
-            }
-
-            // 5. 生成标题
+            // 2. 生成标题
             result.setGeneratedTitle(generateTenderReviewTitle(result));
             result.setShouldUpdateTitle(true);
 
@@ -134,7 +111,6 @@ public class AgentSceneService {
                     .decision(decision)
                     .executionResult(result)
                     .needsClarification(false)
-                    .validationWarnings(validationResult.getWarnings())
                     .build();
 
         } catch (Exception e) {
@@ -191,8 +167,19 @@ public class AgentSceneService {
             }
         }
 
-        // 3. 默认走通用对话
-        log.info("[AgentSceneService] 未识别特定场景，走通用对话");
+        // 3. 检查是否有上传文件（有文件时自动识别为文档处理场景）
+        if (hasUploadedFiles(req)) {
+            log.info("[AgentSceneService] 检测到上传文件，自动识别为标书审查场景");
+            return WorkflowRouteDecision.builder()
+                    .scene(SceneEnum.TENDER_REVIEW)
+                    .source("auto-detect")
+                    .reason("检测到上传文件，自动路由到标书审查")
+                    .confidence(0.85)
+                    .requiresClarification(false)
+                    .build();
+        }
+
+        // 4. 默认走通用对话
         return WorkflowRouteDecision.builder()
                 .scene(SceneEnum.DEFAULT)
                 .source("fallback")
@@ -244,6 +231,21 @@ public class AgentSceneService {
 
         // 其他场景可在此扩展
         return null;
+    }
+
+    /**
+     * 检查请求中是否包含上传文件。
+     */
+    private boolean hasUploadedFiles(AgentChatReq req) {
+        // 检查 MultipartFile[] 是否有文件
+        if (req.getFiles() != null && req.getFiles().length > 0) {
+            return true;
+        }
+        // 检查 fileIds 列表是否有文件ID
+        if (req.getFileIds() != null && !req.getFileIds().isEmpty()) {
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -357,61 +359,5 @@ public class AgentSceneService {
          * 澄清问题（当 needsClarification 为 true 时）。
          */
         private String clarificationQuestion;
-
-        /**
-         * 输出校验警告（来自 OutputValidationService）。
-         */
-        private List<String> validationWarnings;
-    }
-
-    // ==================== 结果适配方法 ====================
-
-    /**
-     * 构建标书审查场景的适配响应。
-     *
-     * <p>按文档 10 + 15.3 要求，只做"结果适配"，不做"业务重算"。
-     * 可以做的事：提取摘要、统一补充字段、组装 structuredData
-     * 不应该做的事：重新计算风险等级、重新生成证据、修正 workflow 结论
-     *
-     * @param context  执行上下文
-     * @param decision 路由决策
-     * @param result   workflow 执行结果
-     * @return 适配后的 AgentChatResp
-     */
-    private AgentChatResp buildTenderReviewResp(AgentChatContext context,
-                                                WorkflowRouteDecision decision,
-                                                AgentExecutionResult result) {
-        log.info("[AgentSceneService] 构建标书审查响应: sessionId={}", context.getSessionId());
-
-        AgentChatResp resp = new AgentChatResp();
-
-        // 填充元信息
-        resp.setSessionId(context.getSessionId());
-        resp.setTraceId(context.getTraceId());
-        resp.setScene(SceneEnum.TENDER_REVIEW.name());
-        resp.setRouteReason(decision.getReason());
-        resp.setRouteSource(decision.getSource());
-        resp.setConfidence(decision.getConfidence());
-
-        // 填充执行结果
-        resp.setAnswer(result.getAnswer());
-        resp.setSummary(result.getSummary());
-        resp.setRiskLevel(result.getRiskLevel());
-        resp.setScore(result.getScore() != null ? result.getScore() : 0);
-        resp.setCaseId(result.getCaseId());
-        resp.setDocumentIds(result.getDocumentIds() != null ? result.getDocumentIds() : new ArrayList<>());
-        resp.setReport(result.getReport());
-        resp.setEvidenceList(result.getEvidenceList() != null ? result.getEvidenceList() : new ArrayList<>());
-        resp.setEvidenceGroups(result.getEvidenceGroups() != null ? result.getEvidenceGroups() : new ArrayList<>());
-        resp.setSteps(result.getSteps() != null ? result.getSteps() : new ArrayList<>());
-
-        // 组装 structuredData（场景差异放这里）
-        resp.setStructuredData(Map.of(
-                "sceneType", "TENDER_REVIEW",
-                "riskLevel", result.getRiskLevel() != null ? result.getRiskLevel() : "UNKNOWN",
-                "score", result.getScore() != null ? result.getScore() : 0
-        ));
-
-        return resp;
     }
 }

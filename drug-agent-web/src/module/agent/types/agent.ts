@@ -54,6 +54,7 @@ export interface ResultData {
   routeReason?: string;
   scene?: string;
   traceId?: string;
+  docCount?: number;
   suggestedActions?: string[];
 }
 

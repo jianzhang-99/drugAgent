@@ -62,7 +62,7 @@ public class AgentChatContext {
         this.query = query;
         this.model = model;
         this.fileIds = fileIds;
-        this.metadata = metadata == null ? Map.of() : metadata;
+        this.metadata = metadata == null ? new java.util.HashMap<>() : new java.util.HashMap<>(metadata);
     }
 
     /**
