@@ -179,7 +179,20 @@ public class AgentSceneService {
                     .build();
         }
 
-        // 4. 默认走通用对话
+        // 4. LLM 意图分类
+        SceneEnum llmScene = classifyIntent(query);
+        if (llmScene != SceneEnum.DEFAULT) {
+            log.info("[AgentSceneService] LLM 意图分类识别场景: {}", llmScene);
+            return WorkflowRouteDecision.builder()
+                    .scene(llmScene)
+                    .source("llm-classify")
+                    .reason("LLM 意图分类: " + llmScene.name())
+                    .confidence(0.7)
+                    .requiresClarification(false)
+                    .build();
+        }
+
+        // 5. 最终降级到通用对话
         return WorkflowRouteDecision.builder()
                 .scene(SceneEnum.DEFAULT)
                 .source("fallback")
@@ -328,6 +341,62 @@ public class AgentSceneService {
             throw new RuntimeException("通用对话失败: " + e.getMessage(), e);
         }
     }
+
+    // ==================== LLM 意图分类 ====================
+
+    private static final String INTENT_CLASSIFY_PROMPT = """
+            你是一个专业的医疗监管领域意图分类器。
+            根据用户输入，判断用户想要什么类型的AI服务。
+
+            场景定义：
+            - TENDER_REVIEW（标书审查）：用户想要审查标书、检测围标串标、分析标书相似度
+            - CONTRACT_PRECHECK（合同预审）：用户想要审核合同、检查合同风险
+            - RISK_ALERT（风险预警）：用户想要了解药品/医疗器械合规风险、监管预警
+            - DEFAULT（通用对话）：用户询问药品监管政策、医疗行业知识、通用问题
+
+            输出格式要求：
+            只输出一个英文单词作为分类结果，不要任何其他内容。
+            - 如果是标书审查，返回：TENDER_REVIEW
+            - 如果是合同预审，返回：CONTRACT_PRECHECK
+            - 如果是风险预警，返回：RISK_ALERT
+            - 如果是通用问题，返回：DEFAULT
+            """;
+
+    /**
+     * 通过 LLM 分类用户意图。
+     */
+    private SceneEnum classifyIntent(String userQuery) {
+        if (userQuery == null || userQuery.isBlank()) {
+            return SceneEnum.DEFAULT;
+        }
+
+        try {
+            String response = llmService.chat(userQuery, INTENT_CLASSIFY_PROMPT, "intent-classify");
+            return parseSceneFromLLMResponse(response);
+        } catch (Exception e) {
+            log.warn("[AgentSceneService] 意图分类失败: {}, 降级为 DEFAULT", e.getMessage());
+            return SceneEnum.DEFAULT;
+        }
+    }
+
+    private SceneEnum parseSceneFromLLMResponse(String response) {
+        if (response == null || response.isBlank()) {
+            return SceneEnum.DEFAULT;
+        }
+
+        String trimmed = response.trim().toUpperCase();
+
+        for (SceneEnum scene : SceneEnum.values()) {
+            if (trimmed.contains(scene.name())) {
+                log.info("[AgentSceneService] LLM 意图分类结果: {}, 原始响应: {}", scene, response);
+                return scene;
+            }
+        }
+
+        log.warn("[AgentSceneService] 无法解析 LLM 分类结果: {}, 降级为 DEFAULT", response);
+        return SceneEnum.DEFAULT;
+    }
+
 
     // ==================== 内部类 ====================
 
