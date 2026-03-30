@@ -7,6 +7,7 @@ import type {
   CreateSessionRequest,
   DrugAgentResp,
   UpdateTitleRequest,
+  ModelInfo,
 } from '../types/agent';
 
 type ApiEnvelope<T> = Promise<{ data: ApiResponse<T> }>;
@@ -212,6 +213,14 @@ export async function getSessionById(id: string): ApiEnvelope<ChatSession> {
   return ok({ ...session, messages: (messageMap[id] || []).map((msg) => ({ ...msg })) });
 }
 
+export async function getModels(): ApiEnvelope<ModelInfo[]> {
+  await wait(100);
+  return ok([
+    { model: 'minimax', name: 'MiniMax', isDefault: true, available: true },
+    { model: 'dashscope', name: '阿里云百炼', isDefault: false, available: true },
+  ]);
+}
+
 export async function createSession(data: CreateSessionRequest): ApiEnvelope<ChatSession> {
   await wait(180);
   const session: ChatSession = {
@@ -296,6 +305,7 @@ export async function submit(
   sessionId: string | undefined,
   userId: string | undefined,
   submittedBy: string,
+  model: string | undefined,
   files: File[]
 ): ApiEnvelope<DrugAgentResp> {
   await wait(900);
@@ -314,7 +324,7 @@ export async function submit(
     type: 'user_text',
     content: query || '请审查我上传的文件',
     createdAt: nowIso(),
-    metadata: { attachments, sceneHint, userId, submittedBy },
+    metadata: { attachments, sceneHint, userId, submittedBy, model },
   });
   messageMap[targetSessionId] = list;
 

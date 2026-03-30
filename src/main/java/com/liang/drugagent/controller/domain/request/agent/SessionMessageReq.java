@@ -35,4 +35,9 @@ public class SessionMessageReq {
      * 扩展元数据。
      */
     private Map<String, Object> metadata;
+
+    /**
+     * 模型选择
+     */
+    private String model;
 }

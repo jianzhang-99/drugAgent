@@ -167,6 +167,7 @@ public class AgentController {
         AgentChatReq chatReq = AgentChatReq.builder()
                 .sessionId(sessionId)
                 .query(req.getContent())
+                .model(req.getModel())
                 .build();
 
         // 调用AI处理
