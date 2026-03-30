@@ -73,6 +73,15 @@ public class TenderReviewSceneService {
 
             // 2. 校验数据是否满足最低要求
             if (!preparationService.hasEnoughDocuments(data)) {
+                // 优先使用 preparationService 返回的具体错误信息
+                String specificError = (String) context.getMetadata().get("preparationError");
+                if (specificError != null && !specificError.isBlank()) {
+                    log.warn("[TenderReviewSceneService] 标书数据准备失败: {}", specificError);
+                    return AgentExecutionResult.failure(
+                            SceneEnum.TENDER_REVIEW,
+                            specificError
+                    );
+                }
                 log.warn("[TenderReviewSceneService] 标书数据不足，无法进行审查");
                 return AgentExecutionResult.failure(
                         SceneEnum.TENDER_REVIEW,

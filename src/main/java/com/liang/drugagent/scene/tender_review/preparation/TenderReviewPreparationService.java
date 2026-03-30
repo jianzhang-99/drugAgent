@@ -108,16 +108,25 @@ public class TenderReviewPreparationService {
     /**
      * 从上传文件构建 TenderReviewData。
      *
-     * <p>通过 DocumentTool 解析上传的文件，转换为 TenderReviewData。</p>
+     * <p>通过 DocumentTool 解析上传的文件，转换为 TenderReviewData。
+     * 边界处理：文件数少于2份、文件为空、文件格式不支持、解析失败数>=2 时，
+     * 会将具体错误原因存储到 context metadata 中供下游使用。</p>
      */
     private TenderReviewData buildFromUploadedFiles(AgentChatContext context, AgentChatReq req) {
         log.info("[TenderReviewPreparationService] 开始解析上传文件, fileCount={}", req.getFiles().length);
+
+        int totalFileCount = req.getFiles().length;
+        int emptyFileCount = 0;
+        int unreadableFileCount = 0;
 
         // 将 MultipartFile[] 转换为 TempDocument[]
         List<TempDocument> tempDocuments = new ArrayList<>();
         for (int i = 0; i < req.getFiles().length; i++) {
             MultipartFile file = req.getFiles()[i];
             if (file == null || file.isEmpty()) {
+                emptyFileCount++;
+                log.info("[TenderReviewPreparationService] 检测到空文件: index={}, filename={}",
+                        i, file != null ? file.getOriginalFilename() : "null");
                 continue;
             }
             try {
@@ -127,13 +136,41 @@ public class TenderReviewPreparationService {
                         .content(file.getBytes())
                         .build());
             } catch (Exception e) {
+                unreadableFileCount++;
                 log.warn("[TenderReviewPreparationService] 读取上传文件失败: filename={}, error={}",
                         file.getOriginalFilename(), e.getMessage());
             }
         }
 
-        if (tempDocuments.size() < 2) {
-            log.warn("[TenderReviewPreparationService] 有效文件不足, count={}", tempDocuments.size());
+        int validFileCount = tempDocuments.size();
+
+        // 边界检查：文件数少于2份
+        if (totalFileCount < 2) {
+            String errorMsg = String.format("上传文件不足，至少需要2份标书文件，本次只上传了%d份", totalFileCount);
+            log.warn("[TenderReviewPreparationService] {}", errorMsg);
+            context.getMetadata().put("preparationError", errorMsg);
+            return null;
+        }
+
+        // 边界检查：所有文件都为空
+        if (validFileCount == 0 && (emptyFileCount > 0 || unreadableFileCount > 0)) {
+            String errorMsg;
+            if (emptyFileCount == totalFileCount) {
+                errorMsg = "所有上传的文件均为空文件，请重新上传非空的标书文件";
+            } else {
+                errorMsg = String.format("上传的%d个文件均无法读取，请确保文件格式正确且可读", totalFileCount);
+            }
+            log.warn("[TenderReviewPreparationService] {}", errorMsg);
+            context.getMetadata().put("preparationError", errorMsg);
+            return null;
+        }
+
+        // 边界检查：有效文件不足2份
+        if (validFileCount < 2) {
+            String errorMsg = String.format("有效标书文件不足，需要至少2份，本次有效文件：%d份（空文件：%d份，无法读取：%d份）",
+                    validFileCount, emptyFileCount, unreadableFileCount);
+            log.warn("[TenderReviewPreparationService] {}", errorMsg);
+            context.getMetadata().put("preparationError", errorMsg);
             return null;
         }
 
@@ -144,9 +181,15 @@ public class TenderReviewPreparationService {
 
         DocumentToolResult parseResult = documentTool.parse(docReq);
 
+        // 边界检查：解析失败数>=2 或 成功数<2
         if (parseResult.getSuccessCount() < 2) {
-            log.warn("[TenderReviewPreparationService] 文档解析成功数不足: success={}, failure={}",
+            String errorMsg = String.format("标书文件解析失败，成功解析：%d份，解析失败：%d份。需要至少2份成功解析的标书文件。",
                     parseResult.getSuccessCount(), parseResult.getFailureCount());
+            if (parseResult.getErrors() != null && !parseResult.getErrors().isEmpty()) {
+                log.warn("[TenderReviewPreparationService] 解析错误详情: {}", parseResult.getErrors());
+            }
+            log.warn("[TenderReviewPreparationService] {}", errorMsg);
+            context.getMetadata().put("preparationError", errorMsg);
             return null;
         }
 
