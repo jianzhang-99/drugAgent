@@ -5,12 +5,15 @@ import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.shared.llm.LlmClient;
 import com.liang.drugagent.shared.llm.LlmProviderType;
 import com.liang.drugagent.shared.llm.LlmRequest;
+import com.liang.drugagent.shared.llm.ModelInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 基础模型对话服务。
@@ -144,5 +147,38 @@ public class LLMChatService {
             return SystemPrompt.DRUG_REGULATION_EXPERT_PROMPT;
         }
         return SCENE_PROMPT_MAP.getOrDefault(scene, SystemPrompt.DRUG_REGULATION_EXPERT_PROMPT);
+    }
+
+    /**
+     * 获取所有可用的模型列表。
+     *
+     * @return 模型信息列表
+     */
+    public List<ModelInfo> getAvailableModels() {
+        Map<LlmProviderType, LlmClient> uniqueClients = llmClients.stream()
+                .collect(Collectors.toMap(
+                        LlmClient::getProvider,
+                        client -> client,
+                        (existing, replacement) -> existing
+                ));
+
+        List<ModelInfo> result = new ArrayList<>();
+        for (LlmProviderType providerType : LlmProviderType.values()) {
+            LlmClient client = uniqueClients.get(providerType);
+            boolean isAvailable = client != null && client.isAvailable();
+
+            String defaultModel = LlmProviderType.MINIMAX.equals(providerType)
+                    ? "MiniMax-M2.7"
+                    : "qwen-plus";
+
+            result.add(ModelInfo.builder()
+                    .model(providerType.getConfigKey())
+                    .name(providerType.getDisplayName())
+                    .defaultModelName(defaultModel)
+                    .available(isAvailable)
+                    .build());
+        }
+
+        return result;
     }
 }
