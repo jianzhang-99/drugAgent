@@ -28,7 +28,7 @@ export function chat(req: ChatRequest) {
 
 /**
  * 文件上传对话
- * POST /api/agent/submit
+ * POST /api/agent/submit (multipart/form-data)
  */
 export function submit(
   query: string | undefined,
@@ -48,21 +48,21 @@ export function submit(
       files
     );
   }
+  // 构建请求对象，序列化为 JSON 字符串通过 'req' 参数传递
+  const req = {
+    query: query || '请审查这些文件',
+    sceneHint,
+    sessionId,
+    userId,
+    submittedBy,
+  };
   const formData = new FormData();
-  if (query) formData.append('query', query);
-  if (sceneHint) formData.append('sceneHint', sceneHint);
-  if (sessionId) formData.append('sessionId', sessionId);
-  if (userId) formData.append('userId', userId);
-  formData.append('submittedBy', submittedBy);
+  formData.append('req', JSON.stringify(req));
   files.forEach((file) => {
     formData.append('files', file);
   });
 
-  return request.post<ApiResponse<DrugAgentResp>>('/api/agent/submit', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
+  return request.post<ApiResponse<DrugAgentResp>>('/api/agent/submit', formData);
 }
 
 /**

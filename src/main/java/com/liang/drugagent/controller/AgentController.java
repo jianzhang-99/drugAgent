@@ -4,10 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.liang.drugagent.agent.chat.AgentChatService;
 import com.liang.drugagent.agent.chat.AgentMessageService;
 import com.liang.drugagent.agent.chat.AgentSessionService;
+import com.liang.drugagent.agent.chat.LLMChatService;
 import com.liang.drugagent.agent.common.entity.ChatMessage;
 import com.liang.drugagent.agent.common.entity.ChatSession;
 import com.liang.drugagent.controller.domain.request.agent.*;
 import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
+import com.liang.drugagent.shared.llm.LlmProviderType;
+import com.liang.drugagent.shared.llm.ModelInfo;
 import com.liang.drugagent.shared.model.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -40,9 +43,16 @@ public class AgentController {
     private final AgentChatService agentChatService;
     private final AgentSessionService agentSessionService;
     private final AgentMessageService agentMessageService;
+    private final LLMChatService llmChatService;
     private final ObjectMapper objectMapper;
 
     // ==================== 对话接口 ====================
+
+    @Operation(summary = "获取可用模型列表")
+    @GetMapping("/models")
+    public Result<List<ModelInfo>> getAvailableModels() {
+        return Result.success(llmChatService.getAvailableModels());
+    }
 
     @Operation(summary = "同步对话")
     @PostMapping("/chat")
@@ -53,12 +63,20 @@ public class AgentController {
     @Operation(summary = "文件上传对话（multipart/form-data）")
     @PostMapping(value = "/submit", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Result<AgentChatResp> submit(
-            @RequestParam("req") String reqJson,
+            @RequestParam(value = "req", required = false) String reqJson,
             @RequestParam(value = "files", required = false) MultipartFile[] files) {
         try {
-            log.info("[AgentController] 收到文件上传请求, reqJson长度={}, fileCount={}",
-                    reqJson != null ? reqJson.length() : 0, files != null ? files.length : 0);
+            log.info("[AgentController] 收到文件上传请求, reqJson长度={}, reqJson内容={}, fileCount={}",
+                    reqJson != null ? reqJson.length() : 0, reqJson, files != null ? files.length : 0);
+            if (reqJson == null || reqJson.isBlank()) {
+                log.error("[AgentController] req 参数为空");
+                return Result.error("req 参数不能为空");
+            }
             AgentChatReq req = objectMapper.readValue(reqJson, AgentChatReq.class);
+            if (req.getQuery() == null || req.getQuery().isBlank()) {
+                log.error("[AgentController] query 参数为空");
+                return Result.error("query 不能为空");
+            }
             if (files != null && files.length > 0) {
                 req.setFiles(files);
             }
