@@ -1,4 +1,4 @@
-package com.liang.drugagent.thirdparty.vector;
+package com.liang.drugagent.shared.vector;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.embedding.EmbeddingModel;

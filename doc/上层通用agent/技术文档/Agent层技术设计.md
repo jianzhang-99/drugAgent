@@ -3,6 +3,8 @@
 > 文档版本：v1.0
 > 更新时间：2026-03-26
 > 适用范围：Drug-Agent 上层通用 Agent 编排层
+>
+> **已过时**：本文档于 2026-03-30 被 `上层通用Agent总体设计.md` v0.2 替代。内容中提到的 `TenderReviewOrchestratorService`、`ReviewTenderToolService` 等命名已与当前实现不一致，请以新文档为准。
 
 ## 1. 文档目标
 
