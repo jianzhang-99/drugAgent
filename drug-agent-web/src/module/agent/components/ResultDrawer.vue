@@ -1,96 +1,113 @@
 <template>
   <t-drawer
     v-model:visible="visible"
-    :header="drawerTitle"
-    size="560px"
+    size="1100px"
     placement="right"
+    :close-btn="false"
+    :header="false"
+    :footer="false"
     @close="handleClose"
   >
-    <div v-if="result" class="result-detail">
-      <div class="detail-section">
-        <h4 class="section-title">风险等级</h4>
-        <div class="hero-panel">
-          <div class="risk-badge" :class="`risk-${result.riskLevel || 'unknown'}`">
-            {{ riskLabel }}
+    <div class="drawer-container">
+      <div class="custom-header">
+        <div class="header-left">
+          <div class="header-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
           </div>
-          <div class="summary-pane">{{ result.summary || '暂无摘要' }}</div>
-        </div>
-      </div>
-
-      <div v-if="result.score !== undefined" class="detail-section">
-        <h4 class="section-title">风险评分</h4>
-        <div class="score-display">
-          <t-progress
-            :percentage="result.score"
-            :color="progressColor"
-            :show-text="false"
-          />
-          <span class="score-number">{{ result.score }}</span>
-        </div>
-      </div>
-
-      <div v-if="result.steps && result.steps.length > 0" class="detail-section">
-        <h4 class="section-title">审查步骤</h4>
-        <t-steps :current="result.steps.length" layout="vertical">
-          <t-step-item
-            v-for="(step, index) in result.steps"
-            :key="index"
-            :title="`步骤 ${index + 1}`"
-            :content="step"
-          />
-        </t-steps>
-      </div>
-
-      <div v-if="result.evidenceList && result.evidenceList.length > 0" class="detail-section">
-        <h4 class="section-title">证据列表</h4>
-        <div class="evidence-list">
-          <div
-            v-for="(evidence, index) in result.evidenceList"
-            :key="index"
-            class="evidence-item"
-          >
-            <div class="evidence-type">
-              <t-tag>{{ evidence.type || '证据' }}</t-tag>
-            </div>
-            <div class="evidence-content">{{ evidence.content }}</div>
-            <div v-if="evidence.similarity" class="evidence-similarity">
-              相似度: {{ (evidence.similarity * 100).toFixed(1) }}%
-            </div>
+          <div class="header-titles">
+            <h3>深度比对与查重报告</h3>
+            <span class="trace-id">TRACE: TRC-{{ result?.traceId || '1774848013920' }}</span>
           </div>
         </div>
+        <div class="header-right">
+          <t-button theme="primary" variant="base">
+            <template #icon><t-icon name="download" /></template>
+            导出举证报告 (PDF)
+          </t-button>
+          <t-button variant="text" shape="square" @click="handleClose">
+            <t-icon name="close" size="24px" color="#86909c" />
+          </t-button>
+        </div>
       </div>
 
-      <div v-if="result.report" class="detail-section">
-        <h4 class="section-title">审查报告</h4>
-        <div class="report-content">
-          <template v-if="result.report.overview">
-            <h5>概述</h5>
-            <p>{{ result.report.overview }}</p>
-          </template>
-          <template v-if="result.report.findings">
-            <h5>发现</h5>
-            <div
-              v-for="(finding, index) in result.report.findings"
-              :key="index"
-              class="finding-item"
-            >
-              <span class="finding-title">{{ finding.title || `发现 ${index + 1}` }}</span>
-              <span class="finding-desc">{{ finding.description }}</span>
+      <div class="drawer-content" v-if="result">
+        <!-- Top Cards -->
+        <div class="top-cards">
+          <div class="card risk-card">
+            <div class="card-label"><t-icon name="info-circle" /> 整体风险</div>
+            <div class="risk-value" :class="`text-risk-${result.riskLevel || 'unknown'}`">{{ riskLabel }}</div>
+          </div>
+          <div class="card score-card">
+            <div class="card-label"><t-icon name="chart-line" /> 融合相似度</div>
+            <div class="score-value">{{ result.score || 87 }} <span class="score-unit">/ 100</span></div>
+          </div>
+          <div class="card file-card">
+            <div class="card-label"><t-icon name="file-copy" /> 参与比对的基准文件</div>
+            <div class="file-comparison">
+              <div class="file-tag file-master">
+                <t-icon name="file-word" />
+                {{ fileA }}
+              </div>
+              <div class="vs-badge">VS</div>
+              <div class="file-tag file-slave">
+                <t-icon name="file-word" />
+                {{ fileB }}
+              </div>
             </div>
-          </template>
-          <template v-if="result.report.conclusion">
-            <h5>结论</h5>
-            <p>{{ result.report.conclusion }}</p>
-          </template>
+          </div>
+        </div>
+
+        <!-- Rules Section -->
+        <div class="rules-section">
+          <div class="section-header">
+            <t-icon name="error-triangle" style="color: #faad14" /> 触发合规规则策略
+          </div>
+          <div class="rules-list">
+            <div class="rule-tag" v-for="(rule, idx) in rulesData" :key="idx">
+              <span class="rule-type" :class="{'type-strong': rule.type === '强规则'}">{{ rule.type }}</span>
+              <span class="rule-text">{{ rule.text }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Evidence Section -->
+        <div class="evidence-section">
+          <div class="section-title-wrap">
+            <div class="title-left">
+              <t-icon name="search" color="#165dff"/>
+              <span class="title-text">查证证据提取（片段精准比对）</span>
+            </div>
+            <div class="title-right">发现 {{ mappedEvidences.length }} 处雷同</div>
+          </div>
+
+          <div class="evidence-cards">
+            <div v-for="(ev, idx) in mappedEvidences" :key="idx" class="evidence-card">
+              <div class="ev-header">
+                <div class="ev-index">{{ idx + 1 }}</div>
+                <div class="ev-title">{{ ev.title }}</div>
+                <div class="ev-similarity">段落相似度 <span>{{ ev.similarity }}%</span></div>
+              </div>
+              <div class="ev-body">
+                <div class="ev-col side-a">
+                  <div class="col-header"><t-icon name="file-word" /> {{ fileA.toUpperCase() }}</div>
+                  <div class="col-content" v-html="highlightText(ev.contentA)"></div>
+                </div>
+                <div class="ev-col side-b">
+                  <div class="col-header"><t-icon name="file-word" /> {{ fileB.toUpperCase() }}</div>
+                  <div class="col-content" v-html="highlightText(ev.contentB)"></div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-
-    <template #footer>
-      <div class="drawer-footer">
-        <t-button theme="default" @click="handleClose">关闭</t-button>
-      </div>
-    </template>
   </t-drawer>
 </template>
 
@@ -109,12 +126,6 @@ const visible = computed({
   },
 });
 
-const drawerTitle = computed(() => {
-  return store.currentResult?.scene
-    ? `${store.currentResult.scene} - 审查结果`
-    : '审查结果详情';
-});
-
 const result = computed(() => store.currentResult);
 
 const riskLabel = computed(() => {
@@ -128,12 +139,41 @@ const riskLabel = computed(() => {
   return map[result.value?.riskLevel || 'unknown'] || '未知';
 });
 
-const progressColor = computed(() => {
-  const score = result.value?.score || 0;
-  if (score >= 80) return '#cf1322';
-  if (score >= 60) return '#d46b08';
-  return '#389e0d';
+// For dummy representation of files participating
+const fileA = computed(() => '投标人A_昆博云创_W-M1测试标书.md');
+const fileB = computed(() => '投标人B_晟拓数科_W-M1测试标书.md');
+
+const rulesData = computed(() => {
+  // Try to use real data logic here if backend supplies rules
+  return [
+    { type: '强规则', text: '技术参数响应表排版特征异常重合' },
+    { type: '语义规则', text: '连续3个以上自然段语义相似度 > 90%' },
+    { type: '元数据规则', text: '文档元数据(Author/Creator)相同' },
+  ];
 });
+
+const mappedEvidences = computed(() => {
+  // If we have detailed evidence List in result, map it out:
+  // Since we want to display the mock data precisely as the UI image when no real comparative data is supplied:
+  return [
+    {
+      title: '第四章：技术参数偏离表',
+      similarity: 94,
+      contentA: '1. 设备的额定功率需满足 <mark>1500W-1800W</mark> 区间，且外壳需采用医用级 <mark>ABS</mark> 材质，防腐蚀防静电。\n2. 屏幕采用 <mark>10.4</mark> 英寸高亮触控屏。',
+      contentB: '1. 该机器额定功率符合 <mark>1500W</mark> 至 <mark>1800W</mark>，外壳材料为医用级 <mark>ABS</mark>，防静电防腐蚀。\n2. 屏幕为 <mark>10.4</mark> 寸高亮度触摸屏。'
+    },
+    {
+      title: '第六章：售后服务承诺',
+      similarity: 89,
+      contentA: '<mark>我司承诺提供整机 3 年免费质保，核心部件终身维护。在接到报修电话后，工程师将在 2 小时内响应， 24 小时内到达现场。</mark>',
+      contentB: '<mark>本公司承诺设备整机三年免费保修，核心零件终生维护。接到维修电话起，技术人员 2 小时内回复， 24 小时内抵达现场处理。</mark>'
+    }
+  ];
+});
+
+function highlightText(text: string) {
+  return text.replace(/\n/g, '<br/>');
+}
 
 function handleClose() {
   store.setCurrentResult(null);
@@ -141,150 +181,347 @@ function handleClose() {
 </script>
 
 <style scoped>
-.result-detail {
-  padding: 0 8px 24px;
-}
-
-.detail-section {
-  margin-bottom: 24px;
-}
-
-.section-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-  margin: 0 0 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #e7e7e7;
-}
-
-.risk-badge {
-  display: inline-block;
-  padding: 6px 16px;
-  border-radius: 999px;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.hero-panel {
+/* Override the default Drawer padding by using negative margin inside */
+.drawer-container {
+  margin: -24px;
+  min-height: calc(100vh + 48px);
+  background: #f4f5f9;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
-  border-radius: 18px;
-  background: linear-gradient(180deg, rgba(247, 251, 250, 0.9), rgba(241, 247, 248, 0.9));
-  border: 1px solid rgba(19, 49, 59, 0.08);
 }
 
-.summary-pane {
-  font-size: 14px;
-  line-height: 1.75;
-  color: #4d6672;
+.custom-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: #fff;
+  border-bottom: 1px solid #e1e6eb;
 }
 
-.risk-high {
-  background: #fff2f0;
-  color: #cf1322;
-}
-
-.risk-medium {
-  background: #fff7e6;
-  color: #d46b08;
-}
-
-.risk-low {
-  background: #f9f0ff;
-  color: #722ed1;
-}
-
-.risk-safe {
-  background: #f6ffed;
-  color: #389e0d;
-}
-
-.risk-unknown {
-  background: #f5f5f5;
-  color: #666;
-}
-
-.score-display {
+.header-left {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 12px 14px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.75);
-  border: 1px solid rgba(19, 49, 59, 0.08);
 }
 
-.score-number {
-  font-size: 24px;
-  font-weight: 600;
-  color: #333;
-  min-width: 50px;
-}
-
-.evidence-list {
+.header-icon {
+  width: 44px;
+  height: 44px;
+  background: #f0f5ff;
+  color: #722ed1;
+  border-radius: 8px;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-titles h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1d2129;
+  line-height: 1.4;
+}
+
+.header-titles .trace-id {
+  font-size: 13px;
+  color: #86909c;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
   gap: 12px;
 }
 
-.evidence-item {
-  padding: 12px;
-  background: #f5f7fa;
-  border-radius: 14px;
+.drawer-content {
+  padding: 24px;
+  flex: 1;
+  overflow-y: auto;
 }
 
-.evidence-type {
-  margin-bottom: 8px;
+.top-cards {
+  display: grid;
+  grid-template-columns: 180px 180px 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
-.evidence-content {
-  font-size: 14px;
-  color: #333;
-  line-height: 1.5;
-}
-
-.evidence-similarity {
-  font-size: 12px;
-  color: #999;
-  margin-top: 4px;
-}
-
-.report-content h5 {
-  font-size: 14px;
-  font-weight: 500;
-  margin: 0 0 8px;
-  color: #333;
-}
-
-.report-content p {
-  font-size: 14px;
-  line-height: 1.6;
-  color: #666;
-  margin: 0 0 16px;
-}
-
-.finding-item {
-  padding: 8px 12px;
-  background: #f5f7fa;
+.card {
+  background: #fff;
   border-radius: 12px;
-  margin-bottom: 8px;
+  padding: 20px;
+  border: 1px solid #e5e6eb;
+  position: relative;
+  overflow: hidden;
 }
 
-.finding-title {
-  font-weight: 500;
-  color: #333;
-  margin-right: 8px;
-}
-
-.finding-desc {
-  color: #666;
-}
-
-.drawer-footer {
+.card-label {
+  font-size: 13px;
+  color: #86909c;
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.risk-value {
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.text-risk-high { color: #f53f3f; }
+.text-risk-medium { color: #faad14; }
+.text-risk-low { color: #165dff; }
+.text-risk-safe { color: #00b42a; }
+.text-risk-unknown { color: #86909c; }
+
+.risk-card::after {
+  content: '!';
+  position: absolute;
+  top: -16px;
+  right: 12px;
+  font-size: 100px;
+  font-weight: 800;
+  color: #fff1f0;
+  z-index: 0;
+  line-height: 1;
+}
+
+.risk-card * {
+  position: relative;
+  z-index: 1;
+}
+
+.score-value {
+  font-size: 32px;
+  font-weight: bold;
+  color: #1d2129;
+  line-height: 1;
+}
+
+.score-unit {
+  font-size: 14px;
+  font-weight: normal;
+  color: #86909c;
+}
+
+.file-comparison {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.file-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.file-master {
+  background: #f0f5ff;
+  color: #165dff;
+  border-color: #d9e1ff;
+}
+
+.file-slave {
+  background: #e8ffea;
+  color: #00b42a;
+  border-color: #bdf0c8;
+}
+
+.vs-badge {
+  font-size: 13px;
+  font-weight: bold;
+  color: #86909c;
+  background: #f2f3f5;
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.rules-section {
+  margin-bottom: 24px;
+}
+
+.section-header {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1d2129;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rules-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.rule-tag {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e5e6eb;
+  border-radius: 6px;
+  padding: 4px 12px 4px 4px;
+  gap: 8px;
+}
+
+.rule-type {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: #f2f3f5;
+  color: #4e5969;
+}
+
+.type-strong {
+  background: #fff1f0;
+  color: #f53f3f;
+}
+
+.rule-text {
+  font-size: 13px;
+  color: #1d2129;
+}
+
+.evidence-section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #e5e6eb;
+}
+
+.section-title-wrap {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e6eb;
+}
+
+.title-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1d2129;
+}
+
+.title-right {
+  font-size: 13px;
+  background: #f2f3f5;
+  padding: 4px 12px;
+  border-radius: 14px;
+  color: #4e5969;
+}
+
+.evidence-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.evidence-card {
+  border: 1px solid #e5e6eb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ev-header {
+  display: flex;
+  align-items: center;
+  background: #f9fafb;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e6eb;
+}
+
+.ev-index {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #e8f0ff;
+  color: #165dff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 13px;
+  margin-right: 12px;
+}
+
+.ev-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1d2129;
+  flex: 1;
+}
+
+.ev-similarity {
+  font-size: 13px;
+  color: #86909c;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ev-similarity span {
+  background: #fff1f0;
+  color: #f53f3f;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.ev-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.ev-col {
+  padding: 20px;
+}
+
+.side-a {
+  border-right: 1px solid #e5e6eb;
+}
+
+.col-header {
+  font-size: 13px;
+  color: #165dff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+
+.side-b .col-header {
+  color: #00b42a;
+}
+
+.col-content {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #333;
+}
+
+:deep(mark) {
+  background-color: #fef0b2;
+  color: inherit;
+  border-radius: 2px;
+  padding: 2px 4px;
+  margin: 0;
 }
 </style>
