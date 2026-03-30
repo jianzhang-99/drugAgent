@@ -126,6 +126,10 @@ public class AgentSceneService {
                 result.setAnswer(validationResult.getAnswer());
             }
 
+            // 5. 生成标题
+            result.setGeneratedTitle(generateTenderReviewTitle(result));
+            result.setShouldUpdateTitle(true);
+
             return AgentSceneExecution.builder()
                     .decision(decision)
                     .executionResult(result)
@@ -142,6 +146,14 @@ public class AgentSceneService {
                     .needsClarification(false)
                     .build();
         }
+    }
+
+    /**
+     * 生成标书审查标题。
+     */
+    private String generateTenderReviewTitle(AgentExecutionResult result) {
+        String riskLevel = result.getRiskLevel() != null ? result.getRiskLevel() : "未知";
+        return "标书审查-" + riskLevel;
     }
 
     /**
@@ -242,14 +254,16 @@ public class AgentSceneService {
         log.info("[AgentSceneService] 分发到通用对话");
 
         try {
-            String answer = generalChat(query, context.getSessionId());
+            GeneralChatResult chatResult = generalChatWithTitle(query, context.getSessionId());
 
             return AgentSceneExecution.builder()
                     .decision(decision)
                     .executionResult(AgentExecutionResult.builder()
                             .success(true)
-                            .answer(answer)
+                            .answer(chatResult.answer)
                             .summary("通用对话")
+                            .generatedTitle(chatResult.title)
+                            .shouldUpdateTitle(true)
                             .steps(List.of("问题理解", "回复生成"))
                             .needsFallback(false)
                             .build())
@@ -272,17 +286,42 @@ public class AgentSceneService {
     }
 
     /**
-     * 通用对话处理。
+     * 通用对话结果（含回答和标题）。
      */
-    private String generalChat(String query, String sessionId) {
+    private record GeneralChatResult(String answer, String title) {}
+
+    /**
+     * 通用对话处理（同时生成标题）。
+     */
+    private GeneralChatResult generalChatWithTitle(String query, String sessionId) {
         String systemPrompt = """
                 你是一个专业的医疗监管AI助手，负责回答关于药品监管、医疗器械监管、标书审查、合同审核等相关问题。
 
                 请用专业、清晰的语言回答用户的问题。如果不确定答案，请如实告知用户。
+
+                回答完成后，请在最后一行输出会话标题，格式为：【会话标题】xxx
+                会话标题应该简洁明了，不超过20个字，能够概括用户询问的核心内容。
                 """;
 
         try {
-            return llmService.chat(query, systemPrompt, "general-chat");
+            String fullResponse = llmService.chat(query, systemPrompt, "general-chat");
+
+            // 从回答中提取标题（最后一行格式：【会话标题】xxx）
+            String title = "新对话";
+            String answer = fullResponse;
+
+            int titleIndex = fullResponse.lastIndexOf("【会话标题】");
+            if (titleIndex != -1) {
+                title = fullResponse.substring(titleIndex + 7).trim();
+                answer = fullResponse.substring(0, titleIndex).trim();
+            }
+
+            // 限制标题长度
+            if (title.length() > 20) {
+                title = title.substring(0, 20);
+            }
+
+            return new GeneralChatResult(answer, title);
         } catch (Exception e) {
             throw new RuntimeException("通用对话失败: " + e.getMessage(), e);
         }

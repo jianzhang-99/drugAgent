@@ -9,6 +9,7 @@ import com.liang.drugagent.scene.tender_review.model.Field;
 import com.liang.drugagent.scene.tender_review.model.TenderCase;
 import com.liang.drugagent.scene.tender_review.model.TenderDocument;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
+import com.liang.drugagent.tool.document.ParsedDocument;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -51,6 +52,43 @@ public class TenderReviewDataAssembler {
             return null;
         }
         return resolve(context.getMetadata(), context.getTraceId());
+    }
+
+    /**
+     * 从解析后的文档列表构建 TenderReviewData。
+     *
+     * <p>供 DocumentTool 集成使用，将 ParsedDocument[] 转换为 TenderReviewData。</p>
+     */
+    public TenderReviewData resolve(ParsedDocument[] parsedDocuments, String traceId) {
+        if (parsedDocuments == null || parsedDocuments.length == 0) {
+            return null;
+        }
+
+        List<MetadataDocument> metadataDocuments = new ArrayList<>();
+        for (ParsedDocument parsed : parsedDocuments) {
+            if (parsed == null) {
+                continue;
+            }
+            String content = parsed.getNormalizedText() != null && !parsed.getNormalizedText().isBlank()
+                    ? parsed.getNormalizedText()
+                    : parsed.getPlainText();
+            if (isBlank(content)) {
+                continue;
+            }
+            metadataDocuments.add(new MetadataDocument(
+                    defaultString(parsed.getDocumentId(), "DOC-" + (metadataDocuments.size() + 1)),
+                    defaultString(parsed.getFilename(), "文档-" + (metadataDocuments.size() + 1)),
+                    defaultString(parsed.getFileType(), "unknown"),
+                    content
+            ));
+        }
+
+        if (metadataDocuments.isEmpty()) {
+            return null;
+        }
+
+        Map<String, Object> emptyMetadata = Map.of("traceId", traceId != null ? traceId : "");
+        return buildFromDocuments(metadataDocuments, emptyMetadata, traceId);
     }
 
     public TenderReviewData resolve(Map<String, Object> metadata, String traceId) {

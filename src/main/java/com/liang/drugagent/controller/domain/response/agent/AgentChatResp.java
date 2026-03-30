@@ -26,6 +26,9 @@ public class AgentChatResp {
     /** 会话ID */
     private String sessionId;
 
+    /** 会话标题（用于前端实时更新） */
+    private String sessionTitle;
+
     /** 链路追踪ID */
     private String traceId;
 

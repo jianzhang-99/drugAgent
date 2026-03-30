@@ -99,7 +99,12 @@ public class AgentChatService {
 
             // 8. 如需要更新标题
             if (executionResult.isShouldUpdateTitle()) {
-                agentSessionService.updateSessionTitleIfNeeded(sessionId, req.getQuery());
+                // 优先使用 LLM 生成的标题，否则用 query 截取
+                String title = executionResult.getGeneratedTitle();
+                if (title == null || title.isBlank()) {
+                    title = req.getQuery();
+                }
+                agentSessionService.updateSessionTitleIfNeeded(sessionId, title);
             }
 
             // 9. 更新会话摘要（阈值策略可后续优化）
