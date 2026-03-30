@@ -6,11 +6,17 @@ import com.liang.drugagent.scene.tender_review.model.TenderDocument;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
 import com.liang.drugagent.scene.tender_review.service.TenderCaseService;
 import com.liang.drugagent.scene.tender_review.support.assembler.TenderReviewDataAssembler;
+import com.liang.drugagent.tool.document.DocumentTool;
+import com.liang.drugagent.tool.document.DocumentToolReq;
+import com.liang.drugagent.tool.document.DocumentToolResult;
+import com.liang.drugagent.tool.document.ParsedDocument;
+import com.liang.drugagent.tool.document.TempDocument;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -40,6 +46,7 @@ public class TenderReviewPreparationService {
 
     private final TenderReviewDataAssembler dataAssembler;
     private final TenderCaseService caseService;
+    private final DocumentTool documentTool;
 
     /**
      * 从请求上下文准备标书审查数据。
@@ -58,6 +65,16 @@ public class TenderReviewPreparationService {
     public TenderReviewData prepare(AgentChatContext context, AgentChatReq req) {
         log.info("[TenderReviewPreparationService] 开始准备标书审查数据, sessionId={}",
                 context.getSessionId());
+
+        // 优先处理上传的文件（本次请求中的临时文件）
+        if (hasUploadedFiles(req)) {
+            TenderReviewData fromUpload = buildFromUploadedFiles(context, req);
+            if (fromUpload != null && hasEnoughDocuments(fromUpload)) {
+                log.info("[TenderReviewPreparationService] 从上传文件构建数据成功, docCount={}",
+                        fromUpload.getDocuments().size());
+                return fromUpload;
+            }
+        }
 
         // 优先尝试从 metadata 解析
         TenderReviewData fromMetadata = dataAssembler.resolve(context);
@@ -79,6 +96,65 @@ public class TenderReviewPreparationService {
         // 数据不足
         log.warn("[TenderReviewPreparationService] 标书数据不足，无法进行审查");
         return null;
+    }
+
+    /**
+     * 检查请求中是否有上传文件。
+     */
+    private boolean hasUploadedFiles(AgentChatReq req) {
+        return req.getFiles() != null && req.getFiles().length >= 2;
+    }
+
+    /**
+     * 从上传文件构建 TenderReviewData。
+     *
+     * <p>通过 DocumentTool 解析上传的文件，转换为 TenderReviewData。</p>
+     */
+    private TenderReviewData buildFromUploadedFiles(AgentChatContext context, AgentChatReq req) {
+        log.info("[TenderReviewPreparationService] 开始解析上传文件, fileCount={}", req.getFiles().length);
+
+        // 将 MultipartFile[] 转换为 TempDocument[]
+        List<TempDocument> tempDocuments = new ArrayList<>();
+        for (int i = 0; i < req.getFiles().length; i++) {
+            MultipartFile file = req.getFiles()[i];
+            if (file == null || file.isEmpty()) {
+                continue;
+            }
+            try {
+                tempDocuments.add(TempDocument.builder()
+                        .documentId("UPLOAD-" + i + "-" + System.currentTimeMillis())
+                        .filename(file.getOriginalFilename())
+                        .content(file.getBytes())
+                        .build());
+            } catch (Exception e) {
+                log.warn("[TenderReviewPreparationService] 读取上传文件失败: filename={}, error={}",
+                        file.getOriginalFilename(), e.getMessage());
+            }
+        }
+
+        if (tempDocuments.size() < 2) {
+            log.warn("[TenderReviewPreparationService] 有效文件不足, count={}", tempDocuments.size());
+            return null;
+        }
+
+        // 调用 DocumentTool 解析
+        DocumentToolReq docReq = DocumentToolReq.builder()
+                .documents(tempDocuments)
+                .build();
+
+        DocumentToolResult parseResult = documentTool.parse(docReq);
+
+        if (parseResult.getSuccessCount() < 2) {
+            log.warn("[TenderReviewPreparationService] 文档解析成功数不足: success={}, failure={}",
+                    parseResult.getSuccessCount(), parseResult.getFailureCount());
+            return null;
+        }
+
+        // 转换为 ParsedDocument[]
+        ParsedDocument[] parsedDocs = parseResult.getDocuments().toArray(new ParsedDocument[0]);
+
+        // 通过 assembler 构建 TenderReviewData
+        return dataAssembler.resolve(parsedDocs, context.getTraceId());
     }
 
     /**

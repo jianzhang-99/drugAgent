@@ -104,6 +104,11 @@ public class AgentExecutionResult {
     private boolean shouldUpdateTitle;
 
     /**
+     * LLM 生成的会话标题。
+     */
+    private String generatedTitle;
+
+    /**
      * 创建成功结果。
      */
     public static AgentExecutionResult success(SceneEnum scene, String answer) {

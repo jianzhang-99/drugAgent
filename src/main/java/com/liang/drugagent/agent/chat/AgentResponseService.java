@@ -58,6 +58,7 @@ public class AgentResponseService {
         resp.setEvidenceList(executionResult.getEvidenceList() != null ? executionResult.getEvidenceList() : new ArrayList<>());
         resp.setEvidenceGroups(executionResult.getEvidenceGroups() != null ? executionResult.getEvidenceGroups() : new ArrayList<>());
         resp.setSteps(executionResult.getSteps() != null ? executionResult.getSteps() : new ArrayList<>());
+        resp.setSessionTitle(executionResult.getGeneratedTitle());
 
         // 处理执行失败的情况
         if (!executionResult.isSuccess()) {

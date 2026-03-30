@@ -223,6 +223,14 @@ export const useAgentStore = defineStore('agent', () => {
         if (aiMsg.type === 'assistant_clarify') {
           // 澄清消息已包含内容
         }
+
+        // 实时更新会话标题
+        if (res.data.data?.sessionTitle) {
+          const session = sessions.value.find(s => s.id === activeSessionId.value);
+          if (session) {
+            session.title = res.data.data.sessionTitle;
+          }
+        }
       } else {
         const errorMsg = createErrorMessage(res.data.message || '请求失败');
         addMessage(errorMsg);
@@ -286,6 +294,14 @@ export const useAgentStore = defineStore('agent', () => {
         // 设置当前结果
         if (aiMsg.result) {
           currentResult.value = res.data.data;
+        }
+
+        // 实时更新会话标题
+        if (res.data.data?.sessionTitle) {
+          const session = sessions.value.find(s => s.id === activeSessionId.value);
+          if (session) {
+            session.title = res.data.data.sessionTitle;
+          }
         }
 
         return res.data.data;

@@ -2,3 +2,7 @@
 {"level":30,"time":1774798477741,"pid":27424,"hostname":"WIN-F0D0DGPMRES","msg":"MySQL MCP server running on stdio"}
 {"level":30,"time":1774798477836,"pid":32664,"hostname":"WIN-F0D0DGPMRES","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
 {"level":30,"time":1774798477837,"pid":32664,"hostname":"WIN-F0D0DGPMRES","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1774840001311,"pid":28702,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
+{"level":30,"time":1774840001311,"pid":28702,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1774840001462,"pid":28720,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
+{"level":30,"time":1774840001462,"pid":28720,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
