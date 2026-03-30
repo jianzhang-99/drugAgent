@@ -1,5 +1,6 @@
 package com.liang.drugagent.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.liang.drugagent.agent.chat.AgentChatService;
 import com.liang.drugagent.agent.chat.AgentMessageService;
 import com.liang.drugagent.agent.chat.AgentSessionService;
@@ -12,7 +13,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -37,6 +40,7 @@ public class AgentController {
     private final AgentChatService agentChatService;
     private final AgentSessionService agentSessionService;
     private final AgentMessageService agentMessageService;
+    private final ObjectMapper objectMapper;
 
     // ==================== 对话接口 ====================
 
@@ -46,10 +50,32 @@ public class AgentController {
         return Result.success(agentChatService.chat(req));
     }
 
-    @Operation(summary = "文件上传对话")
-    @PostMapping("/submit")
-    public Result<AgentChatResp> submit(@RequestBody AgentChatReq req) {
-        // 文件上传对话暂时走普通对话流程
+    @Operation(summary = "文件上传对话（multipart/form-data）")
+    @PostMapping(value = "/submit", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Result<AgentChatResp> submit(
+            @RequestParam("req") String reqJson,
+            @RequestParam(value = "files", required = false) MultipartFile[] files) {
+        try {
+            log.info("[AgentController] 收到文件上传请求, reqJson长度={}, fileCount={}",
+                    reqJson != null ? reqJson.length() : 0, files != null ? files.length : 0);
+            AgentChatReq req = objectMapper.readValue(reqJson, AgentChatReq.class);
+            if (files != null && files.length > 0) {
+                req.setFiles(files);
+            }
+            return Result.success(agentChatService.chat(req));
+        } catch (Exception e) {
+            log.error("[AgentController] 文件上传请求处理失败: {}", e.getMessage(), e);
+            return Result.error("请求处理失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 文件上传对话（JSON格式，降级使用）。
+     */
+    @Operation(summary = "文件上传对话（JSON格式）")
+    @PostMapping(value = "/submit", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Result<AgentChatResp> submitJson(@RequestBody AgentChatReq req) {
+        log.info("[AgentController] 收到JSON格式提交请求");
         return Result.success(agentChatService.chat(req));
     }
 
