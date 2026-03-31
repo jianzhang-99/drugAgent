@@ -137,24 +137,30 @@ public class AgentSceneService {
     /**
      * 场景路由决策。
      *
-     * @return 路由决策结果
+     * <p>每次对话都重新判断场景，不依赖历史锁定。
+     * 判断优先级（从高到低）：
+     * 1. 有新上传文件 -> 标书审查（本次上传的文件才有意义）
+     * 2. query 关键词匹配 -> 可覆盖 sceneHint
+     * 3. LLM 意图分类 -> 可覆盖 sceneHint，最灵活
+     * 4. sceneHint 作为默认值
+     * 5. 降级到通用对话
      */
     private WorkflowRouteDecision decideRoute(AgentChatContext context, AgentChatReq req) {
-        // 1. 优先检查 sceneHint（前端或调用方显式指定）
-        SceneEnum hintScene = resolveSceneHint(req);
-        if (hintScene != null) {
-            log.info("[AgentSceneService] 通过 sceneHint 识别场景: {}", hintScene);
+        String query = context.getQuery();
+
+        // 1. 有新上传文件时，直接路由到标书审查
+        if (hasUploadedFiles(req)) {
+            log.info("[AgentSceneService] 检测到上传文件，自动识别为标书审查场景");
             return WorkflowRouteDecision.builder()
-                    .scene(hintScene)
-                    .source("sceneHint")
-                    .reason("前端显式指定场景: " + hintScene)
-                    .confidence(1.0)
+                    .scene(SceneEnum.TENDER_REVIEW)
+                    .source("auto-detect")
+                    .reason("检测到上传文件，自动路由到标书审查")
+                    .confidence(0.95)
                     .requiresClarification(false)
                     .build();
         }
 
-        // 2. 检查 query 关键词
-        String query = context.getQuery();
+        // 2. 检查 query 关键词（可覆盖 sceneHint）
         if (query != null) {
             SceneEnum keywordScene = detectSceneByKeywords(query);
             if (keywordScene != null) {
@@ -163,25 +169,13 @@ public class AgentSceneService {
                         .scene(keywordScene)
                         .source("rule")
                         .reason("关键词匹配: " + keywordScene.name())
-                        .confidence(0.9)
+                        .confidence(0.85)
                         .requiresClarification(false)
                         .build();
             }
         }
 
-        // 3. 检查是否有上传文件（有文件时自动识别为文档处理场景）
-        if (hasUploadedFiles(req)) {
-            log.info("[AgentSceneService] 检测到上传文件，自动识别为标书审查场景");
-            return WorkflowRouteDecision.builder()
-                    .scene(SceneEnum.TENDER_REVIEW)
-                    .source("auto-detect")
-                    .reason("检测到上传文件，自动路由到标书审查")
-                    .confidence(0.85)
-                    .requiresClarification(false)
-                    .build();
-        }
-
-        // 4. LLM 意图分类
+        // 3. LLM 意图分类（可覆盖 sceneHint，最灵活的判断方式）
         SceneEnum llmScene = classifyIntent(query, context.getModel());
         if (llmScene != SceneEnum.DEFAULT) {
             log.info("[AgentSceneService] LLM 意图分类识别场景: {}", llmScene);
@@ -189,7 +183,20 @@ public class AgentSceneService {
                     .scene(llmScene)
                     .source("llm-classify")
                     .reason("LLM 意图分类: " + llmScene.name())
-                    .confidence(0.7)
+                    .confidence(0.8)
+                    .requiresClarification(false)
+                    .build();
+        }
+
+        // 4. sceneHint 作为默认值（兜底）
+        SceneEnum hintScene = resolveSceneHint(req);
+        if (hintScene != null) {
+            log.info("[AgentSceneService] 使用 sceneHint 默认场景: {}", hintScene);
+            return WorkflowRouteDecision.builder()
+                    .scene(hintScene)
+                    .source("sceneHint")
+                    .reason("使用 sceneHint 默认场景: " + hintScene)
+                    .confidence(0.6)
                     .requiresClarification(false)
                     .build();
         }
@@ -332,7 +339,7 @@ public class AgentSceneService {
                             .content(query)
                             .build()))
                     .build();
-            String fullResponse = llmService.chatForChat(request).getContent();
+            String fullResponse = llmService.chat(request).getContent();
 
             // 从回答中提取标题（最后一行格式：【会话标题】xxx）
             String title = "新对话";
