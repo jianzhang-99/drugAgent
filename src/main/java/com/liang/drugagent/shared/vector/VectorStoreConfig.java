@@ -1,5 +1,6 @@
 package com.liang.drugagent.shared.vector;
 
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
@@ -13,6 +14,8 @@ import java.io.File;
 @Configuration
 public class VectorStoreConfig {
 
+    private static final String VECTOR_STORE_FILE = "vector_store.json";
+
     /**
      * 配置基于内存的向量数据库 (SimpleVectorStore)
      * 用于 Demo 阶段快速验证，支持持久化到本地文件
@@ -25,12 +28,20 @@ public class VectorStoreConfig {
         SimpleVectorStore simpleVectorStore = SimpleVectorStore.builder(embeddingModel).build();
 
         // 尝试从本地加载已有的向量数据，实现重启不丢失
-        File vectorStoreFile = new File("vector_store.json");
+        File vectorStoreFile = new File(VECTOR_STORE_FILE);
         if (vectorStoreFile.exists()) {
             simpleVectorStore.load(vectorStoreFile);
-            log.info("已从本地缓存加载向量数据: vector_store.json");
+            log.info("已从本地缓存加载向量数据: {}", VECTOR_STORE_FILE);
         }
 
         return simpleVectorStore;
+    }
+
+    /**
+     * 获取向量库持久化文件路径
+     */
+    @Bean
+    public File vectorStoreFile() {
+        return new File(VECTOR_STORE_FILE);
     }
 }

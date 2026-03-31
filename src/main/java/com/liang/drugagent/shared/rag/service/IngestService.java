@@ -5,12 +5,15 @@ import com.liang.drugagent.shared.rag.model.RagChunk;
 import com.liang.drugagent.shared.rag.model.RagDocument;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -29,13 +32,16 @@ public class IngestService {
     private final Chunker chunker;
     private final EmbeddingService embeddingService;
     private final VectorStore vectorStore;
+    private final File vectorStoreFile;
 
     public IngestService(TextExtractor textExtractor, Chunker chunker,
-                        EmbeddingService embeddingService, VectorStore vectorStore) {
+                        EmbeddingService embeddingService, VectorStore vectorStore,
+                        File vectorStoreFile) {
         this.textExtractor = textExtractor;
         this.chunker = chunker;
         this.embeddingService = embeddingService;
         this.vectorStore = vectorStore;
+        this.vectorStoreFile = vectorStoreFile;
     }
 
     /**
@@ -81,8 +87,21 @@ public class IngestService {
             vectorStore.add(List.of(aiDoc));
         }
 
+        // 4. 持久化到本地文件
+        save();
+
         log.info("文档入库完成 - sourceId={}, title={}, chunk数量={}",
                 document.getSourceId(), document.getTitle(), chunks.size());
+    }
+
+    /**
+     * 保存向量库到本地文件
+     */
+    public void save() {
+        if (vectorStore instanceof SimpleVectorStore) {
+            ((SimpleVectorStore) vectorStore).save(vectorStoreFile);
+            log.info("向量库已持久化到: {}", vectorStoreFile.getAbsolutePath());
+        }
     }
 
     /**
@@ -99,19 +118,18 @@ public class IngestService {
      */
     private Document toAiDocument(RagChunk chunk) {
         ChunkMetadata metadata = chunk.getMetadata();
-        Map<String, Object> attributes = Map.of(
-                "chunkId", metadata.getChunkId(),
-                "sourceId", metadata.getSourceId(),
-                "sourceTitle", metadata.getSourceTitle() != null ? metadata.getSourceTitle() : "",
-                "orgId", metadata.getOrgId() != null ? metadata.getOrgId() : "",
-                "scene", metadata.getScene() != null ? metadata.getScene() : "",
-                "subScene", metadata.getSubScene() != null ? metadata.getSubScene() : "",
-                "docType", metadata.getDocType() != null ? metadata.getDocType() : "",
-                "chunkIndex", metadata.getChunkIndex() != null ? metadata.getChunkIndex() : 0,
-                "sectionTitle", metadata.getSectionTitle() != null ? metadata.getSectionTitle() : "",
-                "pageNo", metadata.getPageNo() != null ? metadata.getPageNo() : 0,
-                "version", metadata.getVersion() != null ? metadata.getVersion() : ""
-        );
+        Map<String, Object> attributes = new HashMap<>();
+        attributes.put("chunkId", metadata.getChunkId());
+        attributes.put("sourceId", metadata.getSourceId());
+        attributes.put("sourceTitle", metadata.getSourceTitle() != null ? metadata.getSourceTitle() : "");
+        attributes.put("orgId", metadata.getOrgId() != null ? metadata.getOrgId() : "");
+        attributes.put("scene", metadata.getScene() != null ? metadata.getScene() : "");
+        attributes.put("subScene", metadata.getSubScene() != null ? metadata.getSubScene() : "");
+        attributes.put("docType", metadata.getDocType() != null ? metadata.getDocType() : "");
+        attributes.put("chunkIndex", metadata.getChunkIndex() != null ? metadata.getChunkIndex() : 0);
+        attributes.put("sectionTitle", metadata.getSectionTitle() != null ? metadata.getSectionTitle() : "");
+        attributes.put("pageNo", metadata.getPageNo() != null ? metadata.getPageNo() : 0);
+        attributes.put("version", metadata.getVersion() != null ? metadata.getVersion() : "");
 
         return Document.builder()
                 .id(chunk.getChunkId())
