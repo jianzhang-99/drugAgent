@@ -6,6 +6,8 @@ import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.scene.tender_review.facade.TenderReviewSceneService;
 import com.liang.drugagent.shared.model.AgentExecutionResult;
+import com.liang.drugagent.shared.llm.LlmProviderType;
+import com.liang.drugagent.shared.llm.LlmRequest;
 import com.liang.drugagent.shared.llm.LlmService;
 import com.liang.drugagent.shared.model.WorkflowRouteDecision;
 import lombok.RequiredArgsConstructor;
@@ -180,7 +182,7 @@ public class AgentSceneService {
         }
 
         // 4. LLM 意图分类
-        SceneEnum llmScene = classifyIntent(query);
+        SceneEnum llmScene = classifyIntent(query, context.getModel());
         if (llmScene != SceneEnum.DEFAULT) {
             log.info("[AgentSceneService] LLM 意图分类识别场景: {}", llmScene);
             return WorkflowRouteDecision.builder()
@@ -269,7 +271,7 @@ public class AgentSceneService {
         log.info("[AgentSceneService] 分发到通用对话");
 
         try {
-            GeneralChatResult chatResult = generalChatWithTitle(query, context.getSessionId());
+            GeneralChatResult chatResult = generalChatWithTitle(query, context.getSessionId(), context.getModel());
 
             return AgentSceneExecution.builder()
                     .decision(decision)
@@ -308,7 +310,7 @@ public class AgentSceneService {
     /**
      * 通用对话处理（同时生成标题）。
      */
-    private GeneralChatResult generalChatWithTitle(String query, String sessionId) {
+    private GeneralChatResult generalChatWithTitle(String query, String sessionId, String model) {
         String systemPrompt = """
                 你是一个专业的医疗监管AI助手，负责回答关于药品监管、医疗器械监管、标书审查、合同审核等相关问题。
 
@@ -319,7 +321,18 @@ public class AgentSceneService {
                 """;
 
         try {
-            String fullResponse = llmService.chat(query, systemPrompt, "general-chat");
+            LlmProviderType provider = LlmProviderType.fromConfigKey(model);
+            LlmRequest request = LlmRequest.builder()
+                    .provider(provider)
+                    .model(model)
+                    .sessionId(sessionId)
+                    .systemPrompt(systemPrompt)
+                    .messages(List.of(LlmRequest.ChatMessage.builder()
+                            .role("user")
+                            .content(query)
+                            .build()))
+                    .build();
+            String fullResponse = llmService.chatForChat(request).getContent();
 
             // 从回答中提取标题（最后一行格式：【会话标题】xxx）
             String title = "新对话";
@@ -365,13 +378,24 @@ public class AgentSceneService {
     /**
      * 通过 LLM 分类用户意图。
      */
-    private SceneEnum classifyIntent(String userQuery) {
+    private SceneEnum classifyIntent(String userQuery, String model) {
         if (userQuery == null || userQuery.isBlank()) {
             return SceneEnum.DEFAULT;
         }
 
         try {
-            String response = llmService.chat(userQuery, INTENT_CLASSIFY_PROMPT, "intent-classify");
+            LlmProviderType provider = LlmProviderType.fromConfigKey(model);
+            LlmRequest request = LlmRequest.builder()
+                    .provider(provider)
+                    .model(model)
+                    .sessionId("intent-classify")
+                    .systemPrompt(INTENT_CLASSIFY_PROMPT)
+                    .messages(List.of(LlmRequest.ChatMessage.builder()
+                            .role("user")
+                            .content(userQuery)
+                            .build()))
+                    .build();
+            String response = llmService.chatForRouting(request).getContent();
             return parseSceneFromLLMResponse(response);
         } catch (Exception e) {
             log.warn("[AgentSceneService] 意图分类失败: {}, 降级为 DEFAULT", e.getMessage());
