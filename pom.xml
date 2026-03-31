@@ -132,6 +132,12 @@
             <artifactId>logstash-logback-encoder</artifactId>
             <version>7.4</version>
         </dependency>
+
+        <dependency>
+            <groupId>com.qcloud</groupId>
+            <artifactId>cos_api</artifactId>
+            <version>5.6.227</version>
+        </dependency>
     </dependencies>
 
     <repositories>
@@ -144,6 +150,11 @@
             <id>aliyun</id>
             <name>Aliyun Maven</name>
             <url>https://maven.aliyun.com/repository/public</url>
+        </repository>
+        <repository>
+            <id>tencent</id>
+            <name>Tencent Cloud Maven</name>
+            <url>https://repo.cloud.tencent.com/repository/maven/</url>
         </repository>
     </repositories>
 
