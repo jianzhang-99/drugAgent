@@ -1,6 +1,7 @@
 package com.liang.drugagent.shared.rag.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.embedding.Embedding;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingRequest;
 import org.springframework.ai.embedding.EmbeddingResponse;
@@ -31,14 +32,15 @@ public class EmbeddingService {
             throw new IllegalArgumentException("嵌入文本不能为空");
         }
 
-        EmbeddingRequest request = new EmbeddingRequest(List.of(text), embeddingModel.getDimensions());
+        EmbeddingRequest request = new EmbeddingRequest(List.of(text), null);
         EmbeddingResponse response = embeddingModel.call(request);
 
-        if (response.getResults().isEmpty()) {
+        List<Embedding> results = response.getResults();
+        if (results.isEmpty()) {
             throw new RuntimeException("Embedding 返回结果为空");
         }
 
-        return response.getResults().get(0).getEmbedding();
+        return results.get(0).getOutput();
     }
 
     /**
@@ -49,11 +51,11 @@ public class EmbeddingService {
             return List.of();
         }
 
-        EmbeddingRequest request = new EmbeddingRequest(texts, embeddingModel.getDimensions());
+        EmbeddingRequest request = new EmbeddingRequest(texts, null);
         EmbeddingResponse response = embeddingModel.call(request);
 
         return response.getResults().stream()
-                .map(r -> r.getEmbedding())
+                .map(Embedding::getOutput)
                 .toList();
     }
 
@@ -61,6 +63,8 @@ public class EmbeddingService {
      * 获取向量维度
      */
     public int getDimensions() {
-        return embeddingModel.getDimensions();
+        // 先调用一次 embedding 获取向量维度
+        float[] sample = embed("dimension check");
+        return sample.length;
     }
 }

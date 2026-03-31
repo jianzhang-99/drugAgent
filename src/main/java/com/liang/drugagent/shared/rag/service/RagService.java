@@ -29,14 +29,14 @@ public class RagService {
     /**
      * 系统提示词模板
      */
-    private static final String SYSTEM_PROMPT = """您是基于知识检索的问答助手。请根据提供的检索证据回答用户问题。
-
-回答要求：
-1. 只能基于以上证据回答，不要编造信息
-2. 如果证据不足，要明确说明
-3. 回答时尽量引用对应来源
-4. 保持回答简洁、清晰
-""";
+    private static final String SYSTEM_PROMPT =
+            "您是基于知识检索的问答助手。请根据提供的检索证据回答用户问题。\n"
+                    + "\n"
+                    + "回答要求：\n"
+                    + "1. 只能基于以上证据回答，不要编造信息\n"
+                    + "2. 如果证据不足，要明确说明\n"
+                    + "3. 回答时尽量引用对应来源\n"
+                    + "4. 保持回答简洁、清晰";
 
     public RagService(VectorStore vectorStore, EmbeddingService embeddingService, LlmService llmService) {
         this.vectorStore = vectorStore;
@@ -123,33 +123,10 @@ public class RagService {
      * 构建向量检索请求
      */
     private SearchRequest buildSearchRequest(RagQueryRequest request) {
-        SearchRequest.SearchRequestBuilder builder = SearchRequest.builder()
+        return SearchRequest.builder()
                 .query(request.getQuestion())
-                .topK(request.getTopK() != null ? request.getTopK() : 5);
-
-        // 添加 metadata 过滤
-        Map<String, Object> filter = new HashMap<>();
-        if (request.getOrgId() != null) {
-            filter.put("orgId", request.getOrgId());
-        }
-        if (request.getScene() != null) {
-            filter.put("scene", request.getScene());
-        }
-        if (request.getSubScene() != null) {
-            filter.put("subScene", request.getSubScene());
-        }
-        if (request.getDocType() != null) {
-            filter.put("docType", request.getDocType());
-        }
-        if (request.getSourceId() != null) {
-            filter.put("sourceId", request.getSourceId());
-        }
-
-        if (!filter.isEmpty()) {
-            builder.filterMetadata(filter);
-        }
-
-        return builder.build();
+                .topK(request.getTopK() != null ? request.getTopK() : 5)
+                .build();
     }
 
     /**
