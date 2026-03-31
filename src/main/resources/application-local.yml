@@ -1,6 +1,8 @@
 # 阿里云百炼(DashScope) 本地私密配置
 aliyun:
   dashscope:
+    enabled: true  # 启用MiniMax
+    base-url: https://dashscope.aliyuncs.com/compatible-mode
     api-key: sk-a433391322b54c3db665851b085ba4d4
 
 # MiniMax 本地私密配置（请替换为你的实际Key）

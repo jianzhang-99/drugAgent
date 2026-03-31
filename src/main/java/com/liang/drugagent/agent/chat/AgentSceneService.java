@@ -329,9 +329,12 @@ public class AgentSceneService {
 
         try {
             LlmProviderType provider = LlmProviderType.fromConfigKey(model);
+            // 根据 provider 解析正确的模型名（前端传的是 provider 标识，不是模型名）
+            String effectiveModel = resolveEffectiveModel(model, provider);
+
             LlmRequest request = LlmRequest.builder()
                     .provider(provider)
-                    .model(model)
+                    .model(effectiveModel)
                     .sessionId(sessionId)
                     .systemPrompt(systemPrompt)
                     .messages(List.of(LlmRequest.ChatMessage.builder()
@@ -360,6 +363,26 @@ public class AgentSceneService {
         } catch (Exception e) {
             throw new RuntimeException("通用对话失败: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * 根据模型标识和 provider 解析最终使用的模型名称。
+     */
+    private String resolveEffectiveModel(String model, LlmProviderType provider) {
+        // 如果模型名是有效的 provider 标识（minimax/dashscope），则根据 provider 设置默认模型
+        if (model != null && !model.isBlank()) {
+            // 检查是否是 provider 标识符
+            for (LlmProviderType pt : LlmProviderType.values()) {
+                if (pt.getConfigKey().equalsIgnoreCase(model)) {
+                    // 是 provider 标识，需要解析为对应的模型名
+                    return LlmProviderType.MINIMAX.equals(pt) ? "MiniMax-M2.7" : "qwen-plus";
+                }
+            }
+            // 不是 provider 标识，可能是实际的模型名，直接返回
+            return model;
+        }
+        // 没有模型名，使用 provider 默认
+        return LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7" : "qwen-plus";
     }
 
     // ==================== LLM 意图分类 ====================
