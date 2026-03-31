@@ -365,21 +365,9 @@ public class AgentSceneService {
     // ==================== LLM 意图分类 ====================
 
     private static final String INTENT_CLASSIFY_PROMPT = """
-            你是一个专业的医疗监管领域意图分类器。
-            根据用户输入，判断用户想要什么类型的AI服务。
-
-            场景定义：
-            - TENDER_REVIEW（标书审查）：用户想要审查标书、检测围标串标、分析标书相似度
-            - CONTRACT_PRECHECK（合同预审）：用户想要审核合同、检查合同风险
-            - RISK_ALERT（风险预警）：用户想要了解药品/医疗器械合规风险、监管预警
-            - DEFAULT（通用对话）：用户询问药品监管政策、医疗行业知识、通用问题
-
-            输出格式要求：
-            只输出一个英文单词作为分类结果，不要任何其他内容。
-            - 如果是标书审查，返回：TENDER_REVIEW
-            - 如果是合同预审，返回：CONTRACT_PRECHECK
-            - 如果是风险预警，返回：RISK_ALERT
-            - 如果是通用问题，返回：DEFAULT
+            你是一个医疗监管领域的意图分类器。
+            根据用户输入，只输出一个分类词：TENDER_REVIEW、CONTRACT_PRECHECK、RISK_ALERT 或 DEFAULT。
+            不要解释，不要标点符号，不要任何其他内容。
             """;
 
     /**
@@ -415,12 +403,26 @@ public class AgentSceneService {
             return SceneEnum.DEFAULT;
         }
 
-        String trimmed = response.trim().toUpperCase();
+        // 取最后一行作为答案（LLM 会在最后给出分类结果）
+        String[] lines = response.trim().split("\n");
+        String lastLine = lines[lines.length - 1].trim().toUpperCase();
 
+        // 直接匹配最后一个单词
         for (SceneEnum scene : SceneEnum.values()) {
-            if (trimmed.contains(scene.name())) {
+            if (lastLine.equals(scene.name()) || lastLine.contains(scene.name())) {
                 log.info("[AgentSceneService] LLM 意图分类结果: {}, 原始响应: {}", scene, response);
                 return scene;
+            }
+        }
+
+        // 兜底：遍历所有行查找最后一个匹配
+        for (int i = lines.length - 1; i >= 0; i--) {
+            String line = lines[i].trim().toUpperCase();
+            for (SceneEnum scene : SceneEnum.values()) {
+                if (line.contains(scene.name())) {
+                    log.info("[AgentSceneService] LLM 意图分类结果(兜底): {}, 原始响应: {}", scene, response);
+                    return scene;
+                }
             }
         }
 
