@@ -6,7 +6,7 @@
     />
 
     <div class="workbench-main">
-      <WorkspaceHeader v-if="store.activeView === 'WORKSPACE'" />
+      <WorkspaceHeader v-if="store.activeView === 'WORKSPACE' || store.activeView === 'TASKS'" />
 
       <main class="workbench-content">
         <ConversationWorkspace v-if="store.activeView === 'WORKSPACE'" />

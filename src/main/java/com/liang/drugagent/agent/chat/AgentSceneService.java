@@ -10,6 +10,7 @@ import com.liang.drugagent.shared.llm.LlmProviderType;
 import com.liang.drugagent.shared.llm.LlmRequest;
 import com.liang.drugagent.shared.llm.LlmService;
 import com.liang.drugagent.shared.model.WorkflowRouteDecision;
+import com.liang.drugagent.shared.llm.LlmResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -342,7 +343,13 @@ public class AgentSceneService {
                             .content(query)
                             .build()))
                     .build();
-            String fullResponse = llmService.chat(request).getContent();
+            LlmResponse llmResponse = llmService.chat(request);
+            if (!Boolean.TRUE.equals(llmResponse.getSuccess()) || llmResponse.getContent() == null) {
+                log.error("[AgentSceneService] 通用对话失败: provider={}, success={}, errorMessage={}",
+                        provider, llmResponse.getSuccess(), llmResponse.getErrorMessage());
+                throw new RuntimeException("LLM调用失败: " + llmResponse.getErrorMessage());
+            }
+            String fullResponse = llmResponse.getContent();
 
             // 从回答中提取标题（最后一行格式：【会话标题】xxx）
             String title = "新对话";
@@ -375,14 +382,14 @@ public class AgentSceneService {
             for (LlmProviderType pt : LlmProviderType.values()) {
                 if (pt.getConfigKey().equalsIgnoreCase(model)) {
                     // 是 provider 标识，需要解析为对应的模型名
-                    return LlmProviderType.MINIMAX.equals(pt) ? "MiniMax-M2.7" : "qwen-plus";
+                    return LlmProviderType.MINIMAX.equals(pt) ? "MiniMax-M2.7" : "qwen3.5-plus";
                 }
             }
             // 不是 provider 标识，可能是实际的模型名，直接返回
             return model;
         }
         // 没有模型名，使用 provider 默认
-        return LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7" : "qwen-plus";
+        return LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7" : "qwen3.5-plus";
     }
 
     // ==================== LLM 意图分类 ====================
@@ -403,9 +410,11 @@ public class AgentSceneService {
 
         try {
             LlmProviderType provider = LlmProviderType.fromConfigKey(model);
+            String effectiveModel = resolveEffectiveModel(model, provider);
+
             LlmRequest request = LlmRequest.builder()
                     .provider(provider)
-                    .model(model)
+                    .model(effectiveModel)
                     .sessionId("intent-classify")
                     .systemPrompt(INTENT_CLASSIFY_PROMPT)
                     .messages(List.of(LlmRequest.ChatMessage.builder()
@@ -421,31 +430,34 @@ public class AgentSceneService {
         }
     }
 
+    /**
+     * 解析 LLM 返回的意图分类结果。
+     * 优先精确匹配独立的分类词，避免匹配到说明文字。
+     */
     private SceneEnum parseSceneFromLLMResponse(String response) {
         if (response == null || response.isBlank()) {
             return SceneEnum.DEFAULT;
         }
 
-        // 取最后一行作为答案（LLM 会在最后给出分类结果）
-        String[] lines = response.trim().split("\n");
-        String lastLine = lines[lines.length - 1].trim().toUpperCase();
+        // 清理响应，只保留英文字母和空格
+        String cleaned = response.trim();
 
-        // 直接匹配最后一个单词
+        // 直接精确匹配（前后无其他字母）
         for (SceneEnum scene : SceneEnum.values()) {
-            if (lastLine.equals(scene.name()) || lastLine.contains(scene.name())) {
+            // 使用正则边界匹配，确保是独立的词
+            String pattern = "\\b" + scene.name() + "\\b";
+            if (cleaned.matches(".*" + pattern + ".*")) {
                 log.info("[AgentSceneService] LLM 意图分类结果: {}, 原始响应: {}", scene, response);
                 return scene;
             }
         }
 
-        // 兜底：遍历所有行查找最后一个匹配
-        for (int i = lines.length - 1; i >= 0; i--) {
-            String line = lines[i].trim().toUpperCase();
-            for (SceneEnum scene : SceneEnum.values()) {
-                if (line.contains(scene.name())) {
-                    log.info("[AgentSceneService] LLM 意图分类结果(兜底): {}, 原始响应: {}", scene, response);
-                    return scene;
-                }
+        // 如果没有精确匹配，检查是否只有分类词（去除所有空格后）
+        String noSpace = cleaned.replaceAll("\\s+", "");
+        for (SceneEnum scene : SceneEnum.values()) {
+            if (noSpace.equals(scene.name())) {
+                log.info("[AgentSceneService] LLM 意图分类结果(去空格匹配): {}, 原始响应: {}", scene, response);
+                return scene;
             }
         }
 

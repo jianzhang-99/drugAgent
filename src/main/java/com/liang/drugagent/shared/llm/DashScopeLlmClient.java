@@ -7,7 +7,6 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
@@ -15,10 +14,10 @@ import reactor.core.publisher.Flux;
 import java.util.List;
 
 /**
- * 阿里云百炼(DashScope) LLM 客户端。
+ * 阿里云百炼(DashScope) LLM 客户端 - Anthropic 兼容模式。
  *
- * <p>使用 Spring AI OpenAI 客户端接入百炼 API，利用其 OpenAI 兼容协议。
- * 统一使用 Spring AI 原生方式，与 MiniMaxLlmClient 风格一致。
+ * <p>使用 Spring AI ChatClient + DashScopeChatModel 接入百炼。
+ * 与 MiniMaxLlmClient 保持一致的代码结构。
  */
 @Slf4j
 @Component
@@ -26,7 +25,7 @@ public class DashScopeLlmClient implements LlmClient {
 
     private final ChatClient chatClient;
 
-    public DashScopeLlmClient(OpenAiApi openAiApi, @Qualifier("openAiChatModel") ChatModel chatModel) {
+    public DashScopeLlmClient(@Qualifier("dashScopeChatModel") ChatModel chatModel) {
         this.chatClient = ChatClient.builder(chatModel)
                 .defaultAdvisors(new SimpleLoggerAdvisor())
                 .build();
@@ -39,7 +38,7 @@ public class DashScopeLlmClient implements LlmClient {
 
     @Override
     public LlmResponse chat(LlmRequest request) {
-        log.debug("百炼聊天请求 - sessionId: {}, 模型: {}",
+        log.debug("DashScope(Anthropic兼容)聊天请求 - sessionId: {}, 模型: {}",
                 request.getSessionId(), request.getModel());
 
         try {
@@ -50,20 +49,20 @@ public class DashScopeLlmClient implements LlmClient {
                     .call()
                     .content();
 
-            log.debug("百炼聊天响应 - sessionId: {}, 响应长度: {}",
+            log.debug("DashScope(Anthropic兼容)聊天响应 - sessionId: {}, 响应长度: {}",
                     request.getSessionId(), response.length());
 
             return LlmResponse.success(response, LlmProviderType.DASHSCOPE, request.getModel());
         } catch (Exception e) {
-            log.error("百炼聊天异常 - sessionId: {}, 错误: {}",
+            log.error("DashScope(Anthropic兼容)聊天异常 - sessionId: {}, 错误: {}",
                     request.getSessionId(), e.getMessage(), e);
-            return LlmResponse.error("DASHSCOPE_ERROR", "百炼API调用失败: " + e.getMessage());
+            return LlmResponse.error("DASHSCOPE_ERROR", "DashScope API调用失败: " + e.getMessage());
         }
     }
 
     @Override
     public Flux<LlmResponse> streamChat(LlmRequest request) {
-        log.debug("百炼流式聊天请求 - sessionId: {}, 模型: {}",
+        log.debug("DashScope(Anthropic兼容)流式聊天请求 - sessionId: {}, 模型: {}",
                 request.getSessionId(), request.getModel());
 
         return chatClient.prompt()
@@ -73,7 +72,7 @@ public class DashScopeLlmClient implements LlmClient {
                 .stream()
                 .content()
                 .map(chunk -> LlmResponse.streamedChunk(chunk, false))
-                .doOnError(e -> log.error("百炼流式聊天异常: {}", e.getMessage(), e));
+                .doOnError(e -> log.error("DashScope(Anthropic兼容)流式聊天异常: {}", e.getMessage(), e));
     }
 
     private List<Message> buildMessages(LlmRequest request) {
