@@ -135,78 +135,113 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, h } from 'vue';
+import { ref, computed, h, onMounted } from 'vue';
+import { uploadKnowledgeFile, getKnowledgeFiles, deleteKnowledgeFile, type KnowledgeFile } from '../api/agentApi';
+import { MessagePlugin } from 'tdesign-vue-next';
 
 const isDragOver = ref(false);
 const fileInputRef = ref<HTMLInputElement>();
 const searchKeyword = ref('');
+const loading = ref(false);
 
-// Mock 数据
-interface KnowledgeFile {
+// 后端返回的数据结构
+interface OssFile {
+  id: string;
+  fileName: string;
+  fileSuffix: string;
+  fileSize: number;
+  objectKey: string;
+  bizType: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const knowledgeFiles = ref<OssFile[]>([]);
+
+// 业务分类映射（根据后缀）
+function getCategoryBySuffix(suffix: string): { category: string; categoryColor: string } {
+  const map: Record<string, { category: string; categoryColor: string }> = {
+    pdf: { category: '国家法规', categoryColor: 'badge-blue' },
+    docx: { category: '院内制度', categoryColor: 'badge-purple' },
+    doc: { category: '院内制度', categoryColor: 'badge-purple' },
+    xlsx: { category: '标准数据字典', categoryColor: 'badge-green' },
+    xls: { category: '标准数据字典', categoryColor: 'badge-green' },
+    md: { category: '案例黑库', categoryColor: 'badge-orange' },
+    txt: { category: '待分类', categoryColor: 'badge-gray' },
+  };
+  return map[suffix.toLowerCase()] || { category: '待分类', categoryColor: 'badge-gray' };
+}
+
+// 图标颜色映射
+function getIconColorBySuffix(suffix: string): string {
+  const map: Record<string, string> = {
+    pdf: 'icon-red',
+    docx: 'icon-blue',
+    doc: 'icon-blue',
+    xlsx: 'icon-green',
+    xls: 'icon-green',
+    md: 'icon-gray',
+    txt: 'icon-gray',
+  };
+  return map[suffix.toLowerCase()] || 'icon-gray';
+}
+
+// 前端展示用的文件对象
+interface DisplayFile {
   id: string;
   name: string;
-  type: 'pdf' | 'docx' | 'xlsx' | 'md';
+  type: string;
   importDate: string;
   category: string;
   categoryColor: string;
   iconColor: string;
   status: 'done' | 'reading';
+  _source: OssFile;
 }
 
-const knowledgeFiles = ref<KnowledgeFile[]>([
-  {
-    id: '1',
-    name: '《2026版国家医保局集采指导意见》.pdf',
-    type: 'pdf',
-    importDate: '2026-03-15',
-    category: '国家法规',
-    categoryColor: 'badge-blue',
-    iconColor: 'icon-red',
-    status: 'done',
-  },
-  {
-    id: '2',
-    name: '医院内部耗材招标规范细则_v2.docx',
-    type: 'docx',
-    importDate: '2026-03-14',
-    category: '院内制度',
-    categoryColor: 'badge-purple',
-    iconColor: 'icon-blue',
-    status: 'done',
-  },
-  {
-    id: '3',
-    name: '本省骨科集采历史最高限价表.xlsx',
-    type: 'xlsx',
-    importDate: '2026-03-12',
-    category: '标准数据字典',
-    categoryColor: 'badge-green',
-    iconColor: 'icon-green',
-    status: 'done',
-  },
-  {
-    id: '4',
-    name: '某供应商串标违规通报案例.md',
-    type: 'md',
-    importDate: formatRelativeDate(),
-    category: '案例黑库',
-    categoryColor: 'badge-orange',
-    iconColor: 'icon-gray',
-    status: 'reading',
-  },
-]);
+const displayFiles = computed<DisplayFile[]>(() => {
+  return knowledgeFiles.value.map((f) => {
+    const cat = getCategoryBySuffix(f.fileSuffix);
+    return {
+      id: f.id,
+      name: f.fileName,
+      type: f.fileSuffix.toLowerCase(),
+      importDate: f.createdAt ? f.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      category: cat.category,
+      categoryColor: cat.categoryColor,
+      iconColor: getIconColorBySuffix(f.fileSuffix),
+      status: 'done' as const,
+      _source: f,
+    };
+  });
+});
 
 const filteredFiles = computed(() => {
-  if (!searchKeyword.value.trim()) return knowledgeFiles.value;
+  if (!searchKeyword.value.trim()) return displayFiles.value;
   const kw = searchKeyword.value.toLowerCase();
-  return knowledgeFiles.value.filter(
+  return displayFiles.value.filter(
     (f) => f.name.toLowerCase().includes(kw) || f.category.toLowerCase().includes(kw)
   );
 });
 
-function formatRelativeDate() {
-  return '10 分钟前';
+// 加载文件列表
+async function loadFiles() {
+  loading.value = true;
+  try {
+    const res = await getKnowledgeFiles('KNOWLEDGE', 1, 100);
+    if (res.data?.success && res.data?.data?.list) {
+      knowledgeFiles.value = res.data.data.list;
+    }
+  } catch (e: any) {
+    MessagePlugin.error('加载文件列表失败');
+  } finally {
+    loading.value = false;
+  }
 }
+
+onMounted(() => {
+  loadFiles();
+});
 
 function getFileIcon(type: string) {
   const iconMap: Record<string, any> = {
@@ -224,7 +259,20 @@ function getFileIcon(type: string) {
         h('path', { d: 'M10 12h4' }),
         h('path', { d: 'M10 16h4' }),
       ]),
+    doc: () =>
+      h('svg', { xmlns: 'http://www.w3.org/2000/svg', width: '20', height: '20', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, [
+        h('path', { d: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z' }),
+        h('polyline', { points: '14 2 14 8 20 8' }),
+        h('path', { d: 'M10 12h4' }),
+        h('path', { d: 'M10 16h4' }),
+      ]),
     xlsx: () =>
+      h('svg', { xmlns: 'http://www.w3.org/2000/svg', width: '20', height: '20', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, [
+        h('path', { d: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z' }),
+        h('polyline', { points: '14 2 14 8 20 8' }),
+        h('rect', { x: '8', y: '12', width: '8', height: '6', rx: '1' }),
+      ]),
+    xls: () =>
       h('svg', { xmlns: 'http://www.w3.org/2000/svg', width: '20', height: '20', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, [
         h('path', { d: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z' }),
         h('polyline', { points: '14 2 14 8 20 8' }),
@@ -258,30 +306,35 @@ function handleDrop(e: DragEvent) {
   }
 }
 
-function addFiles(files: File[]) {
-  files.forEach((file) => {
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'md';
-    const newFile: KnowledgeFile = {
-      id: `file_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      name: file.name,
-      type: (['pdf', 'docx', 'xlsx', 'md'].includes(ext) ? ext : 'md') as any,
-      importDate: new Date().toISOString().slice(0, 10),
-      category: '待分类',
-      categoryColor: 'badge-gray',
-      iconColor: 'icon-gray',
-      status: 'reading',
-    };
-    knowledgeFiles.value.unshift(newFile);
-    // 模拟 3 秒后学习完成
-    setTimeout(() => {
-      const f = knowledgeFiles.value.find((item) => item.id === newFile.id);
-      if (f) f.status = 'done';
-    }, 3000);
-  });
+async function addFiles(files: File[]) {
+  for (const file of files) {
+    try {
+      const res = await uploadKnowledgeFile(file, 'KNOWLEDGE');
+      if (res.data?.success && res.data?.data) {
+        // 重新加载列表
+        await loadFiles();
+        MessagePlugin.success(`文件 "${file.name}" 上传成功`);
+      } else {
+        MessagePlugin.error(`文件 "${file.name}" 上传失败`);
+      }
+    } catch (e: any) {
+      MessagePlugin.error(`文件 "${file.name}" 上传失败: ${e.message}`);
+    }
+  }
 }
 
-function handleDeleteFile(id: string) {
-  knowledgeFiles.value = knowledgeFiles.value.filter((f) => f.id !== id);
+async function handleDeleteFile(id: string) {
+  try {
+    const res = await deleteKnowledgeFile(id);
+    if (res.data?.success) {
+      knowledgeFiles.value = knowledgeFiles.value.filter((f) => f.id !== id);
+      MessagePlugin.success('删除成功');
+    } else {
+      MessagePlugin.error('删除失败');
+    }
+  } catch (e: any) {
+    MessagePlugin.error('删除失败');
+  }
 }
 
 function handleFilter() {
@@ -358,6 +411,8 @@ function handleFilter() {
   padding: 40px 48px 60px;
   overflow-y: auto;
   max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .kb-headline {

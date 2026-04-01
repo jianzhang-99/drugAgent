@@ -3,17 +3,19 @@ package com.liang.drugagent.shared.cos.impl;
 import com.liang.drugagent.shared.cos.CosClientManager;
 import com.liang.drugagent.shared.cos.CosConfigProperties;
 import com.liang.drugagent.shared.cos.CosStorageService;
+import com.qcloud.cos.exception.CosClientException;
+import com.qcloud.cos.exception.CosServiceException;
 import com.qcloud.cos.model.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
+import java.io.File;
 
 /**
  * 腾讯云COS存储服务实现。
  *
  * <p>使用腾讯云COS Java SDK v5.x实现私有桶的文件操作。</p>
+ * @author liangjiajian
  */
 @Slf4j
 @Service
@@ -28,65 +30,45 @@ public class TencentCosStorageServiceImpl implements CosStorageService {
     }
 
     @Override
-    public String generateUploadUrl(String objectKey, String contentType) {
-        // TODO: 根据SDK版本调整预签名URL生成方式
-        log.warn("[TencentCosStorage] 预签名URL功能暂未实现，使用服务端上传代替，objectKey: {}", objectKey);
-        return null;
-    }
-
-    @Override
-    public String generateDownloadUrl(String objectKey) {
-        // TODO: 根据SDK版本调整预签名URL生成方式
-        log.warn("[TencentCosStorage] 预签名URL功能暂未实现，使用服务端下载代替，objectKey: {}", objectKey);
-        return null;
-    }
-
-    @Override
-    public String uploadFile(InputStream inputStream, String objectKey, long size, String contentType) {
-        ObjectMetadata metadata = new ObjectMetadata();
-        metadata.setContentLength(size);
-        metadata.setContentType(contentType);
-
+    public String uploadFile(File file, String objectKey) {
         PutObjectRequest putObjectRequest = new PutObjectRequest(
                 cosConfig.getBucketName(),
                 objectKey,
-                inputStream,
-                metadata
+                file
         );
 
-        PutObjectResult result = cosClientManager.getClient().putObject(putObjectRequest);
-        String etag = result.getETag();
-        log.info("[TencentCosStorage] 文件上传成功，objectKey: {}, ETag: {}", objectKey, etag);
-        return etag;
+        try {
+            PutObjectResult result = cosClientManager.getClient().putObject(putObjectRequest);
+            String etag = result.getETag();
+            log.info("[TencentCosStorage] 文件上传成功，objectKey: {}, ETag: {}", objectKey, etag);
+            return etag;
+        } catch (CosServiceException cse) {
+            log.error("[TencentCosStorage] 文件上传失败(CosServiceException)，objectKey: {}, error: {}", objectKey, cse.getErrorMessage());
+            throw new RuntimeException("文件上传失败: " + objectKey, cse);
+        } catch (CosClientException cce) {
+            log.error("[TencentCosStorage] 文件上传失败(CosClientException)，objectKey: {}, error: {}", objectKey, cce.getMessage());
+            throw new RuntimeException("文件上传失败: " + objectKey, cce);
+        }
     }
 
     @Override
-    public String uploadBytes(byte[] data, String objectKey, String contentType) {
-        ByteArrayInputStream inputStream = new ByteArrayInputStream(data);
-        return uploadFile(inputStream, objectKey, data.length, contentType);
-    }
-
-    @Override
-    public byte[] downloadFile(String objectKey) {
+    public boolean downloadFile(String objectKey, File localFile) {
         GetObjectRequest getObjectRequest = new GetObjectRequest(
                 cosConfig.getBucketName(),
                 objectKey
         );
-        COSObject cosObject = cosClientManager.getClient().getObject(getObjectRequest);
-        COSObjectInputStream inputStream = cosObject.getObjectContent();
 
         try {
-            byte[] data = inputStream.readAllBytes();
-            log.info("[TencentCosStorage] 文件下载成功，objectKey: {}, size: {} bytes", objectKey, data.length);
-            return data;
-        } catch (Exception e) {
-            log.error("[TencentCosStorage] 文件下载失败，objectKey: {}", objectKey, e);
-            throw new RuntimeException("文件下载失败: " + objectKey, e);
-        } finally {
-            try {
-                inputStream.close();
-            } catch (Exception ignored) {
-            }
+            ObjectMetadata metadata = cosClientManager.getClient().getObject(getObjectRequest, localFile);
+            log.info("[TencentCosStorage] 文件下载成功，objectKey: {}, localFile: {}, size: {} bytes",
+                    objectKey, localFile.getAbsolutePath(), metadata.getContentLength());
+            return true;
+        } catch (CosServiceException cse) {
+            log.error("[TencentCosStorage] 文件下载失败(CosServiceException)，objectKey: {}, error: {}", objectKey, cse.getErrorMessage());
+            throw new RuntimeException("文件下载失败: " + objectKey, cse);
+        } catch (CosClientException cce) {
+            log.error("[TencentCosStorage] 文件下载失败(CosClientException)，objectKey: {}, error: {}", objectKey, cce.getMessage());
+            throw new RuntimeException("文件下载失败: " + objectKey, cce);
         }
     }
 
@@ -96,21 +78,16 @@ public class TencentCosStorageServiceImpl implements CosStorageService {
                 cosConfig.getBucketName(),
                 objectKey
         );
-        cosClientManager.getClient().deleteObject(deleteObjectRequest);
-        log.info("[TencentCosStorage] 文件删除成功，objectKey: {}", objectKey);
-        return true;
-    }
-
-    @Override
-    public boolean fileExists(String objectKey) {
         try {
-            cosClientManager.getClient().getObjectMetadata(
-                    cosConfig.getBucketName(),
-                    objectKey
-            );
+            cosClientManager.getClient().deleteObject(deleteObjectRequest);
+            log.info("[TencentCosStorage] 文件删除成功，objectKey: {}", objectKey);
             return true;
-        } catch (Exception e) {
-            return false;
+        } catch (CosServiceException cse) {
+            log.error("[TencentCosStorage] 文件删除失败(CosServiceException)，objectKey: {}, error: {}", objectKey, cse.getErrorMessage());
+            throw new RuntimeException("文件删除失败: " + objectKey, cse);
+        } catch (CosClientException cce) {
+            log.error("[TencentCosStorage] 文件删除失败(CosClientException)，objectKey: {}, error: {}", objectKey, cce.getMessage());
+            throw new RuntimeException("文件删除失败: " + objectKey, cce);
         }
     }
 
@@ -119,8 +96,4 @@ public class TencentCosStorageServiceImpl implements CosStorageService {
         return cosConfig.getBucketName();
     }
 
-    @Override
-    public String getCdnDomain() {
-        return cosConfig.getCdnDomain();
-    }
 }

@@ -160,3 +160,66 @@ export function addMessage(
     { content, role }
   );
 }
+
+// ========== 知识库文件操作 ==========
+
+export interface KnowledgeFile {
+  id: string;
+  fileName: string;
+  fileSuffix: string;
+  fileSize: number;
+  contentType: string;
+  objectKey: string;
+  bizType: string;
+  bizId?: string;
+  uploadBy?: string;
+  status: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OssUploadResp {
+  id: string;
+  objectKey: string;
+  etag: string;
+  bucket: string;
+  fileName: string;
+  fileSize: number;
+}
+
+export interface OssListResp {
+  list: KnowledgeFile[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * 上传知识库文件
+ * POST /api/oss/upload
+ */
+export function uploadKnowledgeFile(file: File, bizType: string = 'KNOWLEDGE', bizId?: string) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('bizType', bizType);
+  if (bizId) formData.append('bizId', bizId);
+  return request.post<ApiResponse<OssUploadResp>>('/api/oss/upload', formData);
+}
+
+/**
+ * 获取知识库文件列表
+ * GET /api/oss/files
+ */
+export function getKnowledgeFiles(bizType: string = 'KNOWLEDGE', page: number = 1, pageSize: number = 50) {
+  return request.get<ApiResponse<OssListResp>>('/api/oss/files', {
+    params: { bizType, page, pageSize },
+  });
+}
+
+/**
+ * 删除知识库文件
+ * DELETE /api/oss/files/{id}
+ */
+export function deleteKnowledgeFile(id: string) {
+  return request.delete<ApiResponse<null>>(`/api/oss/files/${id}`);
+}

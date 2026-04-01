@@ -1,59 +1,33 @@
 package com.liang.drugagent.shared.cos;
 
-import java.io.InputStream;
+
+import java.io.File;
 
 /**
  * COS存储服务接口。
  *
- * <p>定义对象存储的基本操作，包括预签名URL生成、文件上传下载等。</p>
+ * <p>定义对象存储的基本操作，包括文件上传下载、列表查询等。</p>
+ * @author liangjiajian
  */
 public interface CosStorageService {
 
     /**
-     * 生成预签名上传URL。
-     *
-     * @param objectKey    对象key（存储路径）
-     * @param contentType  文件内容类型
-     * @return 预签名上传URL
-     */
-    String generateUploadUrl(String objectKey, String contentType);
-
-    /**
-     * 生成预签名下载URL。
-     *
-     * @param objectKey 对象key（存储路径）
-     * @return 预签名下载URL
-     */
-    String generateDownloadUrl(String objectKey);
-
-    /**
      * 上传文件。
      *
-     * @param inputStream 输入流
-     * @param objectKey   对象key（存储路径）
-     * @param size        文件大小
-     * @param contentType 文件内容类型
+     * @param file      本地文件
+     * @param objectKey 对象key（存储路径）
      * @return 对象的ETag
      */
-    String uploadFile(InputStream inputStream, String objectKey, long size, String contentType);
+    String uploadFile(File file, String objectKey);
 
     /**
-     * 上传字节数组。
-     *
-     * @param data        字节数据
-     * @param objectKey   对象key（存储路径）
-     * @param contentType 文件内容类型
-     * @return 对象的ETag
-     */
-    String uploadBytes(byte[] data, String objectKey, String contentType);
-
-    /**
-     * 下载文件。
+     * 下载文件到本地文件。
      *
      * @param objectKey 对象key（存储路径）
-     * @return 文件字节数组
+     * @param localFile 本地目标文件
+     * @return 是否下载成功
      */
-    byte[] downloadFile(String objectKey);
+    boolean downloadFile(String objectKey, File localFile);
 
     /**
      * 删除文件。
@@ -63,21 +37,10 @@ public interface CosStorageService {
      */
     boolean deleteFile(String objectKey);
 
-    /**
-     * 判断文件是否存在。
-     *
-     * @param objectKey 对象key（存储路径）
-     * @return 是否存在
-     */
-    boolean fileExists(String objectKey);
 
     /**
      * 获取存储桶名称。
      */
     String getBucketName();
 
-    /**
-     * 获取CDN域名（如果有配置）。
-     */
-    String getCdnDomain();
 }
