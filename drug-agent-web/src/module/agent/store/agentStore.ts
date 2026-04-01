@@ -170,6 +170,16 @@ export const useAgentStore = defineStore('agent', () => {
   }
 
   /**
+   * 清空所有会话
+   */
+  async function clearAllSessions() {
+    const sessionIds = sessions.value.map((s) => s.id);
+    for (const id of sessionIds) {
+      await removeSession(id);
+    }
+  }
+
+  /**
    * 更新会话标题
    */
   async function updateSessionTitle(sessionId: string, title: string) {
@@ -430,6 +440,7 @@ export const useAgentStore = defineStore('agent', () => {
     selectSession,
     loadMessages,
     removeSession,
+    clearAllSessions,
     updateSessionTitle,
     sendMessage,
     uploadFiles,
