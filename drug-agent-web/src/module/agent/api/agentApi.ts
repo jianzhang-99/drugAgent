@@ -1,6 +1,6 @@
 /**
  * Agent API 层
- * 调用后端接口：/agent/chat, /agent/submit, /agent/sessions, /agent/sessions/{id}
+ * 调用后端接口：/api/agent/chat, /api/agent/submit, /api/agent/sessions, /api/agent/sessions/{id}
  */
 
 import request from '@/utils/request';
@@ -20,25 +20,25 @@ const USE_MOCK = import.meta.env.VITE_AGENT_USE_MOCK !== 'false';
 
 /**
  * 同步对话
- * POST /agent/chat
+ * POST /api/agent/chat
  */
 export function chat(req: ChatRequest) {
   if (USE_MOCK) return mockAgentApi.chat(req);
-  return request.post<ApiResponse<DrugAgentResp>>('/agent/chat', req);
+  return request.post<ApiResponse<DrugAgentResp>>('/api/agent/chat', req);
 }
 
 /**
  * 获取可用模型列表
- * GET /agent/models
+ * GET /api/agent/models
  */
 export function getModels() {
   if (USE_MOCK) return mockAgentApi.getModels();
-  return request.get<ApiResponse<ModelInfo[]>>('/agent/models');
+  return request.get<ApiResponse<ModelInfo[]>>('/api/agent/models');
 }
 
 /**
  * 文件上传对话
- * POST /agent/submit (multipart/form-data)
+ * POST /api/agent/submit (multipart/form-data)
  */
 export function submit(
   query: string | undefined,
@@ -75,79 +75,79 @@ export function submit(
     formData.append('files', file);
   });
 
-  return request.post<ApiResponse<DrugAgentResp>>('/agent/submit', formData);
+  return request.post<ApiResponse<DrugAgentResp>>('/api/agent/submit', formData);
 }
 
 /**
  * 获取所有会话列表
- * GET /agent/sessions
+ * GET /api/agent/sessions
  */
 export function getSessions() {
   if (USE_MOCK) return mockAgentApi.getSessions();
-  return request.get<ApiResponse<ChatSession[]>>('/agent/sessions');
+  return request.get<ApiResponse<ChatSession[]>>('/api/agent/sessions');
 }
 
 /**
  * 获取会话详情（含消息）
- * GET /agent/sessions/{id}
+ * GET /api/agent/sessions/{id}
  */
 export function getSessionById(id: string) {
   if (USE_MOCK) return mockAgentApi.getSessionById(id);
-  return request.get<ApiResponse<ChatSession>>(`/agent/sessions/${id}`);
+  return request.get<ApiResponse<ChatSession>>(`/api/agent/sessions/${id}`);
 }
 
 /**
  * 创建新会话
- * POST /agent/sessions
+ * POST /api/agent/sessions
  */
 export function createSession(data: CreateSessionRequest) {
   if (USE_MOCK) return mockAgentApi.createSession(data);
-  return request.post<ApiResponse<ChatSession>>('/agent/sessions', data);
+  return request.post<ApiResponse<ChatSession>>('/api/agent/sessions', data);
 }
 
 /**
  * 更新会话标题
- * PUT /agent/sessions/{id}/title
+ * PUT /api/agent/sessions/{id}/title
  */
 export function updateSessionTitle(id: string, data: UpdateTitleRequest) {
   if (USE_MOCK) return mockAgentApi.updateSessionTitle(id, data);
-  return request.put<ApiResponse<null>>(`/agent/sessions/${id}/title`, data);
+  return request.put<ApiResponse<null>>(`/api/agent/sessions/${id}/title`, data);
 }
 
 /**
  * 删除会话（软删除）
- * DELETE /agent/sessions/{id}
+ * DELETE /api/agent/sessions/{id}
  */
 export function deleteSession(id: string) {
   if (USE_MOCK) return mockAgentApi.deleteSession(id);
-  return request.delete<ApiResponse<null>>(`/agent/sessions/${id}`);
+  return request.delete<ApiResponse<null>>(`/api/agent/sessions/${id}`);
 }
 
 /**
  * 搜索会话
- * GET /agent/sessions/search?q=关键词
+ * GET /api/agent/sessions/search?q=关键词
  */
 export function searchSessions(q: string) {
   if (USE_MOCK) return mockAgentApi.searchSessions(q);
-  return request.get<ApiResponse<ChatSession[]>>('/agent/sessions/search', {
+  return request.get<ApiResponse<ChatSession[]>>('/api/agent/sessions/search', {
     params: { q },
   });
 }
 
 /**
  * 获取会话的所有消息
- * GET /agent/sessions/{sessionId}/messages
+ * GET /api/agent/sessions/{sessionId}/messages
  */
 export function getMessages(sessionId: string) {
   if (USE_MOCK) return mockAgentApi.getMessages(sessionId);
   return request.get<ApiResponse<ChatMessage[]>>(
-    `/agent/sessions/${sessionId}/messages`
+    `/api/agent/sessions/${sessionId}/messages`
   );
 }
 
 /**
  * 发送消息并获取AI响应
- * POST /agent/sessions/{sessionId}/messages
+ * POST /api/agent/sessions/{sessionId}/messages
  */
 export function addMessage(
   sessionId: string,
@@ -156,70 +156,7 @@ export function addMessage(
 ) {
   if (USE_MOCK) return mockAgentApi.addMessage(sessionId, content, role);
   return request.post<ApiResponse<any>>(
-    `/agent/sessions/${sessionId}/messages`,
+    `/api/agent/sessions/${sessionId}/messages`,
     { content, role }
   );
-}
-
-// ========== 知识库文件操作 ==========
-
-export interface KnowledgeFile {
-  id: string;
-  fileName: string;
-  fileSuffix: string;
-  fileSize: number;
-  contentType: string;
-  objectKey: string;
-  bizType: string;
-  bizId?: string;
-  uploadBy?: string;
-  status: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface OssUploadResp {
-  id: string;
-  objectKey: string;
-  etag: string;
-  bucket: string;
-  fileName: string;
-  fileSize: number;
-}
-
-export interface OssListResp {
-  list: KnowledgeFile[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
-
-/**
- * 上传知识库文件
- * POST /oss/upload
- */
-export function uploadKnowledgeFile(file: File, bizType: string = 'KNOWLEDGE', bizId?: string) {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('bizType', bizType);
-  if (bizId) formData.append('bizId', bizId);
-  return request.post<ApiResponse<OssUploadResp>>('/oss/upload', formData);
-}
-
-/**
- * 获取知识库文件列表
- * GET /oss/files
- */
-export function getKnowledgeFiles(bizType: string = 'KNOWLEDGE', page: number = 1, pageSize: number = 50) {
-  return request.get<ApiResponse<OssListResp>>('/oss/files', {
-    params: { bizType, page, pageSize },
-  });
-}
-
-/**
- * 删除知识库文件
- * DELETE /oss/files/{id}
- */
-export function deleteKnowledgeFile(id: string) {
-  return request.delete<ApiResponse<null>>(`/oss/files/${id}`);
 }

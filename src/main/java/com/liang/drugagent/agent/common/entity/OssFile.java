@@ -21,15 +21,10 @@ import java.time.LocalDateTime;
 public class OssFile {
 
     /**
-     * 文件唯一标识。
+     * 文件唯一标识，采用UUID自动生成。
      */
     @TableId(type = IdType.ASSIGN_UUID)
     private String id;
-
-    /**
-     * 关联业务ID（如会话ID）。
-     */
-    private String sessionId;
 
     /**
      * 文件名称（原始文件名）。
@@ -47,19 +42,50 @@ public class OssFile {
     private Long fileSize;
 
     /**
-     * OSS存储路径。
+     * 文件内容类型（MIME类型）。
      */
-    private String ossUrl;
+    private String contentType;
 
     /**
-     * 文件类型：1-对话附件，2-RAG知识库。
+     * OSS存储路径（objectKey）。
      */
-    private Integer fileType;
+    private String objectKey;
 
     /**
-     * 上传状态：0-待上传，1-成功，2-失败，3-已删除。
+     * 文件唯一标识（MD5或SHA256）。
      */
-    private Integer uploadStatus;
+    private String fileHash;
+
+    /**
+     * 关联的业务ID（如：会话ID、任务ID）。
+     */
+    private String bizId;
+
+    /**
+     * 业务类型（如：TENDER_REVIEW、CONTRACT_CHECK）。
+     */
+    private String bizType;
+
+    /**
+     * 文件状态：0-待上传，1-上传成功，2-上传失败，3-已删除。
+     */
+    private Integer status;
+
+    /**
+     * 上传者ID。
+     */
+    private String uploadBy;
+
+    /**
+     * 文件访问次数。
+     */
+    private Integer accessCount;
+
+    /**
+     * 软删除标记：0-未删除，1-已删除。
+     */
+    @TableLogic
+    private Integer isDeleted;
 
     /**
      * 文件创建时间。
@@ -72,4 +98,9 @@ public class OssFile {
      */
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
+
+    /**
+     * 文件过期时间（可选，用于临时文件自动清理）。
+     */
+    private LocalDateTime expireAt;
 }
