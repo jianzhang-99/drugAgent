@@ -138,6 +138,7 @@ export interface DrugAgentResp {
   requiresClarification?: boolean;
   clarificationQuestion?: string;
   sessionTitle?: string;
+  fileIds?: string[];
 }
 
 export interface EvidenceGroup {
@@ -157,6 +158,21 @@ export interface ChatSession {
   updatedAt: string;
   deleted: boolean;
   messages?: ChatMessage[];
+  files?: OssFile[];
+}
+
+// OSS 文件格式
+export interface OssFile {
+  id: string;
+  sessionId?: string;
+  fileName: string;
+  fileSuffix: string;
+  fileSize: number;
+  ossUrl: string;
+  fileType: number;
+  uploadStatus: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ChatMessage {

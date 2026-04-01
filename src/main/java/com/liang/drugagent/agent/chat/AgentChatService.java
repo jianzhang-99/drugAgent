@@ -1,18 +1,22 @@
 package com.liang.drugagent.agent.chat;
 
+import com.liang.drugagent.agent.common.entity.ChatMessage;
+import com.liang.drugagent.agent.common.entity.ChatSession;
+import com.liang.drugagent.agent.common.entity.OssFile;
 import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
 import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
 import com.liang.drugagent.scene.SceneEnum;
-import com.liang.drugagent.agent.common.entity.ChatMessage;
-import com.liang.drugagent.agent.common.entity.ChatSession;
+import com.liang.drugagent.shared.cos.TencentCosStorageService;
 import com.liang.drugagent.shared.model.AgentExecutionResult;
 import com.liang.drugagent.shared.model.WorkflowRouteDecision;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Agent 主服务 - 上层会话编排服务。
@@ -41,6 +45,7 @@ public class AgentChatService {
     private final AgentSessionService agentSessionService;
     private final AgentResponseService agentResponseService;
     private final AgentMessageService agentMessageService;
+    private final TencentCosStorageService cosStorageService;
 
 
     /**
@@ -48,10 +53,11 @@ public class AgentChatService {
      *
      * <p>完整流程：
      * 1. 通过 AgentSessionService 加载会话上下文
-     * 2. 构建本轮执行上下文
-     * 3. 调用 AgentSceneService 执行场景判断与分发
-     * 4. 保存用户消息和助手消息
-     * 5. 返回统一响应
+     * 2. 保存本轮上传文件
+     * 3. 构建本轮执行上下文
+     * 4. 调用 AgentSceneService 执行场景判断与分发
+     * 5. 保存用户消息和助手消息
+     * 6. 返回统一响应
      *
      * @param req 对话请求
      * @return 统一响应
@@ -65,14 +71,22 @@ public class AgentChatService {
             ChatSession session = agentSessionService.getOrCreateSession(req.getSessionId());
             String sessionId = session.getId();
 
-            // 2. 读取最近消息和摘要，构建上下文
+            // 2. 保存本轮上传文件
+            List<OssFile> uploadedFiles = saveUploadedFiles(sessionId, req);
+
+            // 3. 读取最近消息和摘要，构建上下文
             List<ChatMessage> recentMessages = agentMessageService.getRecentMessages(sessionId, 20);
             AgentChatContext context = AgentChatContext.from(req, sessionId);
             context.setSession(session);
             context.setHistoryMessages(recentMessages);
             context.setRecentSummary(session.getSummary());
-            log.debug("[AgentChatService] 构建执行上下文: sessionId={}, traceId={}, historyCount={}",
-                    sessionId, context.getTraceId(), recentMessages.size());
+            context.setUploadedFiles(uploadedFiles);
+
+            // 合并 fileIds：将本轮上传文件的 ID 也加入
+            mergeFileIds(req, uploadedFiles);
+
+            log.debug("[AgentChatService] 构建执行上下文: sessionId={}, traceId={}, historyCount={}, uploadedFilesCount={}",
+                    sessionId, context.getTraceId(), recentMessages.size(), uploadedFiles.size());
 
             // 3. 调用 AgentSceneService 执行场景判断与分发
             AgentSceneService.AgentSceneExecution execution = agentSceneService.decideAndExecute(context, req);
@@ -156,6 +170,52 @@ public class AgentChatService {
         resp.setClarificationQuestion("系统处理遇到问题，请稍后重试或联系管理员。");
 
         return resp;
+    }
+
+    /**
+     * 保存本轮上传的文件。
+     *
+     * @param sessionId 会话ID
+     * @param req       对话请求
+     * @return 保存成功的文件列表
+     */
+    private List<OssFile> saveUploadedFiles(String sessionId, AgentChatReq req) {
+        if (req.getFiles() == null || req.getFiles().length == 0) {
+            return List.of();
+        }
+        try {
+            return cosStorageService.saveUploadedFiles(sessionId, req.getFiles());
+        } catch (Exception e) {
+            log.error("[AgentChatService] 保存上传文件失败，sessionId={}", sessionId, e);
+            throw new RuntimeException("文件上传失败", e);
+        }
+    }
+
+    /**
+     * 将本轮上传文件的 ID 合并到请求的 fileIds 中。
+     *
+     * @param req          对话请求
+     * @param uploadedFiles 本轮上传的文件列表
+     */
+    private void mergeFileIds(AgentChatReq req, List<OssFile> uploadedFiles) {
+        if (uploadedFiles == null || uploadedFiles.isEmpty()) {
+            return;
+        }
+        List<String> uploadedFileIds = uploadedFiles.stream()
+                .map(OssFile::getId)
+                .collect(Collectors.toList());
+
+        // 合并到请求的 fileIds 中（去重）
+        List<String> existingFileIds = req.getFileIds();
+        if (existingFileIds == null) {
+            req.setFileIds(new ArrayList<>(uploadedFileIds));
+        } else {
+            for (String fileId : uploadedFileIds) {
+                if (!existingFileIds.contains(fileId)) {
+                    existingFileIds.add(fileId);
+                }
+            }
+        }
     }
 
 }

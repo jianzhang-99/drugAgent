@@ -53,6 +53,9 @@ export const useAgentStore = defineStore('agent', () => {
   /** 当前上传的文件列表 */
   const pendingFiles = ref<Attachment[]>([]);
 
+  /** 按会话 ID 存储的附件映射 */
+  const filesBySession = ref<Record<string, Attachment[]>>({});
+
   /** 可用模型列表 */
   const availableModels = ref<ModelInfo[]>([]);
 
@@ -70,6 +73,12 @@ export const useAgentStore = defineStore('agent', () => {
   const activeMessages = computed(() => {
     if (!activeSessionId.value) return [];
     return messagesBySession.value[activeSessionId.value] || [];
+  });
+
+  /** 当前会话的附件列表 */
+  const activeFiles = computed(() => {
+    if (!activeSessionId.value) return [];
+    return filesBySession.value[activeSessionId.value] || [];
   });
 
   // ==================== Actions ====================
@@ -142,6 +151,16 @@ export const useAgentStore = defineStore('agent', () => {
             mapChatMessageToMessage
           );
         }
+        // 加载会话附件
+        if (session?.files) {
+          filesBySession.value[sessionId] = session.files.map((f: any) => ({
+            id: f.id,
+            name: f.fileName,
+            size: f.fileSize,
+            type: f.fileSuffix,
+            url: f.ossUrl,
+          }));
+        }
       }
     } catch (error) {
       console.error('加载消息失败:', error);
@@ -159,6 +178,8 @@ export const useAgentStore = defineStore('agent', () => {
         sessions.value = sessions.value.filter((s) => s.id !== sessionId);
         // 清除消息
         delete messagesBySession.value[sessionId];
+        // 清除附件
+        delete filesBySession.value[sessionId];
         // 如果删除的是当前会话，选中第一个
         if (activeSessionId.value === sessionId) {
           activeSessionId.value = sessions.value[0]?.id || null;
@@ -183,6 +204,23 @@ export const useAgentStore = defineStore('agent', () => {
       }
     } catch (error) {
       console.error('更新会话标题失败:', error);
+    }
+  }
+
+  /**
+   * 清空所有会话
+   */
+  async function clearAllSessions() {
+    try {
+      // 逐个删除所有会话
+      const deletePromises = sessions.value.map((s) => agentApi.deleteSession(s.id));
+      await Promise.all(deletePromises);
+      // 重置状态
+      sessions.value = [];
+      messagesBySession.value = {};
+      activeSessionId.value = null;
+    } catch (error) {
+      console.error('清空会话失败:', error);
     }
   }
 
@@ -292,6 +330,20 @@ export const useAgentStore = defineStore('agent', () => {
         // 设置当前结果
         if (aiMsg.result) {
           currentResult.value = res.data.data;
+        }
+
+        // 将上传的文件添加到会话附件列表
+        if (res.data.data?.fileIds && activeSessionId.value) {
+          const newAttachments: Attachment[] = files.map((f, index) => ({
+            id: res.data.data.fileIds[index] || `file_${Date.now()}_${index}`,
+            name: f.name,
+            size: f.size,
+            type: f.type || 'unknown',
+          }));
+          if (!filesBySession.value[activeSessionId.value]) {
+            filesBySession.value[activeSessionId.value] = [];
+          }
+          filesBySession.value[activeSessionId.value].push(...newAttachments);
         }
 
         // 实时更新会话标题
@@ -412,6 +464,7 @@ export const useAgentStore = defineStore('agent', () => {
     activeView,
     isSidebarCollapsed,
     messagesBySession,
+    filesBySession,
     loading,
     sending,
     uploading,
@@ -423,6 +476,7 @@ export const useAgentStore = defineStore('agent', () => {
     // 计算属性
     activeSession,
     activeMessages,
+    activeFiles,
 
     // Actions
     loadSessions,
@@ -431,6 +485,7 @@ export const useAgentStore = defineStore('agent', () => {
     loadMessages,
     removeSession,
     updateSessionTitle,
+    clearAllSessions,
     sendMessage,
     uploadFiles,
     addMessage,

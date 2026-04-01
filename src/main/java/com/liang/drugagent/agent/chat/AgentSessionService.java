@@ -4,7 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.liang.drugagent.agent.common.entity.ChatMessage;
 import com.liang.drugagent.agent.common.entity.ChatSession;
+import com.liang.drugagent.agent.common.entity.OssFile;
 import com.liang.drugagent.agent.common.mapper.ChatSessionMapper;
+import com.liang.drugagent.agent.common.mapper.OssFileMapper;
 import com.liang.drugagent.controller.domain.request.agent.CreateSessionReq;
 import com.liang.drugagent.controller.domain.request.agent.UpdateSessionTitleReq;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +41,7 @@ public class AgentSessionService extends ServiceImpl<ChatSessionMapper, ChatSess
     private static final String DEFAULT_SESSION_TITLE = "新对话";
 
     private final AgentMessageService agentMessageService;
+    private final OssFileMapper ossFileMapper;
 
     // ==================== 会话 CRUD ====================
 
@@ -198,13 +201,21 @@ public class AgentSessionService extends ServiceImpl<ChatSessionMapper, ChatSess
     }
 
     /**
-     * 获取会话详情（含消息列表）。
+     * 获取会话详情（含消息列表和附件列表）。
      */
     public ChatSession getSessionWithMessages(String sessionId) {
         ChatSession session = this.getById(sessionId);
         if (session != null) {
             List<ChatMessage> messages = agentMessageService.getMessagesBySessionId(sessionId);
             session.setMessages(messages);
+
+            // 加载会话附件
+            LambdaQueryWrapper<OssFile> fileQuery = new LambdaQueryWrapper<>();
+            fileQuery.eq(OssFile::getSessionId, sessionId)
+                    .eq(OssFile::getUploadStatus, 1)
+                    .orderByDesc(OssFile::getCreatedAt);
+            List<OssFile> files = ossFileMapper.selectList(fileQuery);
+            session.setFiles(files);
         }
         return session;
     }

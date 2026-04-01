@@ -25,6 +25,20 @@
     </div>
 
     <div v-else class="conversation-shell">
+      <!-- 附件栏 -->
+      <div v-if="store.activeFiles.length > 0" class="attachment-bar">
+        <div class="attachment-title">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          <span>本会话附件 ({{ store.activeFiles.length }})</span>
+        </div>
+        <div class="attachment-list">
+          <div v-for="file in store.activeFiles" :key="file.id" class="attachment-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span class="attachment-name">{{ file.name }}</span>
+          </div>
+        </div>
+      </div>
+
       <div ref="messageListRef" class="message-list">
         <div
           v-for="msg in store.activeMessages"
@@ -367,5 +381,51 @@ async function handleQuickAction(prompt: string) {
     left: 16px;
     right: 16px;
   }
+}
+
+/* 附件栏 */
+.attachment-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 48px;
+  background: #f8fafc;
+  border-bottom: 1px solid #f1f5f9;
+  flex-wrap: wrap;
+}
+
+.attachment-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.attachment-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.attachment-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.attachment-name {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

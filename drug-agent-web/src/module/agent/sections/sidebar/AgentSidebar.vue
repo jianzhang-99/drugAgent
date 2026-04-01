@@ -27,6 +27,15 @@
     <section class="history-block" :class="{ 'is-hidden': store.isSidebarCollapsed }">
       <header class="block-header">
         <span class="block-kicker">历史审查会话</span>
+        <button
+          v-if="store.sessions.length > 0"
+          type="button"
+          class="clear-all-btn"
+          title="清空所有会话"
+          @click="handleClearAllSessions"
+        >
+          清空全部
+        </button>
       </header>
 
       <div class="history-scroll">
@@ -144,6 +153,13 @@ function handleNewSession() {
 
 function handleDeleteSession(id: string) {
   store.removeSession(id);
+}
+
+function handleClearAllSessions() {
+  if (store.sessions.length === 0) return;
+  if (confirm(`确定要清空所有 ${store.sessions.length} 个会话吗？此操作不可恢复。`)) {
+    store.clearAllSessions();
+  }
 }
 
 function startEditTitle(id: string, title: string) {
@@ -316,6 +332,8 @@ function formatTime(timeStr: string) {
 }
 
 .block-header {
+  display: flex;
+  align-items: center;
   padding: 0 24px 12px;
 }
 
@@ -323,6 +341,23 @@ function formatTime(timeStr: string) {
   color: #9ba9bf;
   font-size: 12px;
   font-weight: 700;
+}
+
+.clear-all-btn {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: #ff4d4f;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.clear-all-btn:hover {
+  background: rgba(255, 77, 79, 0.1);
 }
 
 .history-scroll {

@@ -1,5 +1,6 @@
 package com.liang.drugagent.agent.chat;
 
+import com.liang.drugagent.agent.common.entity.OssFile;
 import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
 import com.liang.drugagent.scene.SceneEnum;
@@ -9,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Agent 响应服务实现。
@@ -59,6 +62,14 @@ public class AgentResponseService {
         resp.setEvidenceGroups(executionResult.getEvidenceGroups() != null ? executionResult.getEvidenceGroups() : new ArrayList<>());
         resp.setSteps(executionResult.getSteps() != null ? executionResult.getSteps() : new ArrayList<>());
         resp.setSessionTitle(executionResult.getGeneratedTitle());
+
+        // 设置本轮上传的文件ID列表
+        if (context.getUploadedFiles() != null && !context.getUploadedFiles().isEmpty()) {
+            List<String> fileIds = context.getUploadedFiles().stream()
+                    .map(OssFile::getId)
+                    .collect(Collectors.toList());
+            resp.setFileIds(fileIds);
+        }
 
         // 处理执行失败的情况
         if (!executionResult.isSuccess()) {

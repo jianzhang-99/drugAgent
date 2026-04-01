@@ -92,4 +92,7 @@ public class AgentChatResp {
     /** 澄清问题 */
     private String clarificationQuestion;
 
+    /** 本轮上传的文件ID列表 */
+    private List<String> fileIds;
+
 }

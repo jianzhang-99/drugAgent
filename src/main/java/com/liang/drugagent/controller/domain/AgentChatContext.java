@@ -4,9 +4,11 @@ import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.agent.common.entity.ChatMessage;
 import com.liang.drugagent.agent.common.entity.ChatSession;
+import com.liang.drugagent.agent.common.entity.OssFile;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -50,6 +52,10 @@ public class AgentChatContext {
     /** 最近会话摘要。 */
     @Setter
     private String recentSummary;
+
+    /** 本轮上传的文件列表。 */
+    @Setter
+    private List<OssFile> uploadedFiles = new ArrayList<>();
 
     /** 扩展属性（用于临时存储非通用数据）。 */
     @Setter

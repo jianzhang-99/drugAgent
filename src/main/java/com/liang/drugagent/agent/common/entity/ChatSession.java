@@ -96,4 +96,10 @@ public class ChatSession {
      */
     @TableField(exist = false)
     private List<ChatMessage> messages;
+
+    /**
+     * 关联的附件列表（非数据库字段，用于关联查询）。
+     */
+    @TableField(exist = false)
+    private List<OssFile> files;
 }
