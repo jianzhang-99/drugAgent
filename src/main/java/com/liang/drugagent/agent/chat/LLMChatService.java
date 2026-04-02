@@ -1,6 +1,9 @@
 package com.liang.drugagent.agent.chat;
 
-import com.liang.drugagent.agent.prompt.SystemPrompt;
+import com.liang.drugagent.agent.prompt.contract_precheck.judge.ContractPrecheckJudgePrompt;
+import com.liang.drugagent.agent.prompt.risk_alert.judge.RiskAlertJudgePrompt;
+import com.liang.drugagent.agent.prompt.shared.base.SharedBasePrompt;
+import com.liang.drugagent.agent.prompt.tender_review.judge.TenderReviewJudgePrompt;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.shared.llm.LlmClient;
 import com.liang.drugagent.shared.llm.LlmProviderType;
@@ -48,10 +51,10 @@ public class LLMChatService {
      * 场景与 System Prompt 映射表。
      */
     private static final Map<SceneEnum, String> SCENE_PROMPT_MAP = Map.of(
-            SceneEnum.TENDER_REVIEW, SystemPrompt.TENDER_REVIEW_PROMPT,
-            SceneEnum.CONTRACT_PRECHECK, SystemPrompt.CONTRACT_PRECHECK_PROMPT,
-            SceneEnum.RISK_ALERT, SystemPrompt.RISK_ALERT_PROMPT,
-            SceneEnum.DEFAULT, SystemPrompt.DRUG_REGULATION_EXPERT_PROMPT
+            SceneEnum.TENDER_REVIEW, TenderReviewJudgePrompt.SYSTEM_PROMPT,
+            SceneEnum.CONTRACT_PRECHECK, ContractPrecheckJudgePrompt.SYSTEM_PROMPT,
+            SceneEnum.RISK_ALERT, RiskAlertJudgePrompt.SYSTEM_PROMPT,
+            SceneEnum.DEFAULT, SharedBasePrompt.DRUG_REGULATION_EXPERT_PROMPT
     );
 
     private final List<LlmClient> llmClients;
@@ -144,9 +147,9 @@ public class LLMChatService {
 
     private String resolveSystemPrompt(SceneEnum scene) {
         if (scene == null) {
-            return SystemPrompt.DRUG_REGULATION_EXPERT_PROMPT;
+            return SharedBasePrompt.DRUG_REGULATION_EXPERT_PROMPT;
         }
-        return SCENE_PROMPT_MAP.getOrDefault(scene, SystemPrompt.DRUG_REGULATION_EXPERT_PROMPT);
+        return SCENE_PROMPT_MAP.getOrDefault(scene, SharedBasePrompt.DRUG_REGULATION_EXPERT_PROMPT);
     }
 
     /**

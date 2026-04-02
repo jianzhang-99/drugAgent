@@ -1,6 +1,6 @@
 package com.liang.drugagent.shared.rag.service;
 
-import com.liang.drugagent.agent.prompt.RagPrompt;
+import com.liang.drugagent.agent.prompt.shared.rag.SharedRagPrompt;
 import com.liang.drugagent.shared.llm.LlmRequest;
 import com.liang.drugagent.shared.llm.LlmResponse;
 import com.liang.drugagent.shared.llm.LlmService;
@@ -180,7 +180,7 @@ public class RagService {
                     .append("\n\n");
         }
 
-        return RagPrompt.SYSTEM_PROMPT + "\n\n问题：" + question + "\n\n检索证据：\n" + evidence +
+        return SharedRagPrompt.SYSTEM_PROMPT + "\n\n问题：" + question + "\n\n检索证据：\n" + evidence +
                 "\n请基于以上证据回答问题：";
     }
 

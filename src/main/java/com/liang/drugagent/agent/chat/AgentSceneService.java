@@ -1,6 +1,7 @@
 package com.liang.drugagent.agent.chat;
 
-import com.liang.drugagent.agent.prompt.GeneralPrompt;
+import com.liang.drugagent.agent.prompt.shared.base.SharedBasePrompt;
+import com.liang.drugagent.agent.prompt.shared.route.SharedRoutePrompt;
 import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
 import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
@@ -329,7 +330,7 @@ public class AgentSceneService {
                     .provider(provider)
                     .model(effectiveModel)
                     .sessionId(sessionId)
-                    .systemPrompt(GeneralPrompt.GENERAL_CHAT_SYSTEM_PROMPT)
+                    .systemPrompt(SharedBasePrompt.GENERAL_CHAT)
                     .messages(List.of(LlmRequest.ChatMessage.builder()
                             .role("user")
                             .content(query)
@@ -402,7 +403,7 @@ public class AgentSceneService {
                     .provider(provider)
                     .model(effectiveModel)
                     .sessionId("intent-classify")
-                    .systemPrompt(GeneralPrompt.INTENT_CLASSIFY_PROMPT)
+                    .systemPrompt(SharedRoutePrompt.INTENT_CLASSIFY)
                     .messages(List.of(LlmRequest.ChatMessage.builder()
                             .role("user")
                             .content(userQuery)
