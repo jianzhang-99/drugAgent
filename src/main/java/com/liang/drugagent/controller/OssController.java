@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +57,7 @@ public class OssController {
             String etag = cosStorageService.uploadFile(tempFile, objectKey);
             tempFile.delete();
 
+            LocalDateTime now = LocalDateTime.now();
             OssFile ossFile = OssFile.builder()
                     .fileName(file.getOriginalFilename())
                     .fileSuffix(suffix)
@@ -64,6 +66,8 @@ public class OssController {
                     .fileType(fileType)
                     .sessionId(sessionId)
                     .uploadStatus(1)
+                    .createdAt(now)
+                    .updatedAt(now)
                     .build();
             ossFileMapper.insert(ossFile);
 

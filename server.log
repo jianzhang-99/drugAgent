@@ -1,52 +1,287 @@
-{"level":30,"time":1774798477740,"pid":27424,"hostname":"WIN-F0D0DGPMRES","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
-{"level":30,"time":1774798477741,"pid":27424,"hostname":"WIN-F0D0DGPMRES","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774798477836,"pid":32664,"hostname":"WIN-F0D0DGPMRES","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
-{"level":30,"time":1774798477837,"pid":32664,"hostname":"WIN-F0D0DGPMRES","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774840001311,"pid":28702,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
-{"level":30,"time":1774840001311,"pid":28702,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774840001462,"pid":28720,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
-{"level":30,"time":1774840001462,"pid":28720,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774848050484,"pid":39327,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
-{"level":30,"time":1774848050492,"pid":39355,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
-{"level":30,"time":1774848050484,"pid":39327,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774848050493,"pid":39355,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774848050953,"pid":39378,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
-{"level":30,"time":1774848050953,"pid":39378,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774848050978,"pid":39396,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
-{"level":30,"time":1774848050978,"pid":39396,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774848055970,"pid":39490,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
-{"level":30,"time":1774848055971,"pid":39490,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774848055972,"pid":39472,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
-{"level":30,"time":1774848055972,"pid":39472,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774848061714,"pid":39534,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
-{"level":30,"time":1774848061714,"pid":39519,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
-{"level":30,"time":1774848061714,"pid":39534,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774848061714,"pid":39519,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774848063375,"pid":39554,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
-{"level":30,"time":1774848063375,"pid":39554,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774848063378,"pid":39572,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
-{"level":30,"time":1774848063379,"pid":39572,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774848065512,"pid":39617,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
-{"level":30,"time":1774848065513,"pid":39616,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
-{"level":30,"time":1774848065513,"pid":39617,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774848065513,"pid":39616,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774856372159,"pid":59169,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
-{"level":30,"time":1774856372159,"pid":59169,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774856372434,"pid":59205,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
-{"level":30,"time":1774856372434,"pid":59205,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774921515554,"pid":94407,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
-{"level":30,"time":1774921515554,"pid":94407,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774921515656,"pid":94425,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
-{"level":30,"time":1774921515656,"pid":94425,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774922629335,"pid":96537,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
-{"level":30,"time":1774922629329,"pid":96519,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
-{"level":30,"time":1774922629336,"pid":96537,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774922629329,"pid":96519,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774922629584,"pid":96573,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
-{"level":30,"time":1774922629584,"pid":96569,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
-{"level":30,"time":1774922629584,"pid":96573,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774922629584,"pid":96569,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774952316711,"pid":36949,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
-{"level":30,"time":1774952316711,"pid":36949,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
-{"level":30,"time":1774952317196,"pid":36985,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
-{"level":30,"time":1774952317196,"pid":36985,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------------< com.liang:drug-agent >------------------------
+[INFO] Building drug-agent 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.4.4:run (default-cli) > test-compile @ drug-agent >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ drug-agent ---
+[INFO] Copying 2 resources from src/main/resources to target/classes
+[INFO] Copying 3 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ drug-agent ---
+[INFO] Changes detected - recompiling the module! :source
+[INFO] Compiling 143 source files with javac [debug release 21] to target/classes
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/shared/model/ReviewReport.java:[32,28] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/shared/model/ReviewReport.java:[33,26] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/shared/model/ReviewReport.java:[34,26] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/shared/model/ReviewReport.java:[35,33] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/shared/model/ReviewReport.java:[62,30] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/shared/model/ReviewReport.java:[63,30] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/shared/model/ReviewReport.java:[64,30] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/shared/model/AgentExecutionResult.java:[64,26] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/shared/model/AgentExecutionResult.java:[74,32] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/shared/model/AgentExecutionResult.java:[79,33] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/shared/model/AgentExecutionResult.java:[84,26] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/scene/tender_review/model/RuleHit.java:[41,26] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/scene/tender_review/model/RuleHit.java:[43,26] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/scene/tender_review/model/RuleHit.java:[45,26] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/scene/tender_review/model/RuleHit.java:[47,32] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/controller/domain/response/agent/AgentChatResp.java:[66,26] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/controller/domain/response/agent/AgentChatResp.java:[72,26] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/controller/domain/response/agent/AgentChatResp.java:[78,32] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/controller/domain/response/agent/AgentChatResp.java:[81,33] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/controller/domain/response/agent/AgentChatResp.java:[84,26] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/controller/domain/request/agent/FileChatReq.java:[31,20] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/shared/model/RagOutcome.java:[26,32] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/scene/tender_review/model/CompareScope.java:[27,26] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/shared/model/WorkflowResult.java:[31,32] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/shared/model/WorkflowResult.java:[32,33] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/shared/model/WorkflowResult.java:[33,26] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/scene/tender_review/model/TenderCase.java:[34,26] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/shared/model/EvidenceGroup.java:[40,32] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/scene/tender_review/model/TenderReviewData.java:[27,34] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/scene/tender_review/model/TenderReviewData.java:[29,32] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/scene/tender_review/model/TenderReviewData.java:[31,25] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/scene/tender_review/model/TenderReviewData.java:[33,25] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/shared/model/EvidenceAssemblyResult.java:[31,32] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/shared/model/EvidenceAssemblyResult.java:[34,33] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/scene/tender_review/model/RiskFusionResult.java:[36,26] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/controller/domain/response/knowledge/KnowledgeAskResp.java:[33,28] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[INFO] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/scene/tender_review/support/parser/TenderTextStructureSupport.java: /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/scene/tender_review/support/parser/TenderTextStructureSupport.java使用或覆盖了已过时的 API。
+[INFO] /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/src/main/java/com/liang/drugagent/scene/tender_review/support/parser/TenderTextStructureSupport.java: 有关详细信息, 请使用 -Xlint:deprecation 重新编译。
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ drug-agent ---
+[INFO] Copying 2 resources from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.11.0:testCompile (default-testCompile) @ drug-agent ---
+[INFO] Changes detected - recompiling the module! :dependency
+[INFO] Compiling 6 source files with javac [debug release 21] to target/test-classes
+[INFO] 
+[INFO] <<< spring-boot:3.4.4:run (default-cli) < test-compile @ drug-agent <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.4.4:run (default-cli) @ drug-agent ---
+[INFO] Attaching agents: []
+13:56:07,172 |-INFO in ch.qos.logback.classic.LoggerContext[default] - This is logback-classic version 1.5.18
+13:56:07,173 |-INFO in ch.qos.logback.classic.util.ContextInitializer@1929425f - Here is a list of configurators discovered as a service, by rank: 
+13:56:07,173 |-INFO in ch.qos.logback.classic.util.ContextInitializer@1929425f -   org.springframework.boot.logging.logback.RootLogLevelConfigurator
+13:56:07,173 |-INFO in ch.qos.logback.classic.util.ContextInitializer@1929425f - They will be invoked in order until ExecutionStatus.DO_NOT_INVOKE_NEXT_IF_ANY is returned.
+13:56:07,173 |-INFO in ch.qos.logback.classic.util.ContextInitializer@1929425f - Constructed configurator of type class org.springframework.boot.logging.logback.RootLogLevelConfigurator
+13:56:07,179 |-INFO in ch.qos.logback.classic.util.ContextInitializer@1929425f - org.springframework.boot.logging.logback.RootLogLevelConfigurator.configure() call lasted 0 milliseconds. ExecutionStatus=INVOKE_NEXT_IF_ANY
+13:56:07,179 |-INFO in ch.qos.logback.classic.util.ContextInitializer@1929425f - Trying to configure with ch.qos.logback.classic.joran.SerializedModelConfigurator
+13:56:07,180 |-INFO in ch.qos.logback.classic.util.ContextInitializer@1929425f - Constructed configurator of type class ch.qos.logback.classic.joran.SerializedModelConfigurator
+13:56:07,181 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback-test.scmo]
+13:56:07,182 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback.scmo]
+13:56:07,182 |-INFO in ch.qos.logback.classic.util.ContextInitializer@1929425f - ch.qos.logback.classic.joran.SerializedModelConfigurator.configure() call lasted 2 milliseconds. ExecutionStatus=INVOKE_NEXT_IF_ANY
+13:56:07,182 |-INFO in ch.qos.logback.classic.util.ContextInitializer@1929425f - Trying to configure with ch.qos.logback.classic.util.DefaultJoranConfigurator
+13:56:07,182 |-INFO in ch.qos.logback.classic.util.ContextInitializer@1929425f - Constructed configurator of type class ch.qos.logback.classic.util.DefaultJoranConfigurator
+13:56:07,182 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback-test.xml]
+13:56:07,182 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback.xml]
+13:56:07,182 |-INFO in ch.qos.logback.classic.util.ContextInitializer@1929425f - ch.qos.logback.classic.util.DefaultJoranConfigurator.configure() call lasted 0 milliseconds. ExecutionStatus=INVOKE_NEXT_IF_ANY
+13:56:07,182 |-INFO in ch.qos.logback.classic.util.ContextInitializer@1929425f - Trying to configure with ch.qos.logback.classic.BasicConfigurator
+13:56:07,183 |-INFO in ch.qos.logback.classic.util.ContextInitializer@1929425f - Constructed configurator of type class ch.qos.logback.classic.BasicConfigurator
+13:56:07,183 |-INFO in ch.qos.logback.classic.BasicConfigurator@718607eb - Setting up default configuration.
+13:56:07,193 |-INFO in ch.qos.logback.core.ConsoleAppender[console] - BEWARE: Writing to the console can be very slow. Avoid logging to the 
+13:56:07,193 |-INFO in ch.qos.logback.core.ConsoleAppender[console] - console in production environments, especially in high volume systems.
+13:56:07,193 |-INFO in ch.qos.logback.core.ConsoleAppender[console] - See also https://logback.qos.ch/codes.html#slowConsole
+13:56:07,193 |-INFO in ch.qos.logback.classic.util.ContextInitializer@1929425f - ch.qos.logback.classic.BasicConfigurator.configure() call lasted 10 milliseconds. ExecutionStatus=NEUTRAL
+13:56:07,405 |-WARN in ch.qos.logback.core.joran.action.ConversionRuleAction - [converterClass] attribute is deprecated and replaced by [class]. See element [conversionRule] near line 13
+13:56:07,405 |-WARN in ch.qos.logback.core.joran.action.ConversionRuleAction - [converterClass] attribute is deprecated and replaced by [class]. See element [conversionRule] near line 14
+13:56:07,405 |-WARN in ch.qos.logback.core.joran.action.ConversionRuleAction - [converterClass] attribute is deprecated and replaced by [class]. See element [conversionRule] near line 15
+13:56:07,422 |-INFO in ch.qos.logback.core.model.processor.ConversionRuleModelHandler - registering conversion word clr with class [org.springframework.boot.logging.logback.ColorConverter]
+13:56:07,422 |-INFO in ch.qos.logback.core.model.processor.ConversionRuleModelHandler - registering conversion word wex with class [org.springframework.boot.logging.logback.WhitespaceThrowableProxyConverter]
+13:56:07,422 |-INFO in ch.qos.logback.core.model.processor.ConversionRuleModelHandler - registering conversion word wEx with class [org.springframework.boot.logging.logback.ExtendedWhitespaceThrowableProxyConverter]
+13:56:07,424 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [CONSOLE]
+13:56:07,424 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.ConsoleAppender]
+13:56:07,426 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.classic.encoder.PatternLayoutEncoder] for [encoder] property
+13:56:07,427 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@27f3b6d6 - value "%d{HH:mm:ss.SSS} %highlight(%-5level) [%magenta(%X{traceId:-无})] [%blue(%X{scene:-无})] %cyan([%thread]) %green(%-40.40logger{20}) - %m%n%wEx" substituted for "${CONSOLE_LOG_PATTERN}"
+13:56:07,437 |-INFO in ch.qos.logback.core.ConsoleAppender[CONSOLE] - BEWARE: Writing to the console can be very slow. Avoid logging to the 
+13:56:07,437 |-INFO in ch.qos.logback.core.ConsoleAppender[CONSOLE] - console in production environments, especially in high volume systems.
+13:56:07,437 |-INFO in ch.qos.logback.core.ConsoleAppender[CONSOLE] - See also https://logback.qos.ch/codes.html#slowConsole
+13:56:07,437 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [JSON_FILE]
+13:56:07,437 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.rolling.RollingFileAppender]
+13:56:07,439 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@27f3b6d6 - value "doc/log/drug-agent.json" substituted for "${LOG_PATH}/drug-agent.json"
+13:56:07,440 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@27f3b6d6 - value "doc/log/drug-agent.%d{yyyy-MM-dd}.json" substituted for "${LOG_PATH}/drug-agent.%d{yyyy-MM-dd}.json"
+13:56:07,442 |-INFO in c.q.l.core.rolling.TimeBasedRollingPolicy@1971283804 - setting totalSizeCap to 3 GB
+13:56:07,443 |-INFO in c.q.l.core.rolling.TimeBasedRollingPolicy@1971283804 - No compression will be used
+13:56:07,444 |-INFO in c.q.l.core.rolling.TimeBasedRollingPolicy@1971283804 - Will use the pattern doc/log/drug-agent.%d{yyyy-MM-dd}.json for the active file
+13:56:07,456 |-INFO in c.q.l.core.rolling.DefaultTimeBasedFileNamingAndTriggeringPolicy - The date pattern is 'yyyy-MM-dd' from file name pattern 'doc/log/drug-agent.%d{yyyy-MM-dd}.json'.
+13:56:07,456 |-INFO in c.q.l.core.rolling.DefaultTimeBasedFileNamingAndTriggeringPolicy - Roll-over at midnight.
+13:56:07,459 |-INFO in c.q.l.core.rolling.DefaultTimeBasedFileNamingAndTriggeringPolicy - Setting initial period to 2026-04-02T05:55:17.968Z
+13:56:07,548 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[JSON_FILE] - Active log file name: doc/log/drug-agent.json
+13:56:07,548 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[JSON_FILE] - File property is set to [doc/log/drug-agent.json]
+13:56:07,548 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [TENDER_REVIEW_FILE]
+13:56:07,548 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.rolling.RollingFileAppender]
+13:56:07,548 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@27f3b6d6 - value "doc/log/tender-review.json" substituted for "${LOG_PATH}/tender-review.json"
+13:56:07,549 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@27f3b6d6 - value "doc/log/tender-review.%d{yyyy-MM-dd}.%i.json" substituted for "${LOG_PATH}/tender-review.%d{yyyy-MM-dd}.%i.json"
+13:56:07,549 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@639105046 - setting totalSizeCap to 3 GB
+13:56:07,549 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@639105046 - Archive files will be limited to [100 MB] each.
+13:56:07,549 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@639105046 - No compression will be used
+13:56:07,549 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@639105046 - Will use the pattern doc/log/tender-review.%d{yyyy-MM-dd}.%i.json for the active file
+13:56:07,549 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@676f0a60 - The date pattern is 'yyyy-MM-dd' from file name pattern 'doc/log/tender-review.%d{yyyy-MM-dd}.%i.json'.
+13:56:07,549 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@676f0a60 - Roll-over at midnight.
+13:56:07,550 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@676f0a60 - Setting initial period to 2026-03-31T07:55:57.344Z
+13:56:07,551 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[TENDER_REVIEW_FILE] - Active log file name: doc/log/tender-review.json
+13:56:07,552 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[TENDER_REVIEW_FILE] - Setting currentFileLength to 12331 for doc/log/tender-review.json
+13:56:07,552 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[TENDER_REVIEW_FILE] - File property is set to [doc/log/tender-review.json]
+13:56:07,552 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [CONTRACT_FILE]
+13:56:07,552 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.rolling.RollingFileAppender]
+13:56:07,552 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@27f3b6d6 - value "doc/log/contract.json" substituted for "${LOG_PATH}/contract.json"
+13:56:07,552 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@27f3b6d6 - value "doc/log/contract.%d{yyyy-MM-dd}.%i.json" substituted for "${LOG_PATH}/contract.%d{yyyy-MM-dd}.%i.json"
+13:56:07,552 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@1561347421 - setting totalSizeCap to 3 GB
+13:56:07,552 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@1561347421 - Archive files will be limited to [100 MB] each.
+13:56:07,552 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@1561347421 - No compression will be used
+13:56:07,552 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@1561347421 - Will use the pattern doc/log/contract.%d{yyyy-MM-dd}.%i.json for the active file
+13:56:07,553 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@535b8c24 - The date pattern is 'yyyy-MM-dd' from file name pattern 'doc/log/contract.%d{yyyy-MM-dd}.%i.json'.
+13:56:07,553 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@535b8c24 - Roll-over at midnight.
+13:56:07,553 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@535b8c24 - Setting initial period to 2026-03-25T02:59:54.063Z
+13:56:07,554 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[CONTRACT_FILE] - Active log file name: doc/log/contract.json
+13:56:07,554 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[CONTRACT_FILE] - Setting currentFileLength to 0 for doc/log/contract.json
+13:56:07,554 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[CONTRACT_FILE] - File property is set to [doc/log/contract.json]
+13:56:07,554 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [RISK_FILE]
+13:56:07,554 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.rolling.RollingFileAppender]
+13:56:07,554 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@27f3b6d6 - value "doc/log/risk.json" substituted for "${LOG_PATH}/risk.json"
+13:56:07,554 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@27f3b6d6 - value "doc/log/risk.%d{yyyy-MM-dd}.%i.json" substituted for "${LOG_PATH}/risk.%d{yyyy-MM-dd}.%i.json"
+13:56:07,554 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@1251285265 - setting totalSizeCap to 3 GB
+13:56:07,554 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@1251285265 - Archive files will be limited to [100 MB] each.
+13:56:07,554 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@1251285265 - No compression will be used
+13:56:07,554 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@1251285265 - Will use the pattern doc/log/risk.%d{yyyy-MM-dd}.%i.json for the active file
+13:56:07,554 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@55b62629 - The date pattern is 'yyyy-MM-dd' from file name pattern 'doc/log/risk.%d{yyyy-MM-dd}.%i.json'.
+13:56:07,554 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@55b62629 - Roll-over at midnight.
+13:56:07,554 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@55b62629 - Setting initial period to 2026-03-25T02:59:54.064Z
+13:56:07,555 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[RISK_FILE] - Active log file name: doc/log/risk.json
+13:56:07,555 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[RISK_FILE] - Setting currentFileLength to 0 for doc/log/risk.json
+13:56:07,555 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[RISK_FILE] - File property is set to [doc/log/risk.json]
+13:56:07,556 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [com.liang.drugagent.scene.tender_review] to DEBUG
+13:56:07,556 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@a53bb6f - Propagating DEBUG level on Logger[com.liang.drugagent.scene.tender_review] onto the JUL framework
+13:56:07,556 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting additivity of logger [com.liang.drugagent.scene.tender_review] to false
+13:56:07,556 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [CONSOLE] to Logger[com.liang.drugagent.scene.tender_review]
+13:56:07,556 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [JSON_FILE] to Logger[com.liang.drugagent.scene.tender_review]
+13:56:07,556 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [TENDER_REVIEW_FILE] to Logger[com.liang.drugagent.scene.tender_review]
+13:56:07,556 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [com.liang.drugagent.scene.contract] to DEBUG
+13:56:07,556 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@a53bb6f - Propagating DEBUG level on Logger[com.liang.drugagent.scene.contract] onto the JUL framework
+13:56:07,556 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting additivity of logger [com.liang.drugagent.scene.contract] to false
+13:56:07,556 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [CONSOLE] to Logger[com.liang.drugagent.scene.contract]
+13:56:07,556 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [JSON_FILE] to Logger[com.liang.drugagent.scene.contract]
+13:56:07,556 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [CONTRACT_FILE] to Logger[com.liang.drugagent.scene.contract]
+13:56:07,556 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [com.liang.drugagent.scene.risk] to DEBUG
+13:56:07,556 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@a53bb6f - Propagating DEBUG level on Logger[com.liang.drugagent.scene.risk] onto the JUL framework
+13:56:07,556 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting additivity of logger [com.liang.drugagent.scene.risk] to false
+13:56:07,556 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [CONSOLE] to Logger[com.liang.drugagent.scene.risk]
+13:56:07,556 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [JSON_FILE] to Logger[com.liang.drugagent.scene.risk]
+13:56:07,556 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [RISK_FILE] to Logger[com.liang.drugagent.scene.risk]
+13:56:07,556 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [org.springframework] to WARN
+13:56:07,556 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@a53bb6f - Propagating WARN level on Logger[org.springframework] onto the JUL framework
+13:56:07,556 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [org.hibernate] to WARN
+13:56:07,556 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@a53bb6f - Propagating WARN level on Logger[org.hibernate] onto the JUL framework
+13:56:07,556 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [com.alibaba.nacos] to WARN
+13:56:07,556 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@a53bb6f - Propagating WARN level on Logger[com.alibaba.nacos] onto the JUL framework
+13:56:07,556 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [org.apache.catalina] to WARN
+13:56:07,556 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@a53bb6f - Propagating WARN level on Logger[org.apache.catalina] onto the JUL framework
+13:56:07,556 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [org.apache.coyote] to WARN
+13:56:07,556 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@a53bb6f - Propagating WARN level on Logger[org.apache.coyote] onto the JUL framework
+13:56:07,556 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [org.apache.tomcat] to WARN
+13:56:07,556 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@a53bb6f - Propagating WARN level on Logger[org.apache.tomcat] onto the JUL framework
+13:56:07,557 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [com.baomidou.mybatisplus] to WARN
+13:56:07,557 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@a53bb6f - Propagating WARN level on Logger[com.baomidou.mybatisplus] onto the JUL framework
+13:56:07,557 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [com.liang.drugagent] to DEBUG
+13:56:07,557 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@a53bb6f - Propagating DEBUG level on Logger[com.liang.drugagent] onto the JUL framework
+13:56:07,557 |-INFO in ch.qos.logback.classic.model.processor.RootLoggerModelHandler - Setting level of ROOT logger to INFO
+13:56:07,557 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@a53bb6f - Propagating INFO level on Logger[ROOT] onto the JUL framework
+13:56:07,557 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [CONSOLE] to Logger[ROOT]
+13:56:07,557 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [JSON_FILE] to Logger[ROOT]
+13:56:07,557 |-INFO in ch.qos.logback.core.model.processor.DefaultProcessor@5e63cad - End of configuration.
+13:56:07,557 |-INFO in org.springframework.boot.logging.logback.SpringBootJoranConfigurator@6759f091 - Registering current configuration as safe fallback point
+
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.4.4)
+
+13:56:07.599 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[main][0;39m [32mc.l.d.a.DrugAgentApplication            [0;39m - Starting DrugAgentApplication using Java 21.0.10 with PID 39102 (/Users/liangjiajian/Desktop/医药监管AI项目/drug-agent/target/classes started by liangjiajian in /Users/liangjiajian/Desktop/医药监管AI项目/drug-agent)
+13:56:07.605 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[main][0;39m [32mc.l.d.a.DrugAgentApplication            [0;39m - Running with Spring Boot v3.4.4, Spring v6.2.5
+13:56:07.605 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[main][0;39m [32mc.l.d.a.DrugAgentApplication            [0;39m - The following 1 profile is active: "local"
+ _ _   |_  _ _|_. ___ _ |    _ 
+| | |\/|_)(_| | |_\  |_)||_|_\ 
+     /               |         
+                        3.5.7 
+13:56:09.297 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[main][0;39m [32mc.l.d.a.DrugAgentApplication            [0;39m - Started DrugAgentApplication in 2.061 seconds (process running for 2.224)
+13:56:30.573 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-1][0;39m [32mc.z.h.HikariDataSource                  [0;39m - HikariPool-1 - Starting...
+13:56:33.529 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-1][0;39m [32mc.z.h.p.HikariPool                      [0;39m - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@2e919c7f
+13:56:33.530 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-1][0;39m [32mc.z.h.HikariDataSource                  [0;39m - HikariPool-1 - Start completed.
+13:56:33.538 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-1][0;39m [32mc.l.d.a.c.m.C.insert                    [0;39m - ==>  Preparing: INSERT INTO chat_session ( id, title, user_id, is_deleted, created_at, updated_at ) VALUES ( ?, ?, ?, ?, ?, ? )
+13:56:33.558 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-1][0;39m [32mc.l.d.a.c.m.C.insert                    [0;39m - ==> Parameters: c33b8bab753910a3a4ce3614a59aa74e(String), 标书审查测试(String), default(String), 0(Integer), 2026-04-02T13:56:30.551875(LocalDateTime), 2026-04-02T13:56:30.551891(LocalDateTime)
+13:56:33.599 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-1][0;39m [32mc.l.d.a.c.m.C.insert                    [0;39m - <==    Updates: 1
+13:56:39.535 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-2][0;39m [32mc.l.d.s.c.CosClientManager              [0;39m - [CosClientManager] COS客户端初始化成功，Bucket: hengdu-1258032972, Region: ap-guangzhou
+13:56:40.157 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-2][0;39m [32mc.l.d.s.c.TencentCosStorageService      [0;39m - [TencentCosStorage] 文件上传成功，objectKey: attachment/2026-04-02/3ba62220-6c0d-4742-9bd3-c214e19efe6e.md, ETag: a9e97aef67fed0cd1085138cd758ca27
+13:56:40.172 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-2][0;39m [32mc.l.d.a.c.m.O.insert                    [0;39m - ==>  Preparing: INSERT INTO oss_file ( id, session_id, file_name, file_suffix, file_size, oss_url, file_type, upload_status, created_at, updated_at ) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )
+13:56:40.175 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-2][0;39m [32mc.l.d.a.c.m.O.insert                    [0;39m - ==> Parameters: 68143cd287f609c75ec46cee1e3d3d9c(String), c33b8bab753910a3a4ce3614a59aa74e(String), 投标人A_晟博云创_W-M1测试标书.md(String), md(String), 9269(Long), attachment/2026-04-02/3ba62220-6c0d-4742-9bd3-c214e19efe6e.md(String), 1(Integer), 1(Integer), 2026-04-02T13:56:40.157669(LocalDateTime), 2026-04-02T13:56:40.157669(LocalDateTime)
+13:56:40.210 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-2][0;39m [32mc.l.d.a.c.m.O.insert                    [0;39m - <==    Updates: 1
+13:56:40.210 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-2][0;39m [32mc.l.d.c.OssController                   [0;39m - [OssController] 文件上传成功，ossUrl: attachment/2026-04-02/3ba62220-6c0d-4742-9bd3-c214e19efe6e.md, fileId: 68143cd287f609c75ec46cee1e3d3d9c
+13:56:46.776 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-4][0;39m [32mc.l.d.a.c.m.O.selectList                [0;39m - ==>  Preparing: SELECT id,session_id,file_name,file_suffix,file_size,oss_url,file_type,upload_status,created_at,updated_at FROM oss_file WHERE (session_id = ? AND upload_status = ?) ORDER BY created_at DESC
+13:56:46.776 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-4][0;39m [32mc.l.d.a.c.m.O.selectList                [0;39m - ==> Parameters: c33b8bab753910a3a4ce3614a59aa74e(String), 1(Integer)
+13:56:46.803 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-4][0;39m [32mc.l.d.a.c.m.O.selectList                [0;39m - <==      Total: 1
+13:56:52.268 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-6][0;39m [32mc.l.d.a.c.m.O.selectById                [0;39m - ==>  Preparing: SELECT id,session_id,file_name,file_suffix,file_size,oss_url,file_type,upload_status,created_at,updated_at FROM oss_file WHERE id=?
+13:56:52.269 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-6][0;39m [32mc.l.d.a.c.m.O.selectById                [0;39m - ==> Parameters: 68143cd287f609c75ec46cee1e3d3d9c(String)
+13:56:52.284 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-6][0;39m [32mc.l.d.a.c.m.O.selectById                [0;39m - <==      Total: 1
+13:56:52.366 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-6][0;39m [32mc.l.d.s.c.TencentCosStorageService      [0;39m - [TencentCosStorage] 文件删除成功，objectKey: attachment/2026-04-02/3ba62220-6c0d-4742-9bd3-c214e19efe6e.md
+13:56:52.368 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-6][0;39m [32mc.l.d.a.c.m.O.updateById                [0;39m - ==>  Preparing: UPDATE oss_file SET session_id=?, file_name=?, file_suffix=?, file_size=?, oss_url=?, file_type=?, upload_status=?, created_at=?, updated_at=? WHERE id=?
+13:56:52.369 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-6][0;39m [32mc.l.d.a.c.m.O.updateById                [0;39m - ==> Parameters: c33b8bab753910a3a4ce3614a59aa74e(String), 投标人A_晟博云创_W-M1测试标书.md(String), md(String), 9269(Long), attachment/2026-04-02/3ba62220-6c0d-4742-9bd3-c214e19efe6e.md(String), 1(Integer), 3(Integer), 2026-04-02T13:56:40(LocalDateTime), 2026-04-02T13:56:40(LocalDateTime), 68143cd287f609c75ec46cee1e3d3d9c(String)
+13:56:52.405 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-6][0;39m [32mc.l.d.a.c.m.O.updateById                [0;39m - <==    Updates: 1
+13:56:52.406 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-6][0;39m [32mc.l.d.c.OssController                   [0;39m - [OssController] 文件删除成功，id: 68143cd287f609c75ec46cee1e3d3d9c, ossUrl: attachment/2026-04-02/3ba62220-6c0d-4742-9bd3-c214e19efe6e.md
+13:57:01.538 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-8][0;39m [32mc.l.d.a.c.m.C.insert                    [0;39m - ==>  Preparing: INSERT INTO chat_session ( id, title, user_id, is_deleted, created_at, updated_at ) VALUES ( ?, ?, ?, ?, ?, ? )
+13:57:01.539 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-8][0;39m [32mc.l.d.a.c.m.C.insert                    [0;39m - ==> Parameters: a52bcf69c731e9ddcd9ea73e6c49166b(String), 标书审查完整测试(String), default(String), 0(Integer), 2026-04-02T13:57:01.526160(LocalDateTime), 2026-04-02T13:57:01.526169(LocalDateTime)
+13:57:01.570 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-8][0;39m [32mc.l.d.a.c.m.C.insert                    [0;39m - <==    Updates: 1
+13:57:01.591 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.c.AgentController                 [0;39m - [AgentController] 收到文件上传请求, reqJson长度=163, reqJson内容={"query":"帮我审查这份标书，检查是否有围标风险","sessionId":"a52bcf69c731e9ddcd9ea73e6c49166b","userId":"default","submittedBy":"test","sceneHint":"TENDER_REVIEW","model":"minimax"}, fileCount=1
+13:57:01.598 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.AgentChatService              [0;39m - [AgentChatService] 收到对话请求: sessionId=a52bcf69c731e9ddcd9ea73e6c49166b
+13:57:01.598 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.C.selectById                [0;39m - ==>  Preparing: SELECT id,title,user_id,summary,last_scene,message_count,is_deleted,created_at,updated_at,last_message_at FROM chat_session WHERE id=? AND is_deleted=0
+13:57:01.598 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.C.selectById                [0;39m - ==> Parameters: a52bcf69c731e9ddcd9ea73e6c49166b(String)
+13:57:01.613 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.C.selectById                [0;39m - <==      Total: 1
+13:57:01.613 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.AgentSessionService           [0;39m - [AgentSessionService] 会话已存在，直接返回，sessionId=a52bcf69c731e9ddcd9ea73e6c49166b
+13:57:01.756 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.s.c.TencentCosStorageService      [0;39m - [TencentCosStorage] 文件上传成功，objectKey: attachment/2026-04-02/a52bcf69c731e9ddcd9ea73e6c49166b/18f8bce0-31b7-4699-8bbf-04b2e726c4db.md, ETag: a9e97aef67fed0cd1085138cd758ca27
+13:57:01.757 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.O.insert                    [0;39m - ==>  Preparing: INSERT INTO oss_file ( id, session_id, file_name, file_suffix, file_size, oss_url, file_type, upload_status, created_at, updated_at ) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )
+13:57:01.758 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.O.insert                    [0;39m - ==> Parameters: c8c0ae8c-ce2b-4205-b617-4ccc8a4d313a(String), a52bcf69c731e9ddcd9ea73e6c49166b(String), 投标人A_晟博云创_W-M1测试标书.md(String), md(String), 9269(Long), attachment/2026-04-02/a52bcf69c731e9ddcd9ea73e6c49166b/18f8bce0-31b7-4699-8bbf-04b2e726c4db.md(String), 1(Integer), 1(Integer), 2026-04-02T13:57:01.613520(LocalDateTime), 2026-04-02T13:57:01.613520(LocalDateTime)
+13:57:01.787 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.O.insert                    [0;39m - <==    Updates: 1
+13:57:01.787 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.s.c.TencentCosStorageService      [0;39m - [TencentCosStorage] 文件保存成功，fileId=c8c0ae8c-ce2b-4205-b617-4ccc8a4d313a, fileName=投标人A_晟博云创_W-M1测试标书.md, sessionId=a52bcf69c731e9ddcd9ea73e6c49166b
+13:57:01.789 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.C.selectList                [0;39m - ==>  Preparing: SELECT id,session_id,role,scene,content,metadata,type,created_at FROM chat_message WHERE (session_id = ?) ORDER BY created_at DESC LIMIT 20
+13:57:01.789 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.C.selectList                [0;39m - ==> Parameters: a52bcf69c731e9ddcd9ea73e6c49166b(String)
+13:57:01.804 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.C.selectList                [0;39m - <==      Total: 0
+13:57:01.804 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.AgentChatService              [0;39m - [AgentChatService] 构建执行上下文: sessionId=a52bcf69c731e9ddcd9ea73e6c49166b, traceId=2a7ac5b8-cd60-400f-9dcd-382260545094, historyCount=0, uploadedFilesCount=1
+13:57:01.804 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.AgentSceneService             [0;39m - [AgentSceneService] 开始处理对话请求: sessionId=a52bcf69c731e9ddcd9ea73e6c49166b
+13:57:01.805 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.AgentSceneService             [0;39m - [AgentSceneService] 检测到上传文件，自动识别为标书审查场景
+13:57:01.806 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.AgentSceneService             [0;39m - [AgentSceneService] 路由到标书审查场景, source=auto-detect, reason=检测到上传文件，自动路由到标书审查
+13:57:01.806 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.s.t.f.TenderReviewSceneService    [0;39m - [TenderReviewSceneService] 开始执行标书审查场景, sessionId=a52bcf69c731e9ddcd9ea73e6c49166b, query=帮我审查这份标书，检查是否有围标风险
+13:57:01.807 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32ml.d.s.t.p.TenderReviewPreparationService[0;39m - [TenderReviewPreparationService] 开始准备标书审查数据, sessionId=a52bcf69c731e9ddcd9ea73e6c49166b
+13:57:01.808 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32ml.d.s.t.p.TenderReviewPreparationService[0;39m - [TenderReviewPreparationService] fileIds 不足，跳过文件构建方式
+13:57:01.808 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32ml.d.s.t.p.TenderReviewPreparationService[0;39m - [TenderReviewPreparationService] 标书数据不足，无法进行审查
+13:57:01.808 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.s.t.f.TenderReviewSceneService    [0;39m - [TenderReviewSceneService] 标书数据不足，无法进行审查
+13:57:01.808 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.AgentMessageService           [0;39m - [AgentMessageService] 保存用户消息，sessionId=a52bcf69c731e9ddcd9ea73e6c49166b
+13:57:01.810 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.C.insert                    [0;39m - ==>  Preparing: INSERT INTO chat_message ( id, session_id, role, content, created_at ) VALUES ( ?, ?, ?, ?, ? )
+13:57:01.810 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.C.insert                    [0;39m - ==> Parameters: 260ea7df89d15b49655f1b8f0e8ad558(String), a52bcf69c731e9ddcd9ea73e6c49166b(String), user(String), 帮我审查这份标书，检查是否有围标风险(String), 2026-04-02T13:57:01.809514(LocalDateTime)
+13:57:01.841 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.C.insert                    [0;39m - <==    Updates: 1
+13:57:01.842 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.AgentMessageService           [0;39m - [AgentMessageService] 保存助手消息失败，content 为空
+13:57:01.843 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.C.updateById                [0;39m - ==>  Preparing: UPDATE chat_session SET last_scene=?, updated_at=?, last_message_at=? WHERE id=? AND is_deleted=0
+13:57:01.843 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.C.updateById                [0;39m - ==> Parameters: TENDER_REVIEW(String), 2026-04-02T13:57:01.842695(LocalDateTime), 2026-04-02T13:57:01.842690(LocalDateTime), a52bcf69c731e9ddcd9ea73e6c49166b(String)
+13:57:01.877 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.C.updateById                [0;39m - <==    Updates: 1
+13:57:01.878 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.C.selectById                [0;39m - ==>  Preparing: SELECT id,title,user_id,summary,last_scene,message_count,is_deleted,created_at,updated_at,last_message_at FROM chat_session WHERE id=? AND is_deleted=0
+13:57:01.878 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.C.selectById                [0;39m - ==> Parameters: a52bcf69c731e9ddcd9ea73e6c49166b(String)
+13:57:01.891 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.C.selectById                [0;39m - <==      Total: 1
+13:57:01.892 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.C.updateById                [0;39m - ==>  Preparing: UPDATE chat_session SET message_count=?, updated_at=? WHERE id=? AND is_deleted=0
+13:57:01.892 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.C.updateById                [0;39m - ==> Parameters: 2(Integer), 2026-04-02T13:57:01.891770(LocalDateTime), a52bcf69c731e9ddcd9ea73e6c49166b(String)
+13:57:01.921 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.C.updateById                [0;39m - <==    Updates: 1
+13:57:01.921 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.C.selectById                [0;39m - ==>  Preparing: SELECT id,title,user_id,summary,last_scene,message_count,is_deleted,created_at,updated_at,last_message_at FROM chat_session WHERE id=? AND is_deleted=0
+13:57:01.922 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.C.selectById                [0;39m - ==> Parameters: a52bcf69c731e9ddcd9ea73e6c49166b(String)
+13:57:01.935 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.m.C.selectById                [0;39m - <==      Total: 1
+13:57:01.935 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.AgentResponseService          [0;39m - [AgentResponseService] 开始构建响应: sessionId=a52bcf69c731e9ddcd9ea73e6c49166b, success=false
+13:57:01.936 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-10][0;39m [32mc.l.d.a.c.AgentResponseService          [0;39m - [AgentResponseService] 响应构建完成: scene=TENDER_REVIEW, answerLength=36
+13:57:08.229 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-2][0;39m [32mc.l.d.a.c.m.O.selectList                [0;39m - ==>  Preparing: SELECT id,session_id,file_name,file_suffix,file_size,oss_url,file_type,upload_status,created_at,updated_at FROM oss_file WHERE (session_id = ? AND upload_status = ?) ORDER BY created_at DESC
+13:57:08.230 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-2][0;39m [32mc.l.d.a.c.m.O.selectList                [0;39m - ==> Parameters: a52bcf69c731e9ddcd9ea73e6c49166b(String), 1(Integer)
+13:57:08.245 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-2][0;39m [32mc.l.d.a.c.m.O.selectList                [0;39m - <==      Total: 1
