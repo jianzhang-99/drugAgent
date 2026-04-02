@@ -344,7 +344,7 @@ export async function addMessage(
   sessionId: string,
   content: string,
   role = 'user'
-): ApiEnvelope<any> {
+): ApiEnvelope<{ message: string }> {
   await wait(300);
   const list = messageMap[sessionId] || [];
   list.push({

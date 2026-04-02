@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * 标书审查规则引擎。
@@ -47,6 +48,6 @@ public class TenderRuleEngine {
         allHits.sort(Comparator.comparing(RuleHit::getWeight, Comparator.nullsLast(Comparator.reverseOrder()))
                 .thenComparing(RuleHit::getRuleCode, Comparator.nullsLast(String::compareTo))
                 .thenComparing(RuleHit::getRuleName, Comparator.nullsLast(String::compareTo)));
-        return allHits.stream().filter(Objects::nonNull).toList();
+        return allHits.stream().filter(Objects::nonNull).collect(Collectors.toList());
     }
 }

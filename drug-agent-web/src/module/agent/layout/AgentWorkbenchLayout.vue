@@ -9,9 +9,7 @@
       <WorkspaceHeader v-if="store.activeView === 'WORKSPACE' || store.activeView === 'TASKS'" />
 
       <main class="workbench-content">
-        <ConversationWorkspace v-if="store.activeView === 'WORKSPACE'" />
-        <TaskBoardMock v-else-if="store.activeView === 'TASKS'" />
-        <KnowledgeBaseMock v-else-if="store.activeView === 'KNOWLEDGE'" />
+        <slot />
       </main>
 
       <ResultDrawer v-if="store.activeView === 'WORKSPACE'" />
@@ -23,10 +21,7 @@
 import { useAgentStore } from '../store/agentStore';
 import AgentSidebar from '../sections/sidebar/AgentSidebar.vue';
 import WorkspaceHeader from '../sections/workspace/WorkspaceHeader.vue';
-import ConversationWorkspace from '../sections/workspace/ConversationWorkspace.vue';
 import ResultDrawer from '../components/ResultDrawer.vue';
-import TaskBoardMock from '../pages/TaskBoardMock.vue';
-import KnowledgeBaseMock from '../pages/KnowledgeBaseMock.vue';
 
 const store = useAgentStore();
 </script>

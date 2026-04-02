@@ -171,8 +171,29 @@ const mappedEvidences = computed(() => {
   ];
 });
 
+/**
+ * HTML转义函数，防止XSS攻击
+ * 将HTML特殊字符转换为安全实体
+ */
+function escapeHtml(text: string): string {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/**
+ * 高亮文本处理：先转义HTML，再保留<mark>标签高亮效果
+ * 安全地处理用户输入内容，防止XSS攻击
+ */
 function highlightText(text: string) {
-  return text.replace(/\n/g, '<br/>');
+  // 先HTML转义，防止XSS
+  const escaped = escapeHtml(text);
+  // 保留<mark>标签的高亮效果，同时转义其他内容
+  // 由于已经转义，<mark>会被转成&lt;mark&gt;，需要还原
+  return escaped
+    .replace(/&lt;mark&gt;/g, '<mark>')
+    .replace(/&lt;\/mark&gt;/g, '</mark>')
+    .replace(/\n/g, '<br/>');
 }
 
 function handleClose() {

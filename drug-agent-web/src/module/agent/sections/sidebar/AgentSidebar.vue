@@ -46,7 +46,7 @@
             v-for="session in group.items"
             :key="session.id"
             :class="['history-item', { active: session.id === store.activeSessionId }]"
-            @click="store.selectSession(session.id)"
+            @click="handleSelectSession(session.id)"
           >
             <template v-if="editingSessionId === session.id">
               <input
@@ -149,6 +149,14 @@ onMounted(async () => {
 function handleNewSession() {
   store.activeView = 'WORKSPACE';
   store.activeSessionId = null;
+}
+
+/**
+ * 选择会话处理（异步）
+ * 等待selectSession完成以确保状态同步
+ */
+async function handleSelectSession(id: string) {
+  await store.selectSession(id);
 }
 
 function handleDeleteSession(id: string) {

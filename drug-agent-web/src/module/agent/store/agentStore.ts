@@ -72,6 +72,23 @@ export const useAgentStore = defineStore('agent', () => {
     return messagesBySession.value[activeSessionId.value] || [];
   });
 
+  /** 当前会话的附件列表（去重） */
+  const activeFiles = computed(() => {
+    if (!activeSessionId.value) return [];
+    const messages = messagesBySession.value[activeSessionId.value] || [];
+    const fileMap = new Map<string, Attachment>();
+    for (const msg of messages) {
+      if (msg.attachments) {
+        for (const file of msg.attachments) {
+          if (!fileMap.has(file.id)) {
+            fileMap.set(file.id, file);
+          }
+        }
+      }
+    }
+    return Array.from(fileMap.values());
+  });
+
   // ==================== Actions ====================
 
   /**
@@ -242,10 +259,10 @@ export const useAgentStore = defineStore('agent', () => {
         const errorMsg = createErrorMessage(res.data.message || '请求失败');
         addMessage(errorMsg);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('发送消息失败:', error);
       const errorMsg = createErrorMessage(
-        error?.message || '网络错误，请稍后重试'
+        error instanceof Error ? error.message : '网络错误，请稍后重试'
       );
       addMessage(errorMsg);
     } finally {
@@ -319,11 +336,11 @@ export const useAgentStore = defineStore('agent', () => {
         const errorMsg = createErrorMessage(res.data.message || '上传失败');
         addMessage(errorMsg);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('上传文件失败:', error);
       removeMessage(uploadingMsg.id);
       const errorMsg = createErrorMessage(
-        error?.message || '网络错误，请稍后重试'
+        error instanceof Error ? error.message : '网络错误，请稍后重试'
       );
       addMessage(errorMsg);
     } finally {
@@ -433,6 +450,7 @@ export const useAgentStore = defineStore('agent', () => {
     // 计算属性
     activeSession,
     activeMessages,
+    activeFiles,
 
     // Actions
     loadSessions,

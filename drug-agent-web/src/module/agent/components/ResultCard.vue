@@ -48,7 +48,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useAgentStore } from '../store/agentStore';
-import type { ResultData } from '../types/agent';
+import type { ResultData, DrugAgentResp } from '../types/agent';
 
 const props = defineProps<{ data?: ResultData }>();
 const store = useAgentStore();
@@ -66,7 +66,7 @@ const riskLabel = computed(() => {
 
 function handleViewDetail() {
   if (props.data) {
-    store.setCurrentResult(props.data as any);
+    store.setCurrentResult(props.data as DrugAgentResp);
   }
 }
 </script>
