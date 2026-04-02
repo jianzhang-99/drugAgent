@@ -2,6 +2,7 @@ package com.liang.drugagent.scene.tender_review.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.liang.drugagent.agent.prompt.tender_review.judge.TenderReviewJudgePrompt;
 import com.liang.drugagent.scene.tender_review.model.semantic.TenderSemanticEvidence;
 import com.liang.drugagent.scene.tender_review.model.semantic.TenderSemanticJudgeReq;
 import com.liang.drugagent.scene.tender_review.model.semantic.TenderSemanticJudgeResp;
@@ -139,7 +140,7 @@ public class TenderSemanticReviewService {
         try {
             Future<LlmResponse> future = executor.submit(() -> {
                 LlmRequest request = LlmRequest.builder()
-                        .systemPrompt("你是标书审查的语义裁判。必须只输出JSON对象，禁止输出任何解释说明文字。")
+                        .systemPrompt(TenderReviewJudgePrompt.SEMANTIC_JUDGE_PROMPT)
                         .messages(List.of(LlmRequest.ChatMessage.builder()
                                 .role("user")
                                 .content(prompt)

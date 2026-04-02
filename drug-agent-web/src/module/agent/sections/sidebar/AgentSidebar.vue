@@ -156,6 +156,7 @@ function handleNewSession() {
  * 等待selectSession完成以确保状态同步
  */
 async function handleSelectSession(id: string) {
+  store.activeView = 'WORKSPACE';
   await store.selectSession(id);
 }
 

@@ -1,6 +1,8 @@
 <template>
   <AgentWorkbenchLayout>
-    <ConversationWorkspace />
+    <ConversationWorkspace v-if="store.activeView === 'WORKSPACE'" />
+    <TaskBoardMock v-else-if="store.activeView === 'TASKS'" />
+    <KnowledgeBaseMock v-else-if="store.activeView === 'KNOWLEDGE'" />
   </AgentWorkbenchLayout>
 </template>
 
@@ -9,6 +11,8 @@ import { onMounted } from 'vue';
 import { useAgentStore } from '../store/agentStore';
 import AgentWorkbenchLayout from '../layout/AgentWorkbenchLayout.vue';
 import ConversationWorkspace from '../sections/workspace/ConversationWorkspace.vue';
+import TaskBoardMock from '../pages/TaskBoardMock.vue';
+import KnowledgeBaseMock from '../pages/KnowledgeBaseMock.vue';
 
 const store = useAgentStore();
 

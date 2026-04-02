@@ -1,5 +1,6 @@
 package com.liang.drugagent.agent.chat;
 
+import com.liang.drugagent.agent.prompt.GeneralPrompt;
 import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
 import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
@@ -319,15 +320,6 @@ public class AgentSceneService {
      * 通用对话处理（同时生成标题）。
      */
     private GeneralChatResult generalChatWithTitle(String query, String sessionId, String model) {
-        String systemPrompt = """
-                你是一个专业的医疗监管AI助手，负责回答关于药品监管、医疗器械监管、标书审查、合同审核等相关问题。
-
-                请用专业、清晰的语言回答用户的问题。如果不确定答案，请如实告知用户。
-
-                回答完成后，请在最后一行输出会话标题，格式为：【会话标题】xxx
-                会话标题应该简洁明了，不超过20个字，能够概括用户询问的核心内容。
-                """;
-
         try {
             LlmProviderType provider = LlmProviderType.fromConfigKey(model);
             // 根据 provider 解析正确的模型名（前端传的是 provider 标识，不是模型名）
@@ -337,7 +329,7 @@ public class AgentSceneService {
                     .provider(provider)
                     .model(effectiveModel)
                     .sessionId(sessionId)
-                    .systemPrompt(systemPrompt)
+                    .systemPrompt(GeneralPrompt.GENERAL_CHAT_SYSTEM_PROMPT)
                     .messages(List.of(LlmRequest.ChatMessage.builder()
                             .role("user")
                             .content(query)
@@ -394,12 +386,6 @@ public class AgentSceneService {
 
     // ==================== LLM 意图分类 ====================
 
-    private static final String INTENT_CLASSIFY_PROMPT = """
-            你是一个医疗监管领域的意图分类器。
-            根据用户输入，只输出一个分类词：TENDER_REVIEW、CONTRACT_PRECHECK、RISK_ALERT 或 DEFAULT。
-            不要解释，不要标点符号，不要任何其他内容。
-            """;
-
     /**
      * 通过 LLM 分类用户意图。
      */
@@ -416,7 +402,7 @@ public class AgentSceneService {
                     .provider(provider)
                     .model(effectiveModel)
                     .sessionId("intent-classify")
-                    .systemPrompt(INTENT_CLASSIFY_PROMPT)
+                    .systemPrompt(GeneralPrompt.INTENT_CLASSIFY_PROMPT)
                     .messages(List.of(LlmRequest.ChatMessage.builder()
                             .role("user")
                             .content(userQuery)

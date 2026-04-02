@@ -1,5 +1,6 @@
 package com.liang.drugagent.shared.rag.service;
 
+import com.liang.drugagent.agent.prompt.RagPrompt;
 import com.liang.drugagent.shared.llm.LlmRequest;
 import com.liang.drugagent.shared.llm.LlmResponse;
 import com.liang.drugagent.shared.llm.LlmService;
@@ -25,18 +26,6 @@ public class RagService {
     private final VectorStore vectorStore;
     private final EmbeddingService embeddingService;
     private final LlmService llmService;
-
-    /**
-     * 系统提示词模板
-     */
-    private static final String SYSTEM_PROMPT =
-            "您是基于知识检索的问答助手。请根据提供的检索证据回答用户问题。\n"
-                    + "\n"
-                    + "回答要求：\n"
-                    + "1. 只能基于以上证据回答，不要编造信息\n"
-                    + "2. 如果证据不足，要明确说明\n"
-                    + "3. 回答时尽量引用对应来源\n"
-                    + "4. 保持回答简洁、清晰";
 
     public RagService(VectorStore vectorStore, EmbeddingService embeddingService, LlmService llmService) {
         this.vectorStore = vectorStore;
@@ -191,7 +180,7 @@ public class RagService {
                     .append("\n\n");
         }
 
-        return SYSTEM_PROMPT + "\n\n问题：" + question + "\n\n检索证据：\n" + evidence +
+        return RagPrompt.SYSTEM_PROMPT + "\n\n问题：" + question + "\n\n检索证据：\n" + evidence +
                 "\n请基于以上证据回答问题：";
     }
 
