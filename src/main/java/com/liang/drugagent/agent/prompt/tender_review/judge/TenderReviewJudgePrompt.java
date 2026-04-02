@@ -182,4 +182,59 @@ public class TenderReviewJudgePrompt {
      * 与 {@link #SYSTEM_PROMPT} 的区别：此为精简版，用于局部判断而非完整审查。</p>
      */
     public static final String SEMANTIC_JUDGE_PROMPT = "你是标书审查的语义裁判。必须只输出JSON对象，禁止输出任何解释说明文字。";
+
+    /**
+     * 标书语义裁判 User Prompt（动态部分）。
+     *
+     * <p>作为 user message 传入，包含规则说明、比对数据占位符和 JSON Schema。
+     * 动态内容（ruleCode、compareTopic、leftSnippets、rightSnippets 等）由调用方拼接。</p>
+     */
+    public static final String SEMANTIC_JUDGE_USER_PROMPT = """
+            【角色】你是标书围标审查的语义裁判，专门判断两份标书候选片段是否存在语义层面的同源或配合关系。
+
+            【任务】请根据以下信息判断是否命中规则 %s。
+
+            【规则说明】
+            %s
+
+            【比对主题】%s
+
+            【左侧文档 ID】%s
+            【左侧候选片段】
+            %s
+
+            【右侧文档 ID】%s
+            【右侧候选片段】
+            %s
+
+            【输出要求】
+            直接输出 JSON 对象，不做任何解释说明。JSON Schema 如下：
+
+            ```json
+            {
+              "hit": Boolean,           // 是否命中规则
+              "ruleCode": String,        // 规则编码
+              "riskType": String,        // 风险类型，如 "collusion"
+              "confidence": Number,     // 置信度 0.0~1.0
+              "suggestedWeight": Number, // 建议权重
+              "conclusion": String,    // 简短结论
+              "reason": String,         // 判断理由
+              "evidences": [            // 关键证据列表
+                {
+                  "documentId": String,  // 文档 ID
+                  "chapterPath": String, // 章节路径
+                  "excerpt": String,   // 原文摘录
+                  "explanation": String // 解释
+                }
+              ],
+              "cautionNotes": [String]  // 保留意见
+            }
+            ```
+
+            【重要约束】
+            1. 只输出 ```json ... ``` 代码块内的 JSON 对象，禁止输出任何其他文字
+            2. 行业通用表述、法规引用、招标文件要求复述不应判定为抄袭
+            3. 置信度不足时允许返回 hit=false
+            4. 必须给出来自双方文档的证据片段
+            """;
 }

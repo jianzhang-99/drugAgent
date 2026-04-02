@@ -18,10 +18,15 @@ import com.liang.drugagent.scene.tender_review.service.ReportGenerationService;
 import com.liang.drugagent.scene.tender_review.service.RiskFusionService;
 import com.liang.drugagent.scene.tender_review.support.TenderExemptionEngine;
 import com.liang.drugagent.scene.tender_review.support.TenderRuleEngine;
+import com.liang.drugagent.agent.prompt.tender_review.validate.TenderReviewValidatePrompt;
 import com.liang.drugagent.scene.tender_review.support.assembler.TenderReviewDataAssembler;
 import com.liang.drugagent.shared.model.EvidenceItem;
 import com.liang.drugagent.shared.model.ReviewReport;
 import com.liang.drugagent.shared.model.WorkflowResult;
+import com.liang.drugagent.shared.llm.LlmClient;
+import com.liang.drugagent.shared.llm.LlmProviderType;
+import com.liang.drugagent.shared.llm.LlmRequest;
+import com.liang.drugagent.shared.llm.LlmResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -40,6 +45,7 @@ import java.util.Map;
 public class TenderReviewWorkflow {
 
     private final LLMChatService LLMChatService;
+    private final LlmClient llmClient;
     private final TenderRuleEngine tenderRuleEngine;
     private final TenderExemptionEngine tenderExemptionEngine;
     private final RiskFusionService riskFusionService;
@@ -55,6 +61,7 @@ public class TenderReviewWorkflow {
     private final TeamOverlapSemanticAnalyzer teamOverlapSemanticAnalyzer;
 
     public TenderReviewWorkflow(LLMChatService LLMChatService,
+                                LlmClient llmClient,
                                 TenderRuleEngine tenderRuleEngine,
                                 TenderExemptionEngine tenderExemptionEngine,
                                 RiskFusionService riskFusionService,
@@ -69,6 +76,7 @@ public class TenderReviewWorkflow {
                                 ServiceCommitmentSemanticAnalyzer serviceCommitmentSemanticAnalyzer,
                                 TeamOverlapSemanticAnalyzer teamOverlapSemanticAnalyzer) {
         this.LLMChatService = LLMChatService;
+        this.llmClient = llmClient;
         this.tenderRuleEngine = tenderRuleEngine;
         this.tenderExemptionEngine = tenderExemptionEngine;
         this.riskFusionService = riskFusionService;
@@ -174,6 +182,10 @@ public class TenderReviewWorkflow {
         result.setReport(report);
         result.setEvidenceList(evidenceAssemblyResult.getFlatItems());
         result.setEvidenceGroups(evidenceAssemblyResult.getGroups());
+
+        // L4 校验：检查输出合规性并生成规范的 answer
+        validateAndNormalizeResult(result);
+
         return result;
     }
 
@@ -272,6 +284,76 @@ public class TenderReviewWorkflow {
             return null;
         }
         return objectMapper.convertValue(rawData, TenderReviewData.class);
+    }
+
+    /**
+     * L4 校验：验证工作流输出是否合规，并生成规范的 answer。
+     *
+     * <p>职责：
+     * <ul>
+     *   <li>检查关键字段是否缺失</li>
+     *   <li>检查 answer 是否包含不合规内容</li>
+     *   <li>检查结构化数据与文本描述是否一致</li>
+     *   <li>生成规范的 summary 和 answer</li>
+     *   <li>识别并报告潜在问题</li>
+     * </ul>
+     *
+     * @param result 工作流结果（会被直接修改）
+     */
+    private void validateAndNormalizeResult(WorkflowResult result) {
+        try {
+            String workflowResultJson = objectMapper.writeValueAsString(result);
+            String userMessage = TenderReviewValidatePrompt.buildUserMessage(
+                    result.getScene() != null ? result.getScene().name() : "TENDER_REVIEW",
+                    "规则执行完成，进入输出校验阶段",
+                    workflowResultJson
+            );
+
+            LlmRequest request = LlmRequest.builder()
+                    .provider(LlmProviderType.MINIMAX)
+                    .model("MiniMax-M2.7")
+                    .sessionId(null)
+                    .systemPrompt(TenderReviewValidatePrompt.SYSTEM_PROMPT)
+                    .messages(List.of(LlmRequest.ChatMessage.builder()
+                            .role("user")
+                            .content(userMessage)
+                            .build()))
+                    .stream(false)
+                    .build();
+
+            LlmResponse response = llmClient.chat(request);
+            String validatedContent = response.getContent();
+
+            log.info("[TenderReviewWorkflow] L4 校验完成，原始响应长度: {}", validatedContent != null ? validatedContent.length() : 0);
+
+            if (validatedContent == null || validatedContent.isBlank()) {
+                log.warn("[TenderReviewWorkflow] L4 校验返回内容为空，保持原始输出");
+                return;
+            }
+
+            // 解析 JSON 响应
+            var validationResult = objectMapper.readTree(validatedContent);
+            boolean passed = validationResult.has("passed") && validationResult.get("passed").asBoolean();
+
+            if (validationResult.has("summary") && !validationResult.get("summary").isNull()) {
+                result.setSummary(validationResult.get("summary").asText());
+            }
+
+            if (validationResult.has("answer") && !validationResult.get("answer").isNull()) {
+                result.setAnswer(validationResult.get("answer").asText());
+            }
+
+            if (!passed && validationResult.has("warnings")) {
+                List<String> warnings = new java.util.ArrayList<>();
+                validationResult.get("warnings").forEach(w -> warnings.add(w.asText()));
+                log.warn("[TenderReviewWorkflow] L4 校验未通过，warnings: {}", warnings);
+            }
+
+            log.info("[TenderReviewWorkflow] L4 校验完成，passed={}", passed);
+
+        } catch (Exception e) {
+            log.error("[TenderReviewWorkflow] L4 校验异常: {}", e.getMessage(), e);
+        }
     }
 
 }

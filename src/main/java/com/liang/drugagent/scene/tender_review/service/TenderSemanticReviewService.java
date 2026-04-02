@@ -71,50 +71,28 @@ public class TenderSemanticReviewService {
      * 构建 prompt，包含 JSON Schema 说明。
      */
     private String buildPrompt(TenderSemanticJudgeReq req) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("【角色】你是标书围标审查的语义裁判，专门判断两份标书候选片段是否存在语义层面的同源或配合关系。\n\n");
-        sb.append("【任务】请根据以下信息判断是否命中规则 ").append(req.getRuleCode()).append("。\n\n");
-        sb.append("【规则说明】\n");
-        sb.append(getRuleDescription(req.getRuleCode())).append("\n\n");
-        sb.append("【比对主题】").append(req.getCompareTopic()).append("\n\n");
-        sb.append("【左侧文档 ID】").append(req.getLeftDocumentId()).append("\n");
-        sb.append("【左侧候选片段】\n");
+        // 拼接左侧候选片段
+        StringBuilder leftSnippetsSb = new StringBuilder();
         for (int i = 0; i < req.getLeftSnippets().size(); i++) {
-            sb.append("片段").append(i + 1).append(": ").append(req.getLeftSnippets().get(i)).append("\n");
+            leftSnippetsSb.append("片段").append(i + 1).append(": ").append(req.getLeftSnippets().get(i)).append("\n");
         }
-        sb.append("\n【右侧文档 ID】").append(req.getRightDocumentId()).append("\n");
-        sb.append("【右侧候选片段】\n");
+
+        // 拼接右侧候选片段
+        StringBuilder rightSnippetsSb = new StringBuilder();
         for (int i = 0; i < req.getRightSnippets().size(); i++) {
-            sb.append("片段").append(i + 1).append(": ").append(req.getRightSnippets().get(i)).append("\n");
+            rightSnippetsSb.append("片段").append(i + 1).append(": ").append(req.getRightSnippets().get(i)).append("\n");
         }
-        sb.append("\n【输出要求】\n");
-        sb.append("直接输出 JSON 对象，不做任何解释说明。JSON Schema 如下：\n\n");
-        sb.append("```json\n");
-        sb.append("{\n");
-        sb.append("  \"hit\": Boolean,           // 是否命中规则\n");
-        sb.append("  \"ruleCode\": String,        // 规则编码\n");
-        sb.append("  \"riskType\": String,        // 风险类型，如 \"collusion\"\n");
-        sb.append("  \"confidence\": Number,     // 置信度 0.0~1.0\n");
-        sb.append("  \"suggestedWeight\": Number, // 建议权重\n");
-        sb.append("  \"conclusion\": String,    // 简短结论\n");
-        sb.append("  \"reason\": String,         // 判断理由\n");
-        sb.append("  \"evidences\": [            // 关键证据列表\n");
-        sb.append("    {\n");
-        sb.append("      \"documentId\": String,  // 文档 ID\n");
-        sb.append("      \"chapterPath\": String, // 章节路径\n");
-        sb.append("      \"excerpt\": String,   // 原文摘录\n");
-        sb.append("      \"explanation\": String // 解释\n");
-        sb.append("    }\n");
-        sb.append("  ],\n");
-        sb.append("  \"cautionNotes\": [String]  // 保留意见\n");
-        sb.append("}\n");
-        sb.append("```\n\n");
-        sb.append("【重要约束】\n");
-        sb.append("1. 只输出 ```json ... ``` 代码块内的 JSON 对象，禁止输出任何其他文字\n");
-        sb.append("2. 行业通用表述、法规引用、招标文件要求复述不应判定为抄袭\n");
-        sb.append("3. 置信度不足时允许返回 hit=false\n");
-        sb.append("4. 必须给出来自双方文档的证据片段\n");
-        return sb.toString();
+
+        return String.format(
+                TenderReviewJudgePrompt.SEMANTIC_JUDGE_USER_PROMPT,
+                req.getRuleCode(),
+                getRuleDescription(req.getRuleCode()),
+                req.getCompareTopic(),
+                req.getLeftDocumentId(),
+                leftSnippetsSb.toString(),
+                req.getRightDocumentId(),
+                rightSnippetsSb.toString()
+        );
     }
 
     /**
