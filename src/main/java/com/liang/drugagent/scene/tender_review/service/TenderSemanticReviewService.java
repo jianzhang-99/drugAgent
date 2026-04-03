@@ -155,64 +155,6 @@ public class TenderSemanticReviewService {
                 req.getRightDocumentId(),
                 rightSnippetsSb.toString()
         );
-        sb.append("\n【输出要求】\n");
-        sb.append("直接输出 JSON 对象，不做任何解释说明。JSON Schema 如下：\n\n");
-        sb.append("```json\n");
-        sb.append("{\n");
-        sb.append("  \"hit\": Boolean,           // 是否命中规则\n");
-        sb.append("  \"ruleCode\": String,        // 规则编码\n");
-        sb.append("  \"riskType\": String,        // 风险类型，如 \"collusion\"\n");
-        sb.append("  \"confidence\": Number,     // 置信度 0.0~1.0\n");
-        sb.append("  \"suggestedWeight\": Number, // 建议权重\n");
-        sb.append("  \"conclusion\": String,    // 简短结论\n");
-        sb.append("  \"reason\": String,         // 判断理由\n");
-        sb.append("  \"evidences\": [            // 关键证据列表\n");
-        sb.append("    {\n");
-        sb.append("      \"documentId\": String,  // 文档 ID\n");
-        sb.append("      \"chapterPath\": String, // 章节路径\n");
-        sb.append("      \"excerpt\": String,   // 原文摘录\n");
-        sb.append("      \"explanation\": String // 解释\n");
-        sb.append("    }\n");
-        sb.append("  ],\n");
-        sb.append("  \"cautionNotes\": [String]  // 保留意见\n");
-        sb.append("}\n");
-        sb.append("```\n\n");
-
-        // Few-Shot 示例：让模型"照着格式输出"
-        sb.append("【示例】以下是一个标准输出的例子（严格遵循此 JSON 结构，不要添加任何其他文字）：\n\n");
-        sb.append("```json\n");
-        sb.append("{\n");
-        sb.append("  \"hit\": true,\n");
-        sb.append("  \"ruleCode\": \"").append(req.getRuleCode()).append("\",\n");
-        sb.append("  \"riskType\": \"collusion\",\n");
-        sb.append("  \"confidence\": 0.85,\n");
-        sb.append("  \"suggestedWeight\": 1.5,\n");
-        sb.append("  \"conclusion\": \"双方技术方案存在高度同源性\",\n");
-        sb.append("  \"reason\": \"左侧和右侧的技术方案在系统架构骨架、模块划分上高度一致，且关键里程碑设置相同\",\n");
-        sb.append("  \"evidences\": [\n");
-        sb.append("    {\n");
-        sb.append("      \"documentId\": \"TENDER_A\",\n");
-        sb.append("      \"chapterPath\": \"第三章 技术方案/3.1 系统架构\",\n");
-        sb.append("      \"excerpt\": \"系统采用微服务架构，分为用户服务、订单服务、支付服务三大模块\",\n");
-        sb.append("      \"explanation\": \"与右侧文档第三章技术方案架构描述一致\"\n");
-        sb.append("    },\n");
-        sb.append("    {\n");
-        sb.append("      \"documentId\": \"TENDER_B\",\n");
-        sb.append("      \"chapterPath\": \"第三章 技术方案/3.1 系统架构\",\n");
-        sb.append("      \"excerpt\": \"本项目采用微服务架构设计，包含用户管理、订单管理、支付管理等核心模块\",\n");
-        sb.append("      \"explanation\": \"与左侧文档技术架构描述实质相同，仅表述略有差异\"\n");
-        sb.append("    }\n");
-        sb.append("  ],\n");
-        sb.append("  \"cautionNotes\": [\"需结合其他规则综合判断\"]\n");
-        sb.append("}\n");
-        sb.append("```\n\n");
-
-        sb.append("【重要约束】\n");
-        sb.append("1. 必须按照上面示例的格式输出，只输出 ```json ... ``` 代码块内的 JSON 对象\n");
-        sb.append("2. 禁止在 JSON 之前或之后输出任何解释、说明、分析文字\n");
-        sb.append("3. 如果置信度不足，返回 hit=false\n");
-        sb.append("4. evidences 必须包含来自左侧和右侧文档的证据\n");
-        return sb.toString();
     }
 
     /**
@@ -238,7 +180,6 @@ public class TenderSemanticReviewService {
             Future<LlmResponse> future = llmCallExecutor.submit(() -> {
                 LlmRequest request = LlmRequest.builder()
                         .systemPrompt(TenderReviewJudgePrompt.SEMANTIC_JUDGE_PROMPT)
-                        .systemPrompt("你是标书审查的语义裁判。你的唯一任务是分析给定内容并输出JSON。输出要求：1) 只输出 ```json ... ``` 代码块内的纯JSON对象；2) 禁止在JSON之前或之后输出任何解释、说明、分析文字；3) 禁止输出任何非JSON内容。违反上述要求将导致系统错误。")
                         .messages(List.of(LlmRequest.ChatMessage.builder()
                                 .role("user")
                                 .content(prompt)

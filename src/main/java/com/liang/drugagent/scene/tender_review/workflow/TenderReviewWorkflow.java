@@ -65,7 +65,7 @@ public class TenderReviewWorkflow {
     private final Executor semanticAnalyzerExecutor;
 
     public TenderReviewWorkflow(LLMChatService LLMChatService,
-                                LlmClient llmClient,
+                                @Qualifier("miniMaxLlmClient") LlmClient llmClient,
                                 TenderRuleEngine tenderRuleEngine,
                                 TenderExemptionEngine tenderExemptionEngine,
                                 RiskFusionService riskFusionService,

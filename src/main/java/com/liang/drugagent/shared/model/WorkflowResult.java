@@ -24,6 +24,7 @@ import java.util.List;
 public class WorkflowResult {
 
     private SceneEnum scene;
+    private String summary;
     private String answer;
     private String riskLevel;
     private Integer score;
