@@ -122,21 +122,21 @@
         </encoder>
     </appender>
 
-    <!-- ========== 场景分类 Logger ========== -->
+    <!-- ========== 场景分类 Logger（统一为 INFO 级别，避免重复输出） ========== -->
 
-    <logger name="com.liang.drugagent.scene.tender_review" level="DEBUG" additivity="false">
+    <logger name="com.liang.drugagent.scene.tender_review" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="JSON_FILE"/>
         <appender-ref ref="TENDER_REVIEW_FILE"/>
     </logger>
 
-    <logger name="com.liang.drugagent.scene.contract" level="DEBUG" additivity="false">
+    <logger name="com.liang.drugagent.scene.contract" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="JSON_FILE"/>
         <appender-ref ref="CONTRACT_FILE"/>
     </logger>
 
-    <logger name="com.liang.drugagent.scene.risk" level="DEBUG" additivity="false">
+    <logger name="com.liang.drugagent.scene.risk" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="JSON_FILE"/>
         <appender-ref ref="RISK_FILE"/>
@@ -151,8 +151,12 @@
     <logger name="org.apache.tomcat" level="WARN"/>
     <logger name="com.baomidou.mybatisplus" level="WARN"/>
 
-    <!-- 业务代码默认 DEBUG 级别 -->
-    <logger name="com.liang.drugagent" level="DEBUG"/>
+    <!-- MyBatis SQL 日志降低为 WARN，减少日志量 -->
+    <logger name="com.baomidou.mybatisplus" level="WARN" additivity="false"/>
+    <logger name="org.mybatis" level="WARN"/>
+
+    <!-- 业务代码默认 INFO 级别 -->
+    <logger name="com.liang.drugagent" level="INFO"/>
 
     <!-- Root Logger -->
     <root level="INFO">

@@ -52,9 +52,20 @@ public class AgentMessageService extends ServiceImpl<ChatMessageMapper, ChatMess
      * 获取会话的所有消息（按创建时间升序）。
      */
     public List<ChatMessage> getMessagesBySessionId(String sessionId) {
+        return getMessagesBySessionId(sessionId, 1000);
+    }
+
+    /**
+     * 获取会话的消息（按创建时间升序，带limit限制）。
+     *
+     * @param sessionId 会话ID
+     * @param limit 返回的最大消息数量，默认1000
+     */
+    public List<ChatMessage> getMessagesBySessionId(String sessionId, int limit) {
         LambdaQueryWrapper<ChatMessage> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ChatMessage::getSessionId, sessionId)
-                .orderByAsc(ChatMessage::getCreatedAt);
+                .orderByAsc(ChatMessage::getCreatedAt)
+                .last("LIMIT " + limit);
         return this.baseMapper.selectList(wrapper);
     }
 

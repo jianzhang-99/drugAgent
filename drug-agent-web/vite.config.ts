@@ -9,6 +9,16 @@ export default defineConfig({
       '@': resolve(__dirname, 'src')
     }
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-vue': ['vue', 'vue-router', 'pinia'],
+          'vendor-tdesign': ['tdesign-vue-next']
+        }
+      }
+    }
+  },
   server: {
     port: 3000,
     proxy: {

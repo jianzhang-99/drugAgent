@@ -76,17 +76,19 @@ export const useAgentStore = defineStore('agent', () => {
   const activeFiles = computed(() => {
     if (!activeSessionId.value) return [];
     const messages = messagesBySession.value[activeSessionId.value] || [];
-    const fileMap = new Map<string, Attachment>();
+    const fileIds = new Set<string>();
+    const files: Attachment[] = [];
     for (const msg of messages) {
       if (msg.attachments) {
         for (const file of msg.attachments) {
-          if (!fileMap.has(file.id)) {
-            fileMap.set(file.id, file);
+          if (!fileIds.has(file.id)) {
+            fileIds.add(file.id);
+            files.push(file);
           }
         }
       }
     }
-    return Array.from(fileMap.values());
+    return files;
   });
 
   // ==================== Actions ====================

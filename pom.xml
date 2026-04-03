@@ -186,6 +186,8 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
+                    <!-- JVM 内存配置建议：生产环境推荐 -Xmx2g -Xms1g -->
+                    <jvmArguments>-Xmx2g -Xms1g</jvmArguments>
                 </configuration>
             </plugin>
         </plugins>

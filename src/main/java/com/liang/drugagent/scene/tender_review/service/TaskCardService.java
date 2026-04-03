@@ -171,59 +171,59 @@ public class TaskCardService {
      * 获取任务统计信息
      */
     public TaskStatisticsVO getTaskStatistics() {
-        LambdaQueryWrapper<TaskCard> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(TaskCard::getIsDeleted, 0);
-        List<TaskCard> allTasks = taskCardMapper.selectList(wrapper);
-
         TaskStatisticsVO.TaskStatisticsVOBuilder builder = TaskStatisticsVO.builder();
 
+        // 状态分布（使用 SQL 聚合，避免全表加载）
+        List<Map<String, Object>> statusCountResult = taskCardMapper.countGroupByStatus();
+        Map<String, Integer> statusCountMap = new HashMap<>();
+        int totalCount = 0;
+        for (Map<String, Object> row : statusCountResult) {
+            String status = row.get("status") != null ? row.get("status").toString() : "UNKNOWN";
+            int count = ((Number) row.get("count")).intValue();
+            statusCountMap.put(status, count);
+            totalCount += count;
+        }
+
+        // 风险分布（使用 SQL 聚合，只统计已完成任务）
+        List<Map<String, Object>> riskCountResult = taskCardMapper.countRiskGroupByLevelForCompleted();
+        Map<String, Integer> riskCountMap = new HashMap<>();
+        for (Map<String, Object> row : riskCountResult) {
+            String riskLevel = row.get("riskLevel") != null ? row.get("riskLevel").toString() : "UNKNOWN";
+            int count = ((Number) row.get("count")).intValue();
+            riskCountMap.put(riskLevel, count);
+        }
+
         // 总量统计
-        builder.totalCount(allTasks.size());
+        builder.totalCount(totalCount);
         builder.todayNewCount(taskCardMapper.countTodayNew());
         builder.todayCompletedCount(taskCardMapper.countTodayCompleted());
 
         // 状态分布
-        Map<String, Long> statusCount = allTasks.stream()
-                .collect(Collectors.groupingBy(t -> t.getStatus() == null ? "UNKNOWN" : t.getStatus(), Collectors.counting()));
+        builder.pendingCount(statusCountMap.getOrDefault(TaskStatusEnum.PENDING.getCode(), 0));
+        builder.parsingCount(statusCountMap.getOrDefault(TaskStatusEnum.PARSING.getCode(), 0) +
+                statusCountMap.getOrDefault(TaskStatusEnum.PARSED.getCode(), 0));
+        builder.runningCount(statusCountMap.getOrDefault(TaskStatusEnum.RUNNING.getCode(), 0));
+        builder.completedCount(statusCountMap.getOrDefault(TaskStatusEnum.COMPLETED.getCode(), 0));
+        builder.failedCount(statusCountMap.getOrDefault(TaskStatusEnum.FAILED.getCode(), 0));
+        builder.statusDistribution(statusCountMap);
 
-        builder.pendingCount(statusCount.getOrDefault(TaskStatusEnum.PENDING.getCode(), 0L).intValue());
-        builder.parsingCount(statusCount.getOrDefault(TaskStatusEnum.PARSING.getCode(), 0L).intValue() +
-                statusCount.getOrDefault(TaskStatusEnum.PARSED.getCode(), 0L).intValue());
-        builder.runningCount(statusCount.getOrDefault(TaskStatusEnum.RUNNING.getCode(), 0L).intValue());
-        builder.completedCount(statusCount.getOrDefault(TaskStatusEnum.COMPLETED.getCode(), 0L).intValue());
-        builder.failedCount(statusCount.getOrDefault(TaskStatusEnum.FAILED.getCode(), 0L).intValue());
-        builder.statusDistribution(statusCount.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().intValue())));
+        // 风险分布（已完成任务）
+        builder.highRiskCount(riskCountMap.getOrDefault(RiskLevelEnum.HIGH.getCode(), 0));
+        builder.mediumRiskCount(riskCountMap.getOrDefault(RiskLevelEnum.MEDIUM.getCode(), 0));
+        builder.lowRiskCount(riskCountMap.getOrDefault(RiskLevelEnum.LOW.getCode(), 0));
+        builder.unknownRiskCount(riskCountMap.getOrDefault(RiskLevelEnum.UNKNOWN.getCode(), 0));
+        builder.riskDistribution(riskCountMap);
 
-        // 风险分布（只统计已完成的任务）
-        List<TaskCard> completedTasks = allTasks.stream()
-                .filter(t -> TaskStatusEnum.COMPLETED.getCode().equals(t.getStatus()))
-                .collect(Collectors.toList());
+        // 效率指标（使用 SQL 聚合）
+        int completedCount = statusCountMap.getOrDefault(TaskStatusEnum.COMPLETED.getCode(), 0);
+        Double avgScore = taskCardMapper.avgScoreForCompleted();
+        builder.avgScore(avgScore != null ? avgScore : 0.0);
 
-        Map<String, Long> riskCount = completedTasks.stream()
-                .collect(Collectors.groupingBy(t -> t.getRiskLevel() == null ? "UNKNOWN" : t.getRiskLevel(), Collectors.counting()));
-
-        builder.highRiskCount(riskCount.getOrDefault(RiskLevelEnum.HIGH.getCode(), 0L).intValue());
-        builder.mediumRiskCount(riskCount.getOrDefault(RiskLevelEnum.MEDIUM.getCode(), 0L).intValue());
-        builder.lowRiskCount(riskCount.getOrDefault(RiskLevelEnum.LOW.getCode(), 0L).intValue());
-        builder.unknownRiskCount(riskCount.getOrDefault(RiskLevelEnum.UNKNOWN.getCode(), 0L).intValue());
-        builder.riskDistribution(riskCount.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().intValue())));
-
-        // 效率指标
-        if (!completedTasks.isEmpty()) {
-            Double avgScore = completedTasks.stream()
-                    .filter(t -> t.getScore() != null)
-                    .mapToInt(TaskCard::getScore)
-                    .average()
-                    .orElse(0.0);
-            builder.avgScore(avgScore);
-
-            // 计算完成率
-            double completionRate = (double) completedTasks.size() / allTasks.size() * 100;
+        // 计算完成率
+        if (totalCount > 0) {
+            double completionRate = (double) completedCount / totalCount * 100;
             builder.completionRate(Math.round(completionRate * 100.0) / 100.0);
         } else {
-            builder.avgScore(0.0);
             builder.completionRate(0.0);
         }
 

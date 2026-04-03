@@ -11,12 +11,13 @@ import com.liang.drugagent.shared.llm.LlmResponse;
 import com.liang.drugagent.shared.llm.LlmService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
 
@@ -41,6 +42,7 @@ public class TenderSemanticReviewService {
 
     private final LlmService llmService;
     private final ObjectMapper objectMapper;
+    private final ExecutorService llmCallExecutor;
 
     private static final int LLM_TIMEOUT_SECONDS = 60;
 
@@ -53,13 +55,32 @@ public class TenderSemanticReviewService {
     public TenderSemanticJudgeResp judge(TenderSemanticJudgeReq req) {
         String prompt = buildPrompt(req);
         try {
+            // 第一次调用
             LlmResponse response = callLlmWithTimeout(prompt, req.getCaseId());
             if (response == null || !Boolean.TRUE.equals(response.getSuccess())) {
                 log.warn("[TenderSemanticReviewService] LLM 调用失败或超时，降级返回低置信度结果 - caseId: {}, ruleCode: {}",
                         req.getCaseId(), req.getRuleCode());
                 return buildDefaultDegradedResp(req.getRuleCode());
             }
-            return parseLlmResponse(response.getContent(), req.getRuleCode());
+
+            // 尝试解析 JSON
+            TenderSemanticJudgeResp resp = parseLlmResponse(response.getContent(), req.getRuleCode());
+            // 解析成功且非降级结果，直接返回
+            if (resp != null && !isDegradedResponse(resp)) {
+                return resp;
+            }
+
+            // JSON 解析失败或降级，进行一次重试（温度降为 0，prompt 更严格）
+            log.warn("[TenderSemanticReviewService] 首次 JSON 解析失败或低置信度，进行一次重试 - caseId: {}, ruleCode: {}, confidence: {}",
+                    req.getCaseId(), req.getRuleCode(), resp != null ? resp.getConfidence() : "null");
+            LlmResponse retryResponse = callLlmWithRetry(prompt, req.getCaseId(), true);
+            if (retryResponse == null || !Boolean.TRUE.equals(retryResponse.getSuccess())) {
+                log.warn("[TenderSemanticReviewService] 重试失败，降级返回 - caseId: {}, ruleCode: {}",
+                        req.getCaseId(), req.getRuleCode());
+                return buildDefaultDegradedResp(req.getRuleCode());
+            }
+            TenderSemanticJudgeResp retryResp = parseLlmResponse(retryResponse.getContent(), req.getRuleCode());
+            return retryResp != null ? retryResp : buildDefaultDegradedResp(req.getRuleCode());
         } catch (Exception e) {
             log.error("[TenderSemanticReviewService] 语义裁决异常，降级返回 - caseId: {}, ruleCode: {}, error: {}",
                     req.getCaseId(), req.getRuleCode(), e.getMessage());
@@ -68,7 +89,48 @@ public class TenderSemanticReviewService {
     }
 
     /**
-     * 构建 prompt，包含 JSON Schema 说明。
+     * 判断是否为降级响应（置信度为 0.3 的默认降级结果）。
+     */
+    private boolean isDegradedResponse(TenderSemanticJudgeResp resp) {
+        return resp.getConfidence() != null && resp.getConfidence() <= 0.3;
+    }
+
+    /**
+     * 带重试的 LLM 调用（JSON 解析失败时触发）。
+     */
+    private LlmResponse callLlmWithRetry(String prompt, String caseId, boolean isRetry) {
+        try {
+            Future<LlmResponse> future = llmCallExecutor.submit(() -> {
+                LlmRequest request = LlmRequest.builder()
+                        // 重试时使用更严格的 system prompt
+                        .systemPrompt(isRetry
+                                ? "【强制】你必须只输出 ```json ... ``` 代码块内的纯JSON对象，不允许输出任何其他文字。前缀、后缀、解释说明一律禁止。违反将导致系统错误。"
+                                : "你是标书审查的语义裁判。你的唯一任务是分析给定内容并输出JSON。输出要求：1) 只输出 ```json ... ``` 代码块内的纯JSON对象；2) 禁止在JSON之前或之后输出任何解释、说明、分析文字；3) 禁止输出任何非JSON内容。违反上述要求将导致系统错误。")
+                        .messages(List.of(LlmRequest.ChatMessage.builder()
+                                .role("user")
+                                .content(prompt)
+                                .build()))
+                        .temperature(isRetry ? 0.0f : 0.1f)
+                        .maxTokens(2048)
+                        .sessionId(caseId)
+                        .build();
+                return llmService.chat(request);
+            });
+            return future.get(LLM_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            log.warn("[TenderSemanticReviewService] LLM 调用超时 - caseId: {}, timeout: {}s, isRetry: {}", caseId, LLM_TIMEOUT_SECONDS, isRetry);
+            return null;
+        } catch (Exception e) {
+            log.error("[TenderSemanticReviewService] LLM 调用异常 - caseId: {}, error: {}, isRetry: {}", caseId, e.getMessage(), isRetry);
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * 构建 prompt，包含 JSON Schema 说明和 Few-Shot 示例。
+     * <p>
+     * 通过完整示例引导模型严格遵循 JSON 格式输出，这是目前最有效的
+     * 解决 MiniMax 不支持 response_format 强制 JSON 的方案。
      */
     private String buildPrompt(TenderSemanticJudgeReq req) {
         // 拼接左侧候选片段
@@ -93,6 +155,64 @@ public class TenderSemanticReviewService {
                 req.getRightDocumentId(),
                 rightSnippetsSb.toString()
         );
+        sb.append("\n【输出要求】\n");
+        sb.append("直接输出 JSON 对象，不做任何解释说明。JSON Schema 如下：\n\n");
+        sb.append("```json\n");
+        sb.append("{\n");
+        sb.append("  \"hit\": Boolean,           // 是否命中规则\n");
+        sb.append("  \"ruleCode\": String,        // 规则编码\n");
+        sb.append("  \"riskType\": String,        // 风险类型，如 \"collusion\"\n");
+        sb.append("  \"confidence\": Number,     // 置信度 0.0~1.0\n");
+        sb.append("  \"suggestedWeight\": Number, // 建议权重\n");
+        sb.append("  \"conclusion\": String,    // 简短结论\n");
+        sb.append("  \"reason\": String,         // 判断理由\n");
+        sb.append("  \"evidences\": [            // 关键证据列表\n");
+        sb.append("    {\n");
+        sb.append("      \"documentId\": String,  // 文档 ID\n");
+        sb.append("      \"chapterPath\": String, // 章节路径\n");
+        sb.append("      \"excerpt\": String,   // 原文摘录\n");
+        sb.append("      \"explanation\": String // 解释\n");
+        sb.append("    }\n");
+        sb.append("  ],\n");
+        sb.append("  \"cautionNotes\": [String]  // 保留意见\n");
+        sb.append("}\n");
+        sb.append("```\n\n");
+
+        // Few-Shot 示例：让模型"照着格式输出"
+        sb.append("【示例】以下是一个标准输出的例子（严格遵循此 JSON 结构，不要添加任何其他文字）：\n\n");
+        sb.append("```json\n");
+        sb.append("{\n");
+        sb.append("  \"hit\": true,\n");
+        sb.append("  \"ruleCode\": \"").append(req.getRuleCode()).append("\",\n");
+        sb.append("  \"riskType\": \"collusion\",\n");
+        sb.append("  \"confidence\": 0.85,\n");
+        sb.append("  \"suggestedWeight\": 1.5,\n");
+        sb.append("  \"conclusion\": \"双方技术方案存在高度同源性\",\n");
+        sb.append("  \"reason\": \"左侧和右侧的技术方案在系统架构骨架、模块划分上高度一致，且关键里程碑设置相同\",\n");
+        sb.append("  \"evidences\": [\n");
+        sb.append("    {\n");
+        sb.append("      \"documentId\": \"TENDER_A\",\n");
+        sb.append("      \"chapterPath\": \"第三章 技术方案/3.1 系统架构\",\n");
+        sb.append("      \"excerpt\": \"系统采用微服务架构，分为用户服务、订单服务、支付服务三大模块\",\n");
+        sb.append("      \"explanation\": \"与右侧文档第三章技术方案架构描述一致\"\n");
+        sb.append("    },\n");
+        sb.append("    {\n");
+        sb.append("      \"documentId\": \"TENDER_B\",\n");
+        sb.append("      \"chapterPath\": \"第三章 技术方案/3.1 系统架构\",\n");
+        sb.append("      \"excerpt\": \"本项目采用微服务架构设计，包含用户管理、订单管理、支付管理等核心模块\",\n");
+        sb.append("      \"explanation\": \"与左侧文档技术架构描述实质相同，仅表述略有差异\"\n");
+        sb.append("    }\n");
+        sb.append("  ],\n");
+        sb.append("  \"cautionNotes\": [\"需结合其他规则综合判断\"]\n");
+        sb.append("}\n");
+        sb.append("```\n\n");
+
+        sb.append("【重要约束】\n");
+        sb.append("1. 必须按照上面示例的格式输出，只输出 ```json ... ``` 代码块内的 JSON 对象\n");
+        sb.append("2. 禁止在 JSON 之前或之后输出任何解释、说明、分析文字\n");
+        sb.append("3. 如果置信度不足，返回 hit=false\n");
+        sb.append("4. evidences 必须包含来自左侧和右侧文档的证据\n");
+        return sb.toString();
     }
 
     /**
@@ -114,11 +234,11 @@ public class TenderSemanticReviewService {
      * 带超时的 LLM 调用。
      */
     private LlmResponse callLlmWithTimeout(String prompt, String caseId) {
-        var executor = Executors.newSingleThreadExecutor();
         try {
-            Future<LlmResponse> future = executor.submit(() -> {
+            Future<LlmResponse> future = llmCallExecutor.submit(() -> {
                 LlmRequest request = LlmRequest.builder()
                         .systemPrompt(TenderReviewJudgePrompt.SEMANTIC_JUDGE_PROMPT)
+                        .systemPrompt("你是标书审查的语义裁判。你的唯一任务是分析给定内容并输出JSON。输出要求：1) 只输出 ```json ... ``` 代码块内的纯JSON对象；2) 禁止在JSON之前或之后输出任何解释、说明、分析文字；3) 禁止输出任何非JSON内容。违反上述要求将导致系统错误。")
                         .messages(List.of(LlmRequest.ChatMessage.builder()
                                 .role("user")
                                 .content(prompt)
@@ -136,8 +256,6 @@ public class TenderSemanticReviewService {
         } catch (Exception e) {
             log.error("[TenderSemanticReviewService] LLM 调用异常 - caseId: {}, error: {}", caseId, e.getMessage());
             throw new RuntimeException(e);
-        } finally {
-            executor.shutdownNow();
         }
     }
 

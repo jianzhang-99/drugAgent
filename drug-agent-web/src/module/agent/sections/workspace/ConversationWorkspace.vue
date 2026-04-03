@@ -104,14 +104,17 @@ const quickActions = [
   },
 ];
 
+// 仅在用户发送消息时滚动，避免 AI 回复打断用户手动滚动
 watch(
-  () => store.activeMessages.length,
-  () => {
-    nextTick(() => {
-      if (messageListRef.value) {
-        messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
-      }
-    });
+  () => store.sending,
+  (sending) => {
+    if (sending) {
+      nextTick(() => {
+        if (messageListRef.value) {
+          messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
+        }
+      });
+    }
   }
 );
 

@@ -1,6 +1,7 @@
 package com.liang.drugagent.agent.chat;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.liang.drugagent.agent.common.entity.ChatMessage;
 import com.liang.drugagent.agent.common.entity.ChatSession;
@@ -291,16 +292,12 @@ public class AgentSessionService extends ServiceImpl<ChatSessionMapper, ChatSess
         if (sessionId == null || sessionId.isBlank()) {
             return;
         }
-        ChatSession existing = this.getById(sessionId);
-        if (existing == null) {
-            return;
-        }
-        int currentCount = existing.getMessageCount() != null ? existing.getMessageCount() : 0;
-        ChatSession session = new ChatSession();
-        session.setId(sessionId);
-        session.setMessageCount(currentCount + delta);
-        session.setUpdatedAt(LocalDateTime.now());
-        this.updateById(session);
+        // 使用 SQL 原子更新避免竞态条件：UPDATE SET message_count = message_count + ?
+        UpdateWrapper<ChatSession> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("id", sessionId)
+                .setSql("message_count = message_count + " + delta)
+                .set("updated_at", LocalDateTime.now());
+        this.update(updateWrapper);
     }
 
     /**

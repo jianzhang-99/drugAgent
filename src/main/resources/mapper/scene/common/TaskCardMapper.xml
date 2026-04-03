@@ -19,6 +19,29 @@
           AND is_deleted = 0
     </select>
 
+    <select id="countGroupByStatus" resultType="map">
+        SELECT status AS `status`, COUNT(*) AS count
+        FROM task_card
+        WHERE is_deleted = 0
+        GROUP BY status
+    </select>
+
+    <select id="countRiskGroupByLevelForCompleted" resultType="map">
+        SELECT risk_level AS `riskLevel`, COUNT(*) AS count
+        FROM task_card
+        WHERE status = 'COMPLETED'
+          AND is_deleted = 0
+        GROUP BY risk_level
+    </select>
+
+    <select id="avgScoreForCompleted" resultType="java.lang.Double">
+        SELECT AVG(score)
+        FROM task_card
+        WHERE status = 'COMPLETED'
+          AND score IS NOT NULL
+          AND is_deleted = 0
+    </select>
+
     <select id="findTopHighRiskTasks"
             resultType="com.liang.drugagent.agent.common.entity.TaskCard">
         SELECT id,

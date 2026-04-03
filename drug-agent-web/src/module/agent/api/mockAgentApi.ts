@@ -281,7 +281,7 @@ export async function getMessages(sessionId: string): ApiEnvelope<ChatMessage[]>
 }
 
 export async function chat(req: ChatRequest): ApiEnvelope<DrugAgentResp> {
-  await wait(700);
+  await wait(100);
   const sessionId = req.sessionId || sessions[0]?.id || 'session_mock_1';
   const list = messageMap[sessionId] || [];
   list.push({

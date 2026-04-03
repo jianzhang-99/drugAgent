@@ -3,8 +3,11 @@ package com.liang.drugagent.agent.common.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.liang.drugagent.agent.common.entity.TaskCard;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 任务卡片Mapper。
@@ -31,6 +34,27 @@ public interface TaskCardMapper extends BaseMapper<TaskCard> {
      * @return 今日完成任务数量
      */
     int countTodayCompleted();
+
+    /**
+     * 按状态分组统计数量（排除已删除）。
+     *
+     * @return 状态及其对应的任务数量列表
+     */
+    List<Map<String, Object>> countGroupByStatus();
+
+    /**
+     * 查询已完成任务按风险等级分组统计（排除已删除）。
+     *
+     * @return 风险等级及其对应的已完成任务数量列表
+     */
+    List<Map<String, Object>> countRiskGroupByLevelForCompleted();
+
+    /**
+     * 查询已完成任务的平均评分（排除已删除）。
+     *
+     * @return 平均评分
+     */
+    Double avgScoreForCompleted();
 
     /**
      * 查询高风险待处理任务。
