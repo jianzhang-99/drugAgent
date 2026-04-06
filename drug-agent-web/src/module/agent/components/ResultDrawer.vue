@@ -139,9 +139,15 @@ const riskLabel = computed(() => {
   return map[result.value?.riskLevel || 'unknown'] || '未知';
 });
 
-// For dummy representation of files participating
-const fileA = computed(() => '投标人A_昆博云创_W-M1测试标书.md');
-const fileB = computed(() => '投标人B_晟拓数科_W-M1测试标书.md');
+// 参与比对的文件名称（优先使用后端返回的 documentNames）
+const fileA = computed(() => {
+  const names = result.value?.documentNames;
+  return (names && names.length > 0) ? names[0] : '文档A';
+});
+const fileB = computed(() => {
+  const names = result.value?.documentNames;
+  return (names && names.length > 1) ? names[1] : '文档B';
+});
 
 const rulesData = computed(() => {
   // Try to use real data logic here if backend supplies rules

@@ -1,4 +1,4 @@
-package com.liang.drugagent.shared.cos;
+package com.liang.drugagent.shared.rag.cos;
 
 import com.qcloud.cos.COSClient;
 import com.qcloud.cos.ClientConfig;

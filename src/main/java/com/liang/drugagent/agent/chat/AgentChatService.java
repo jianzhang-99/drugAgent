@@ -2,12 +2,12 @@ package com.liang.drugagent.agent.chat;
 
 import com.liang.drugagent.agent.common.entity.ChatMessage;
 import com.liang.drugagent.agent.common.entity.ChatSession;
-import com.liang.drugagent.agent.common.entity.OssFile;
 import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
 import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
 import com.liang.drugagent.scene.SceneEnum;
-import com.liang.drugagent.shared.cos.TencentCosStorageService;
+import com.liang.drugagent.shared.rag.entity.OssFile;
+import com.liang.drugagent.shared.rag.cos.TencentCosStorageService;
 import com.liang.drugagent.shared.model.AgentExecutionResult;
 import com.liang.drugagent.shared.model.WorkflowRouteDecision;
 import lombok.RequiredArgsConstructor;
@@ -85,8 +85,8 @@ public class AgentChatService {
             // 合并 fileIds：将本轮上传文件的 ID 也加入
             mergeFileIds(req, uploadedFiles);
 
-            log.debug("[AgentChatService] 构建执行上下文: sessionId={}, traceId={}, historyCount={}, uploadedFilesCount={}",
-                    sessionId, context.getTraceId(), recentMessages.size(), uploadedFiles.size());
+            log.info("[AgentChatService] 构建执行上下文: sessionId={}, traceId={}, historyCount={}, uploadedFilesCount={}, req.fileIds={}",
+                    sessionId, context.getTraceId(), recentMessages.size(), uploadedFiles.size(), req.getFileIds());
 
             // 3. 调用 AgentSceneService 执行场景判断与分发
             AgentSceneService.AgentSceneExecution execution = agentSceneService.decideAndExecute(context, req);

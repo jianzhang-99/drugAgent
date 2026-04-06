@@ -1,4 +1,4 @@
-package com.liang.drugagent.shared.cos;
+package com.liang.drugagent.shared.rag.cos;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;

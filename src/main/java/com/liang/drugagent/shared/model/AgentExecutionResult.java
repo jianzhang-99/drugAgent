@@ -64,6 +64,11 @@ public class AgentExecutionResult {
     private List<String> documentIds = new ArrayList<>();
 
     /**
+     * 文档名称列表（与 documentIds 对应，供前端展示文件名）。
+     */
+    private List<String> documentNames = new ArrayList<>();
+
+    /**
      * 审查报告。
      */
     private ReviewReport report;

@@ -17,7 +17,11 @@ import java.util.stream.Collectors;
 @Configuration
 public class CorsConfig {
 
-    @Value("${app.cors.allowed-origin-patterns:http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173}")
+    /**
+     * 默认使用端口通配，避免 Vite / 本地网关改用 3002、4173 等端口时出现 CORS 403
+     *（浏览器在部分请求上会携带 Origin，与是否走反向代理无关）。
+     */
+    @Value("${app.cors.allowed-origin-patterns:http://localhost:*,http://127.0.0.1:*}")
     private String allowedOriginPatterns;
 
     @Bean

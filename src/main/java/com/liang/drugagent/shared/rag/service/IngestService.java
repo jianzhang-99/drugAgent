@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -114,6 +115,40 @@ public class IngestService {
     }
 
     /**
+     * 根据 sourceId 删除向量库中该文档的所有 chunks。
+     *
+     * <p>通过过滤条件匹配所有属于同一 sourceId 的 document id，然后从向量库中删除。</p>
+     */
+    public void deleteBySourceId(String sourceId) {
+        if (sourceId == null || sourceId.isBlank()) {
+            log.warn("deleteBySourceId 跳过：sourceId 为空");
+            return;
+        }
+
+        if (vectorStore instanceof SimpleVectorStore simpleStore) {
+            List<Document> allDocs = getDocumentsFromSimpleVectorStore(simpleStore);
+            List<String> idsToRemove = allDocs.stream()
+                    .filter(doc -> {
+                        Object sid = doc.getMetadata().get("sourceId");
+                        return sid != null && sid.toString().equals(sourceId);
+                    })
+                    .map(Document::getId)
+                    .collect(Collectors.toList());
+
+            if (!idsToRemove.isEmpty()) {
+                simpleStore.delete(idsToRemove);
+                log.info("向量库删除完成 - sourceId={}, 删除chunk数={}", sourceId, idsToRemove.size());
+            } else {
+                log.warn("向量库删除跳过：未找到匹配的 chunks - sourceId={}", sourceId);
+            }
+
+            save();
+        } else {
+            log.warn("向量库类型 {} 不支持按 sourceId 删除", vectorStore.getClass().getName());
+        }
+    }
+
+    /**
      * 将 RagChunk 转换为 Spring AI Document
      */
     private Document toAiDocument(RagChunk chunk) {
@@ -143,5 +178,25 @@ public class IngestService {
      */
     private String generateSourceId() {
         return "DOC-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    }
+
+    /**
+     * 通过反射从 SimpleVectorStore 内部 map 中读取所有文档。
+     *
+     * <p>Spring AI 1.1.3 移除了 SimpleVectorStore.get() 公开方法，
+     * 但文档仍存储在名为 documents 的 HashMap 字段中，
+     * 通过反射读取以兼容当前版本。</p>
+     */
+    private List<Document> getDocumentsFromSimpleVectorStore(SimpleVectorStore simpleStore) {
+        try {
+            Field documentsField = SimpleVectorStore.class.getDeclaredField("documents");
+            documentsField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            Map<String, Document> docMap = (Map<String, Document>) documentsField.get(simpleStore);
+            return List.copyOf(docMap.values());
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            log.error("通过反射读取 SimpleVectorStore 内部 documents 失败", e);
+            return List.of();
+        }
     }
 }

@@ -35,6 +35,27 @@ class DocumentToolTest {
     }
 
     @Test
+    void should正常解析Txt与PdfTxt命名文件() {
+        String body = "第一章 投标函\n\n投标人：测试公司";
+        TempDocument pdfTxt = TempDocument.builder()
+                .documentId("doc-pdf-txt")
+                .filename("zb-it-001-市人民医院信息系统升级招标.pdf.txt")
+                .content(body.getBytes(StandardCharsets.UTF_8))
+                .build();
+
+        DocumentToolReq req = DocumentToolReq.builder()
+                .documents(List.of(pdfTxt))
+                .build();
+
+        DocumentToolResult result = documentTool.parse(req);
+
+        assertEquals(1, result.getSuccessCount());
+        assertEquals(0, result.getFailureCount());
+        assertEquals(body, result.getDocuments().get(0).getPlainText());
+        assertEquals("txt", result.getDocuments().get(0).getFileType());
+    }
+
+    @Test
     void should正常解析一份Markdown文件() {
         String content = "# 投标文件\n\n这是正文内容。";
         TempDocument doc = TempDocument.builder()

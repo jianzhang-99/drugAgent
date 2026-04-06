@@ -35,4 +35,9 @@ public class ModelInfo {
      * 是否可用。
      */
     private boolean available;
+
+    /**
+     * 是否为默认模型。
+     */
+    private boolean isDefault;
 }

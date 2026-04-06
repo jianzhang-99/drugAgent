@@ -25,6 +25,7 @@ import com.liang.drugagent.shared.model.ReviewReport;
 import com.liang.drugagent.shared.model.WorkflowResult;
 import com.liang.drugagent.shared.llm.LlmClient;
 import com.liang.drugagent.shared.llm.LlmProviderType;
+import org.springframework.beans.factory.annotation.Qualifier;
 import com.liang.drugagent.shared.llm.LlmRequest;
 import com.liang.drugagent.shared.llm.LlmResponse;
 import lombok.extern.slf4j.Slf4j;

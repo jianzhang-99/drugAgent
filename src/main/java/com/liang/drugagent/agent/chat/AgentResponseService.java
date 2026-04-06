@@ -1,6 +1,6 @@
 package com.liang.drugagent.agent.chat;
 
-import com.liang.drugagent.agent.common.entity.OssFile;
+import com.liang.drugagent.shared.rag.entity.OssFile;
 import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
 import com.liang.drugagent.scene.SceneEnum;
@@ -57,6 +57,7 @@ public class AgentResponseService {
         resp.setScore(executionResult.getScore() != null ? executionResult.getScore() : 0);
         resp.setCaseId(executionResult.getCaseId());
         resp.setDocumentIds(executionResult.getDocumentIds() != null ? executionResult.getDocumentIds() : new ArrayList<>());
+        resp.setDocumentNames(executionResult.getDocumentNames() != null ? executionResult.getDocumentNames() : new ArrayList<>());
         resp.setReport(executionResult.getReport());
         resp.setEvidenceList(executionResult.getEvidenceList() != null ? executionResult.getEvidenceList() : new ArrayList<>());
         resp.setEvidenceGroups(executionResult.getEvidenceGroups() != null ? executionResult.getEvidenceGroups() : new ArrayList<>());

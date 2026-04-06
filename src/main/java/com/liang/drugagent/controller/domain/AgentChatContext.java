@@ -4,7 +4,7 @@ import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.agent.common.entity.ChatMessage;
 import com.liang.drugagent.agent.common.entity.ChatSession;
-import com.liang.drugagent.agent.common.entity.OssFile;
+import com.liang.drugagent.shared.rag.entity.OssFile;
 import lombok.Getter;
 import lombok.Setter;
 

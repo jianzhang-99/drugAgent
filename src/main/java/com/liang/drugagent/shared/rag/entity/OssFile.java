@@ -1,4 +1,4 @@
-package com.liang.drugagent.agent.common.entity;
+package com.liang.drugagent.shared.rag.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;

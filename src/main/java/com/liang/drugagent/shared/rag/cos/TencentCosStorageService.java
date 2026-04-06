@@ -1,7 +1,7 @@
-package com.liang.drugagent.shared.cos;
+package com.liang.drugagent.shared.rag.cos;
 
-import com.liang.drugagent.agent.common.entity.OssFile;
-import com.liang.drugagent.agent.common.mapper.OssFileMapper;
+import com.liang.drugagent.shared.rag.entity.OssFile;
+import com.liang.drugagent.shared.rag.mapper.OssFileMapper;
 import com.qcloud.cos.exception.CosClientException;
 import com.qcloud.cos.exception.CosServiceException;
 import com.qcloud.cos.model.*;

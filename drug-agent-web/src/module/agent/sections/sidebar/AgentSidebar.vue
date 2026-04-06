@@ -143,7 +143,10 @@ const groupedSessions = computed(() => {
 });
 
 onMounted(async () => {
-  await store.loadSessions();
+  await Promise.all([
+    store.loadSessions(),
+    store.loadModels(),
+  ]);
 });
 
 function handleNewSession() {

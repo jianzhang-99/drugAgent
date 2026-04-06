@@ -573,7 +573,8 @@ public class TenderReviewDataAssembler {
                 continue;
             }
             List<String> cells = splitTableRow(trimmed);
-            if (cells.stream().allMatch(cell -> cell.replace("-", "").replace(":", "").isBlank())) {
+            // 过滤掉 null 单元格，并跳过全是分隔符（如 |---|---|）的分割行
+            if (cells.stream().filter(c -> c != null).allMatch(cell -> cell.replace("-", "").replace(":", "").isBlank())) {
                 continue;
             }
             rows.add(cells);
