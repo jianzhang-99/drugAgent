@@ -5,25 +5,23 @@ import com.liang.drugagent.shared.rag.model.RagChunk;
 import com.liang.drugagent.shared.rag.model.RagDocument;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * 文档入库服务。
  *
- * <p>负责文档文本提取、chunk 切分、embedding 生成和向量库存储。</p>
+ * <p>负责文档文本提取、chunk 切分、embedding 生成和向量库存储。
+ * 使用 PGVector 原生 Filter API 按 sourceId 删除。</p>
  */
 @Slf4j
 @Service
@@ -33,16 +31,13 @@ public class IngestService {
     private final Chunker chunker;
     private final EmbeddingService embeddingService;
     private final VectorStore vectorStore;
-    private final File vectorStoreFile;
 
     public IngestService(TextExtractor textExtractor, Chunker chunker,
-                        EmbeddingService embeddingService, VectorStore vectorStore,
-                        File vectorStoreFile) {
+                        EmbeddingService embeddingService, VectorStore vectorStore) {
         this.textExtractor = textExtractor;
         this.chunker = chunker;
         this.embeddingService = embeddingService;
         this.vectorStore = vectorStore;
-        this.vectorStoreFile = vectorStoreFile;
     }
 
     /**
@@ -88,21 +83,11 @@ public class IngestService {
             vectorStore.add(List.of(aiDoc));
         }
 
-        // 4. 持久化到本地文件
+        // 持久化
         save();
 
         log.info("文档入库完成 - sourceId={}, title={}, chunk数量={}",
                 document.getSourceId(), document.getTitle(), chunks.size());
-    }
-
-    /**
-     * 保存向量库到本地文件
-     */
-    public void save() {
-        if (vectorStore instanceof SimpleVectorStore) {
-            ((SimpleVectorStore) vectorStore).save(vectorStoreFile);
-            log.info("向量库已持久化到: {}", vectorStoreFile.getAbsolutePath());
-        }
     }
 
     /**
@@ -115,9 +100,16 @@ public class IngestService {
     }
 
     /**
+     * 保存向量库（PGVector 无需手动保存，自动持久化）
+     */
+    public void save() {
+        log.debug("PGVector 自动持久化，无需手动保存");
+    }
+
+    /**
      * 根据 sourceId 删除向量库中该文档的所有 chunks。
      *
-     * <p>通过过滤条件匹配所有属于同一 sourceId 的 document id，然后从向量库中删除。</p>
+     * <p>使用 PGVector 原生 Filter API 按 sourceId 过滤并删除。</p>
      */
     public void deleteBySourceId(String sourceId) {
         if (sourceId == null || sourceId.isBlank()) {
@@ -125,26 +117,17 @@ public class IngestService {
             return;
         }
 
-        if (vectorStore instanceof SimpleVectorStore simpleStore) {
-            List<Document> allDocs = getDocumentsFromSimpleVectorStore(simpleStore);
-            List<String> idsToRemove = allDocs.stream()
-                    .filter(doc -> {
-                        Object sid = doc.getMetadata().get("sourceId");
-                        return sid != null && sid.toString().equals(sourceId);
-                    })
-                    .map(Document::getId)
-                    .collect(Collectors.toList());
-
-            if (!idsToRemove.isEmpty()) {
-                simpleStore.delete(idsToRemove);
-                log.info("向量库删除完成 - sourceId={}, 删除chunk数={}", sourceId, idsToRemove.size());
-            } else {
-                log.warn("向量库删除跳过：未找到匹配的 chunks - sourceId={}", sourceId);
-            }
-
-            save();
-        } else {
-            log.warn("向量库类型 {} 不支持按 sourceId 删除", vectorStore.getClass().getName());
+        try {
+            // 使用 PGVector 原生的 Filter API 按 sourceId 删除
+            Filter.Expression filter = new Filter.Expression(
+                    Filter.ExpressionType.EQ,
+                    new Filter.Key("sourceId"),
+                    new Filter.Value(sourceId)
+            );
+            vectorStore.delete(filter);
+            log.info("PGVector 删除完成 - sourceId={}", sourceId);
+        } catch (Exception e) {
+            log.error("PGVector 删除失败 - sourceId={}", sourceId, e);
         }
     }
 
@@ -165,6 +148,10 @@ public class IngestService {
         attributes.put("sectionTitle", metadata.getSectionTitle() != null ? metadata.getSectionTitle() : "");
         attributes.put("pageNo", metadata.getPageNo() != null ? metadata.getPageNo() : 0);
         attributes.put("version", metadata.getVersion() != null ? metadata.getVersion() : "");
+        attributes.put("effectiveDate", metadata.getEffectiveDate() != null ? metadata.getEffectiveDate().toString() : null);
+        attributes.put("hierarchyLevel", metadata.getHierarchyLevel() != null ? metadata.getHierarchyLevel() : "");
+        attributes.put("status", metadata.getStatus() != null ? metadata.getStatus() : "");
+        attributes.put("sourceOrg", metadata.getSourceOrg() != null ? metadata.getSourceOrg() : "");
 
         return Document.builder()
                 .id(chunk.getChunkId())
@@ -178,25 +165,5 @@ public class IngestService {
      */
     private String generateSourceId() {
         return "DOC-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-    }
-
-    /**
-     * 通过反射从 SimpleVectorStore 内部 map 中读取所有文档。
-     *
-     * <p>Spring AI 1.1.3 移除了 SimpleVectorStore.get() 公开方法，
-     * 但文档仍存储在名为 documents 的 HashMap 字段中，
-     * 通过反射读取以兼容当前版本。</p>
-     */
-    private List<Document> getDocumentsFromSimpleVectorStore(SimpleVectorStore simpleStore) {
-        try {
-            Field documentsField = SimpleVectorStore.class.getDeclaredField("documents");
-            documentsField.setAccessible(true);
-            @SuppressWarnings("unchecked")
-            Map<String, Document> docMap = (Map<String, Document>) documentsField.get(simpleStore);
-            return List.copyOf(docMap.values());
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            log.error("通过反射读取 SimpleVectorStore 内部 documents 失败", e);
-            return List.of();
-        }
     }
 }

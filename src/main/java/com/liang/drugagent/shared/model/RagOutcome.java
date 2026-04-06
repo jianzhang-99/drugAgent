@@ -24,4 +24,10 @@ public class RagOutcome {
     private String reason;
     private String riskLevel;
     private List<EvidenceItem> evidenceList = new ArrayList<>();
+
+    /**
+     * 是否需要人工复核
+     */
+    @Builder.Default
+    private Boolean needHumanReview = false;
 }

@@ -1,47 +1,150 @@
 package com.liang.drugagent.shared.vector;
 
-import jakarta.annotation.PreDestroy;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.embedding.EmbeddingModel;
-import org.springframework.ai.vectorstore.SimpleVectorStore;
-import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.pgvector.PgVectorStore;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.io.File;
+import javax.sql.DataSource;
 
+/**
+ * PGVector 向量数据库配置。
+ *
+ * <p>使用 Spring AI 原生 PgVectorStore，配置从 application-local.yml 读取。
+ * 由于项目同时使用 MySQL（业务数据）和 PostgreSQL（向量库），
+ * 这里单独创建 PostgreSQL 数据源供 PGVector 使用。</p>
+ */
 @Slf4j
 @Configuration
 public class VectorStoreConfig {
 
-    private static final String VECTOR_STORE_FILE = "vector_store.json";
-
     /**
-     * 配置基于内存的向量数据库 (SimpleVectorStore)
-     * 用于 Demo 阶段快速验证，支持持久化到本地文件
-     *
-     * @param embeddingModel Spring AI 自动注入的 Embedding 模型 (即 text-embedding-v3)
-     * @return 向量数据库实例
+     * PGVector 配置属性
      */
     @Bean
-    public VectorStore vectorStore(EmbeddingModel embeddingModel) {
-        SimpleVectorStore simpleVectorStore = SimpleVectorStore.builder(embeddingModel).build();
-
-        // 尝试从本地加载已有的向量数据，实现重启不丢失
-        File vectorStoreFile = new File(VECTOR_STORE_FILE);
-        if (vectorStoreFile.exists()) {
-            simpleVectorStore.load(vectorStoreFile);
-            log.info("已从本地缓存加载向量数据: {}", VECTOR_STORE_FILE);
-        }
-
-        return simpleVectorStore;
+    @ConfigurationProperties(prefix = "pgvector")
+    public PgVectorProperties pgVectorProperties() {
+        return new PgVectorProperties();
     }
 
     /**
-     * 获取向量库持久化文件路径
+     * PostgreSQL 数据源（专供 PGVector 使用）
      */
     @Bean
-    public File vectorStoreFile() {
-        return new File(VECTOR_STORE_FILE);
+    public DataSource pgVectorDataSource(PgVectorProperties properties) {
+        HikariConfig config = new HikariConfig();
+        // 确保 URL 包含 sslmode=disable
+        String url = properties.getUrl();
+        if (!url.contains("sslmode")) {
+            url = url + (url.contains("?") ? "&" : "?") + "sslmode=disable";
+        }
+        config.setJdbcUrl(url);
+        config.setUsername(properties.getUsername());
+        config.setPassword(properties.getPassword());
+        config.setDriverClassName("org.postgresql.Driver");
+        config.setMaximumPoolSize(5);
+        config.setMinimumIdle(2);
+        config.setConnectionTimeout(30000);
+        config.setIdleTimeout(600000);
+        config.setMaxLifetime(1800000);
+        // 连接属性
+        config.addDataSourceProperty("connectTimeout", "10");
+        config.addDataSourceProperty("loginTimeout", "10");
+        config.addDataSourceProperty("tcpKeepAlive", "true");
+
+        log.info("PGVector 数据源创建 - url={}", config.getJdbcUrl());
+        return new HikariDataSource(config);
+    }
+
+    /**
+     * PostgreSQL JdbcTemplate（专供 PGVector 使用）
+     */
+    @Bean
+    public JdbcTemplate pgVectorJdbcTemplate(DataSource pgVectorDataSource) {
+        return new JdbcTemplate(pgVectorDataSource);
+    }
+
+    /**
+     * 配置 PGVector 向量数据库。
+     *
+     * <p>使用 Spring AI 1.1.4 原生 PgVectorStore，支持：
+     * - 持久化存储到 PostgreSQL
+     * - 按 sourceId 删除（原生支持 Filter API）
+     * - 向量相似度检索
+     * - metadata 过滤</p>
+     *
+     * @param jdbcTemplate PostgreSQL JdbcTemplate
+     * @param embeddingModel Spring AI 自动注入的 Embedding 模型
+     * @param properties PGVector 配置属性
+     * @return PGVector 向量数据库实例
+     */
+    @Bean
+    public PgVectorStore pgVectorStore(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel,
+                                        PgVectorProperties properties) {
+        PgVectorStore pgVectorStore = PgVectorStore.builder(jdbcTemplate, embeddingModel)
+                .vectorTableName(properties.getTableName())
+                .dimensions(properties.getDimension())
+                .initializeSchema(true)
+                .build();
+
+        log.info("PGVector 向量库初始化完成 - table={}, dimension={}",
+                properties.getTableName(), properties.getDimension());
+        return pgVectorStore;
+    }
+
+    /**
+     * PGVector 配置属性
+     */
+    public static class PgVectorProperties {
+        private String url;
+        private String username;
+        private String password;
+        private Integer dimension = 1536;
+        private String tableName = "vector_store";
+
+        public String getUrl() {
+            return url;
+        }
+
+        public void setUrl(String url) {
+            this.url = url;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
+
+        public Integer getDimension() {
+            return dimension;
+        }
+
+        public void setDimension(Integer dimension) {
+            this.dimension = dimension;
+        }
+
+        public String getTableName() {
+            return tableName;
+        }
+
+        public void setTableName(String tableName) {
+            this.tableName = tableName;
+        }
     }
 }

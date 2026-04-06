@@ -182,6 +182,7 @@ public class RagController {
                 .docType(req.getDocType())
                 .topK(req.getTopK() != null ? req.getTopK() : 5)
                 .sessionId(req.getSessionId())
+                .topicTags(req.getTopicTags())
                 .needGenerateAnswer(true)
                 .build();
 
@@ -212,6 +213,7 @@ public class RagController {
                 .docType(req.getDocType())
                 .topK(req.getTopK() != null ? req.getTopK() : 5)
                 .sessionId(req.getSessionId())
+                .topicTags(req.getTopicTags())
                 .needGenerateAnswer(false)
                 .build();
 

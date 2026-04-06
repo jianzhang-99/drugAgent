@@ -1,5 +1,6 @@
 package com.liang.drugagent.shared.rag.service;
 
+import com.liang.drugagent.shared.rag.extractor.PdfTextExtractor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.hwpf.HWPFDocument;
 import org.apache.poi.hwpf.extractor.WordExtractor;
@@ -18,14 +19,23 @@ import java.util.List;
 /**
  * 文档文本提取器。
  *
- * <p>支持从多种格式文档中提取纯文本内容。</p>
+ * <p>支持从多种格式文档中提取纯文本内容。
+ * 支持格式：txt、md、docx、doc、xlsx、xls、pdf。</p>
  */
 @Slf4j
 @Component
 public class TextExtractor {
 
+    private final PdfTextExtractor pdfTextExtractor;
+
+    public TextExtractor(PdfTextExtractor pdfTextExtractor) {
+        this.pdfTextExtractor = pdfTextExtractor;
+    }
+
     /**
      * 从 MultipartFile 提取文本
+     *
+     * @throws TextExtractionException 解析失败时抛出明确异常
      */
     public String extract(MultipartFile file) throws IOException {
         String filename = file.getOriginalFilename();
@@ -37,6 +47,8 @@ public class TextExtractor {
 
     /**
      * 从文件路径提取文本
+     *
+     * @throws TextExtractionException 解析失败时抛出明确异常
      */
     public String extract(Path filePath) throws IOException {
         String filename = filePath.getFileName().toString();
@@ -46,6 +58,8 @@ public class TextExtractor {
 
     /**
      * 根据文件扩展名选择提取策略
+     *
+     * @throws TextExtractionException 解析失败时抛出明确异常
      */
     private String extract(String filename, byte[] content) throws IOException {
         String lowerName = filename.toLowerCase();
@@ -66,6 +80,10 @@ public class TextExtractor {
             return extractDoc(content);
         }
 
+        if (lowerName.endsWith(".pdf")) {
+            return extractPdf(content);
+        }
+
         // 默认为纯文本
         return extractText(content);
     }
@@ -79,7 +97,22 @@ public class TextExtractor {
     }
 
     /**
+     * 提取 PDF 文本（使用 Apache PDFBox）
+     *
+     * @throws TextExtractionException PDF 解析失败时抛出
+     */
+    private String extractPdf(byte[] content) throws IOException {
+        try {
+            return pdfTextExtractor.extract(content);
+        } catch (IOException e) {
+            throw new TextExtractionException("PDF 解析失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * 提取 DOCX 文本（使用 Apache POI XWPF）
+     *
+     * @throws TextExtractionException DOCX 解析失败时抛出
      */
     private String extractDocx(byte[] content) throws IOException {
         try (XWPFDocument document = new XWPFDocument(new ByteArrayInputStream(content))) {
@@ -116,7 +149,7 @@ public class TextExtractor {
                 zis.closeEntry();
             }
         }
-        throw new IllegalArgumentException("无效的 DOCX 文件结构");
+        throw new TextExtractionException("无效的 DOCX 文件结构");
     }
 
     /**
@@ -138,6 +171,8 @@ public class TextExtractor {
 
     /**
      * 提取 DOC 文本（使用 Apache POI HWPF）
+     *
+     * @throws TextExtractionException DOC 解析失败时抛出
      */
     private String extractDoc(byte[] content) throws IOException {
         try (HWPFDocument document = new HWPFDocument(new ByteArrayInputStream(content));
@@ -155,14 +190,14 @@ public class TextExtractor {
             }
             return cleanText(text.toString());
         } catch (Exception e) {
-            log.warn("POI 解析 DOC 失败: {}", e.getMessage());
-            // DOC 二进制格式复杂，降级返回空文本而非错误
-            return "";
+            throw new TextExtractionException("DOC 解析失败: " + e.getMessage(), e);
         }
     }
 
     /**
      * 提取 Excel 文本（使用 Apache POI XSSF/HSSF）
+     *
+     * @throws TextExtractionException Excel 解析失败时抛出
      */
     private String extractExcel(byte[] content, boolean isXlsx) throws IOException {
         try {
@@ -196,8 +231,7 @@ public class TextExtractor {
             }
             return cleanText(text.toString());
         } catch (Exception e) {
-            log.warn("POI 解析 Excel 失败: {}", e.getMessage());
-            return "";
+            throw new TextExtractionException("Excel 解析失败: " + e.getMessage(), e);
         }
     }
 
@@ -238,5 +272,22 @@ public class TextExtractor {
                 .replaceAll("\\r\\n", "\n")
                 .replaceAll("\\n{3,}", "\n\n")
                 .trim();
+    }
+
+    /**
+     * 文本提取异常。
+     *
+     * <p>用于区分"解析失败"与"无有效文本"。
+     * 当抛出此异常时，表示文档格式有问题或提取过程中发生错误；
+     * 当返回空字符串时，表示文档有效但没有可提取的文本内容。</p>
+     */
+    public static class TextExtractionException extends IOException {
+        public TextExtractionException(String message) {
+            super(message);
+        }
+
+        public TextExtractionException(String message, Throwable cause) {
+            super(message, cause);
+        }
     }
 }

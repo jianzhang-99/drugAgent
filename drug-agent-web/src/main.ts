@@ -19,6 +19,7 @@ import {
   MessagePlugin
 } from 'tdesign-vue-next'
 import 'tdesign-vue-next/dist/tdesign.css'
+import 'element-plus/dist/index.css'
 
 const app = createApp(App)
 

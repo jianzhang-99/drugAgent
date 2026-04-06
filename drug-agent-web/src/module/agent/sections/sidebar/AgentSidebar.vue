@@ -103,6 +103,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue';
+import { ElMessageBox, ElMessage } from 'element-plus';
 import { useAgentStore } from '../../store/agentStore';
 import SystemSettingsDialog from '../../components/SystemSettingsDialog.vue';
 
@@ -164,14 +165,35 @@ async function handleSelectSession(id: string) {
 }
 
 function handleDeleteSession(id: string) {
-  store.removeSession(id);
+  ElMessageBox.confirm('确认要删除该审查会话吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning',
+  })
+    .then(() => {
+      store.removeSession(id);
+      ElMessage.success('删除成功');
+    })
+    .catch(() => {
+      // 取消删除
+    });
 }
 
 function handleClearAllSessions() {
   if (store.sessions.length === 0) return;
-  if (confirm(`确定要清空所有 ${store.sessions.length} 个会话吗？此操作不可恢复。`)) {
-    store.clearAllSessions();
-  }
+  ElMessageBox.confirm(`确定要清空所有 ${store.sessions.length} 个会话吗？此操作不可恢复。`, '提示', {
+    confirmButtonText: '确定清除',
+    cancelButtonText: '取消',
+    type: 'warning',
+    confirmButtonClass: 'el-button--danger',
+  })
+    .then(() => {
+      store.clearAllSessions();
+      ElMessage.success('已清空全部会话');
+    })
+    .catch(() => {
+      // 取消清除
+    });
 }
 
 function startEditTitle(id: string, title: string) {

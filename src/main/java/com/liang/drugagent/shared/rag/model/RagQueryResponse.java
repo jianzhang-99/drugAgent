@@ -52,6 +52,12 @@ public class RagQueryResponse {
     private List<RagChunk> evidenceChunks = new ArrayList<>();
 
     /**
+     * 是否需要人工复核
+     */
+    @Builder.Default
+    private Boolean needHumanReview = false;
+
+    /**
      * 创建成功响应
      */
     public static RagQueryResponse success(String answer, List<RagCitation> citations, List<RagChunk> chunks) {

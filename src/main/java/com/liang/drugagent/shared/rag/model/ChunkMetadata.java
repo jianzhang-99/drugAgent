@@ -5,10 +5,13 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+import java.util.List;
+
 /**
  * Chunk 元数据。
  *
- * <p>描述每个知识片段的来源和位置信息。</p>
+ * <p>描述每个知识片段的来源、位置、法规属性等信息。</p>
  */
 @Data
 @Builder
@@ -75,4 +78,29 @@ public class ChunkMetadata {
      * 文档版本（可选）
      */
     private String version;
+
+    /**
+     * 法规发布日期（可选），用于时间范围检索
+     */
+    private LocalDate effectiveDate;
+
+    /**
+     * 法规层级（可选），如：国家法规、省级法规、市级法规
+     */
+    private String hierarchyLevel;
+
+    /**
+     * 法规状态（可选），如：有效、废止、修订中
+     */
+    private String status;
+
+    /**
+     * 主题标签列表（可选），用于精确检索约束
+     */
+    private List<String> topicTags;
+
+    /**
+     * 文档来源机构（可选）
+     */
+    private String sourceOrg;
 }

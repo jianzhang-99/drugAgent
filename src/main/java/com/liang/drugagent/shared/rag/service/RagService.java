@@ -1,7 +1,6 @@
 package com.liang.drugagent.shared.rag.service;
 
 import com.liang.drugagent.agent.prompt.shared.rag.SharedRagPrompt;
-import com.liang.drugagent.shared.rag.cos.TencentCosStorageService;
 import com.liang.drugagent.shared.llm.LlmRequest;
 import com.liang.drugagent.shared.llm.LlmResponse;
 import com.liang.drugagent.shared.llm.LlmService;
@@ -66,18 +65,27 @@ public class RagService {
 
         // 3. 执行向量检索
         List<Document> documents = vectorStore.similaritySearch(searchRequest);
+
+        // 4. 相似度阈值过滤
+        if (request.getSimilarityThreshold() != null && request.getSimilarityThreshold() > 0) {
+            documents = documents.stream()
+                    .filter(doc -> doc.getScore() != null && doc.getScore() >= request.getSimilarityThreshold())
+                    .collect(Collectors.toList());
+            log.info("[{}] 相似度阈值过滤后 - 剩余chunk数量={}", traceId, documents.size());
+        }
+
         if (documents.isEmpty()) {
             log.info("[{}] RAG检索无结果", traceId);
             return RagQueryResponse.noHit("未找到相关知识片段");
         }
 
-        // 4. 转换为内部 chunks 和 citations
+        // 5. 转换为内部 chunks 和 citations
         List<RagChunk> chunks = toRagChunks(documents);
         List<RagCitation> citations = toRagCitations(documents);
 
         log.info("[{}] RAG检索命中 - chunk数量={}", traceId, chunks.size());
 
-        // 5. 如果不需要生成回答，直接返回检索结果
+        // 6. 如果不需要生成回答，直接返回检索结果
         if (!Boolean.TRUE.equals(request.getNeedGenerateAnswer())) {
             return RagQueryResponse.builder()
                     .decision(RagDecision.ANSWERED)
@@ -87,18 +95,22 @@ public class RagService {
                     .build();
         }
 
-        // 6. 拼装 Prompt 并调用 LLM
+        // 7. 拼装 Prompt 并调用 LLM
         String prompt = buildPrompt(request.getQuestion(), chunks, citations);
         try {
             String answer = callLlm(prompt, request.getSessionId());
             log.info("[{}] RAG回答生成成功 - 答案长度={}", traceId, answer.length());
 
+            // 评估回答质量，LOW_CONFIDENCE 触发人工复核
+            boolean needHumanReview = evaluateNeedHumanReview(answer, chunks);
+
             return RagQueryResponse.builder()
-                    .decision(RagDecision.ANSWERED)
-                    .reason(RagReason.HIT)
+                    .decision(needHumanReview ? RagDecision.NEED_HUMAN_REVIEW : RagDecision.ANSWERED)
+                    .reason(needHumanReview ? RagReason.LOW_CONFIDENCE : RagReason.HIT)
                     .answer(answer)
                     .citations(citations)
                     .evidenceChunks(chunks)
+                    .needHumanReview(needHumanReview)
                     .build();
         } catch (Exception e) {
             log.error("[{}] RAG回答生成失败", traceId, e);
@@ -110,7 +122,7 @@ public class RagService {
     }
 
     /**
-     * 构建向量检索请求，支持 orgId / scene / subScene / docType / sourceId 多字段过滤
+     * 构建向量检索请求，支持 orgId / scene / subScene / docType / sourceId / topicTags 多字段过滤
      */
     private SearchRequest buildSearchRequest(RagQueryRequest request) {
         SearchRequest.Builder builder = SearchRequest.builder()
@@ -135,6 +147,14 @@ public class RagService {
             filters.add("sourceId == '" + request.getSourceId() + "'");
         }
 
+        // topicTags 过滤：支持多标签精确匹配
+        if (request.getTopicTags() != null && !request.getTopicTags().isEmpty()) {
+            String topicTagsFilter = request.getTopicTags().stream()
+                    .map(tag -> "topicTags == '" + tag + "'")
+                    .collect(Collectors.joining(" or "));
+            filters.add("(" + topicTagsFilter + ")");
+        }
+
         if (!filters.isEmpty()) {
             String filterExpression = String.join(" and ", filters);
             log.debug("向量检索过滤条件: {}", filterExpression);
@@ -142,6 +162,25 @@ public class RagService {
         }
 
         return builder.build();
+    }
+
+    /**
+     * 评估是否需要人工复核
+     *
+     * <p>当回答质量低或证据不足时，应触发人工复核而非仅做异常兜底。</p>
+     */
+    private boolean evaluateNeedHumanReview(String answer, List<RagChunk> chunks) {
+        // 回答过短
+        if (answer == null || answer.length() < 10) {
+            return true;
+        }
+        // 证据片段过少（少于2个）
+        if (chunks == null || chunks.size() < 2) {
+            return true;
+        }
+        // 回答中包含不确定表述
+        String uncertainPhrases = "不确定|无法确定|不清楚|可能|也许|大概";
+        return answer.matches(".*" + uncertainPhrases + ".*");
     }
 
     /**
@@ -162,6 +201,10 @@ public class RagService {
                     .sectionTitle(getStringValue(metadata, "sectionTitle"))
                     .pageNo(getIntValue(metadata, "pageNo"))
                     .version(getStringValue(metadata, "version"))
+                    .effectiveDate(getDateValue(metadata, "effectiveDate"))
+                    .hierarchyLevel(getStringValue(metadata, "hierarchyLevel"))
+                    .status(getStringValue(metadata, "status"))
+                    .sourceOrg(getStringValue(metadata, "sourceOrg"))
                     .build();
 
             return RagChunk.builder()
@@ -248,6 +291,24 @@ public class RagService {
             return Integer.parseInt(value.toString());
         } catch (NumberFormatException e) {
             return 0;
+        }
+    }
+
+    private java.time.LocalDate getDateValue(Map<String, Object> metadata, String key) {
+        Object value = metadata.get(key);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof java.time.LocalDate) {
+            return (java.time.LocalDate) value;
+        }
+        if (value instanceof java.time.LocalDateTime) {
+            return ((java.time.LocalDateTime) value).toLocalDate();
+        }
+        try {
+            return java.time.LocalDate.parse(value.toString());
+        } catch (Exception e) {
+            return null;
         }
     }
 }

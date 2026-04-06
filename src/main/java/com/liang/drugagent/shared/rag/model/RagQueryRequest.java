@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 /**
  * RAG 查询请求。
  *
@@ -62,4 +64,26 @@ public class RagQueryRequest {
      * 会话 ID（用于追踪）
      */
     private String sessionId;
+
+    /**
+     * 主题标签列表（可选），精确检索约束
+     */
+    private List<String> topicTags;
+
+    /**
+     * 相似度阈值（可选），低于该阈值的检索结果将被过滤
+     */
+    private Double similarityThreshold;
+
+    /**
+     * 是否启用混合检索（BM25+向量），默认 false
+     */
+    @Builder.Default
+    private Boolean enableHybridSearch = false;
+
+    /**
+     * 是否启用重排，默认 false
+     */
+    @Builder.Default
+    private Boolean enableRerank = false;
 }

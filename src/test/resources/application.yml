@@ -1,16 +1,17 @@
 spring:
   ai:
+    openai:
+      api-key: sk-openai-placeholder
     dashscope:
-      api-key: test-dummy-key-for-unit-tests
+      api-key: sk-a433391322b54c3db665851b085ba4d4
       base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
       embedding:
         model: text-embedding-v3
       chat:
         options:
           model: qwen-plus
-      embedding:
-        options:
-          model: text-embedding-v3
+    anthropic:
+      api-key: sk-ant-api03-placeholder
   datasource:
     url: jdbc:mysql://118.195.198.44:3306/drug-agent-test
     username: drug-agent-test
@@ -19,9 +20,17 @@ spring:
     init:
       mode: never
 
+# PGVector 向量库测试配置
+pgvector:
+  url: jdbc:postgresql://118.195.198.44:5432/hengdu?sslmode=disable
+  username: hengdu
+  password: hengdu123
+  dimension: 1536
+  table-name: drug_document_embedding
+
 aliyun:
   dashscope:
-    api-key: test-dummy-key-for-unit-tests
+    api-key: sk-a433391322b54c3db665851b085ba4d4
 
 # MiniMax测试配置
 minimax:

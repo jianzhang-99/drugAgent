@@ -43,6 +43,7 @@ public class RagOutcomeAdapter {
                 .reason(response.getReason() != null ? response.getReason().name() : null)
                 .riskLevel(response.getRiskLevel())
                 .evidenceList(evidenceItems)
+                .needHumanReview(Boolean.TRUE.equals(response.getNeedHumanReview()))
                 .build();
     }
 }

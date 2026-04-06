@@ -34,6 +34,11 @@ spring:
       enabled: true
       api-key: ${OPENAI_API_KEY:sk-ant-api03-placeholder}
       base-url: https://api.openai.com/v1
+    # PGVector 向量存储配置
+    vectorstore:
+      pgvector:
+        dimension: 1536
+        table-name: vector_store
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml

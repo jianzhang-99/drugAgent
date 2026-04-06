@@ -74,9 +74,10 @@ public class Chunker {
                 while (section.text.length() > chunkSize) {
                     String part = section.text.substring(0, chunkSize);
                     chunks.add(createChunk(document, part, chunkIndex++));
+                    // 保留末尾overlap个字符到下一个chunk，而非开头的overlap
                     section.text = section.text.substring(chunkSize);
                     if (overlap > 0 && section.text.length() > overlap) {
-                        section.text = section.text.substring(0, overlap);
+                        section.text = section.text.substring(section.text.length() - overlap);
                     }
                 }
             }
@@ -152,6 +153,11 @@ public class Chunker {
                 .chunkId(document.getSourceId() + "-" + chunkIndex)
                 .chunkIndex(chunkIndex)
                 .version(document.getVersion())
+                .effectiveDate(document.getEffectiveDate())
+                .hierarchyLevel(document.getHierarchyLevel())
+                .status(document.getStatus())
+                .topicTags(document.getTopicTags())
+                .sourceOrg(document.getSourceOrg())
                 .build();
 
         return RagChunk.builder()
