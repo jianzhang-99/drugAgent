@@ -1,6 +1,7 @@
 package com.liang.drugagent.agent.common.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.liang.drugagent.shared.rag.entity.OssFile;
 import lombok.Data;
 import lombok.Builder;
 import lombok.NoArgsConstructor;

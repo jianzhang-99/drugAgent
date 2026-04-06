@@ -1,7 +1,7 @@
-package com.liang.drugagent.agent.common.mapper;
+package com.liang.drugagent.shared.rag.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.liang.drugagent.agent.common.entity.OssFile;
+import com.liang.drugagent.shared.rag.entity.OssFile;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;

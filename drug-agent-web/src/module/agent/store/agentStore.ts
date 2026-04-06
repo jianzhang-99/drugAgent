@@ -59,6 +59,13 @@ export const useAgentStore = defineStore('agent', () => {
   /** 当前选中的模型 */
   const currentModel = ref<string>('minimax');
 
+  /**
+   * 会话级已上传文件ID列表。
+   * key: sessionId, value: 该会话上传过的所有 fileId 数组（去重）
+   * 作用：让后续 sendMessage 发文字时，后端知道这个会话有哪些历史文件可审查
+   */
+  const sessionFileIds = ref<Record<string, string[]>>({});
+
   // ==================== 计算属性 ====================
 
   /** 当前会话 */
@@ -140,6 +147,10 @@ export const useAgentStore = defineStore('agent', () => {
   async function selectSession(sessionId: string) {
     activeSessionId.value = sessionId;
 
+    // 报告抽屉绑定的是全局 currentResult，切换会话时必须清空，
+    // 否则会一直显示上一会话的比对结果（文件名与当前上传不一致）。
+    currentResult.value = null;
+
     // 如果没有该会话的消息，则加载
     if (!messagesBySession.value[sessionId]) {
       await loadMessages(sessionId);
@@ -176,6 +187,8 @@ export const useAgentStore = defineStore('agent', () => {
         sessions.value = sessions.value.filter((s) => s.id !== sessionId);
         // 清除消息
         delete messagesBySession.value[sessionId];
+        // 清除会话级文件ID列表
+        delete sessionFileIds.value[sessionId];
         // 如果删除的是当前会话，选中第一个
         if (activeSessionId.value === sessionId) {
           activeSessionId.value = sessions.value[0]?.id || null;
@@ -231,12 +244,17 @@ export const useAgentStore = defineStore('agent', () => {
     addMessage(userMsg);
 
     try {
+      // 取出当前会话的历史文件ID，追加到请求中
+      const currentFileIds = sessionFileIds.value[activeSessionId.value!] || [];
+      console.log('[agentStore] sendMessage fileIds, sessionId=' + activeSessionId.value + ', count=' + currentFileIds.length + ', ids=' + JSON.stringify(currentFileIds));
+
       const res = await agentApi.chat({
         query: content,
         sessionId: activeSessionId.value,
         userId: 'default_user',
         sceneHint: activeSession.value?.scene,
         model: currentModel.value,
+        fileIds: currentFileIds.length > 0 ? currentFileIds : undefined,
       });
 
       if (res.data.code === 200 || res.data.code === 0) {
@@ -327,6 +345,15 @@ export const useAgentStore = defineStore('agent', () => {
           if (session) {
             session.title = res.data.data.sessionTitle;
           }
+        }
+
+        // 将返回的 fileIds 存入会话级状态，后续 sendMessage 会自动带上
+        const returnedFileIds: string[] = res.data.data?.fileIds || [];
+        if (returnedFileIds.length > 0 && activeSessionId.value) {
+          const existing = sessionFileIds.value[activeSessionId.value] || [];
+          const merged = Array.from(new Set([...existing, ...returnedFileIds]));
+          sessionFileIds.value[activeSessionId.value] = merged;
+          console.log('[agentStore] 追加会话文件ID, sessionId=' + activeSessionId.value + ', 本次=' + returnedFileIds.length + '个, 累计=' + merged.length + '个');
         }
 
         return res.data.data;
@@ -446,6 +473,7 @@ export const useAgentStore = defineStore('agent', () => {
     pendingFiles,
     availableModels,
     currentModel,
+    sessionFileIds,
 
     // 计算属性
     activeSession,

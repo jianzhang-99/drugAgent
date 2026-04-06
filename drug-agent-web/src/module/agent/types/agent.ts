@@ -56,6 +56,10 @@ export interface ResultData {
   traceId?: string;
   docCount?: number;
   suggestedActions?: string[];
+  /** 文档名称列表（优先使用，供报告抽屉展示真实文件名） */
+  documentNames?: string[];
+  /** 文档ID列表 */
+  documentIds?: string[];
 }
 
 export interface Evidence {
@@ -130,6 +134,8 @@ export interface DrugAgentResp {
   suggestedActions?: string[];
   caseId?: string;
   documentIds?: string[];
+  /** 本次审查的文档名称列表 */
+  documentNames?: string[];
   report?: ReviewReport;
   evidenceList?: Evidence[];
   evidenceGroups?: EvidenceGroup[];
@@ -138,6 +144,8 @@ export interface DrugAgentResp {
   requiresClarification?: boolean;
   clarificationQuestion?: string;
   sessionTitle?: string;
+  /** 本次上传的文件ID列表，供前端会话级持久化用 */
+  fileIds?: string[];
 }
 
 export interface EvidenceGroup {

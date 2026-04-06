@@ -91,6 +91,8 @@ export function mapToResultData(resp: DrugAgentResp): ResultData {
     scene: resp.scene,
     traceId: resp.traceId,
     suggestedActions: resp.suggestedActions,
+    documentNames: resp.documentNames,
+    documentIds: resp.documentIds,
   };
 }
 

@@ -63,8 +63,8 @@ public class TenderReviewPreparationService {
      * @return 标书审查数据（准备失败时返回 null）
      */
     public TenderReviewData prepare(AgentChatContext context, AgentChatReq req) {
-        log.info("[TenderReviewPreparationService] 开始准备标书审查数据, sessionId={}",
-                context.getSessionId());
+        log.info("[TenderReviewPreparationService] 开始准备标书审查数据, sessionId={}, req.fileIds={}, context.fileIds={}, hasUploadedFiles={}",
+                context.getSessionId(), req.getFileIds(), context.getFileIds(), hasUploadedFiles(req));
 
         // 优先处理上传的文件（本次请求中的临时文件）
         if (hasUploadedFiles(req)) {
@@ -307,8 +307,15 @@ public class TenderReviewPreparationService {
      * 从请求中解析 fileIds。
      */
     private List<String> resolveFileIds(AgentChatContext context, AgentChatReq req) {
-        // 优先使用 context 中的 fileIds
+        // 优先使用 req 中的 fileIds（sendMessage 文字请求时 fileIds 在这里）
+        if (req.getFileIds() != null && !req.getFileIds().isEmpty()) {
+            log.info("[TenderReviewPreparationService] resolveFileIds 命中 req.fileIds, size={}", req.getFileIds().size());
+            return req.getFileIds();
+        }
+
+        // 尝试从 context 获取（submit 路径文件通过 uploadedFiles 进入）
         if (context.getFileIds() != null && !context.getFileIds().isEmpty()) {
+            log.info("[TenderReviewPreparationService] resolveFileIds 命中 context.fileIds, size={}", context.getFileIds().size());
             return context.getFileIds();
         }
 
@@ -319,15 +326,12 @@ public class TenderReviewPreparationService {
             if (fileIdsObj instanceof List) {
                 @SuppressWarnings("unchecked")
                 List<String> fileIds = (List<String>) fileIdsObj;
+                log.info("[TenderReviewPreparationService] resolveFileIds 命中 metadata.fileIds, size={}", fileIds.size());
                 return fileIds;
             }
         }
 
-        // 尝试从 req 获取
-        if (req.getFileIds() != null && !req.getFileIds().isEmpty()) {
-            return req.getFileIds();
-        }
-
+        log.warn("[TenderReviewPreparationService] resolveFileIds 所有来源均为空，无法获取文件ID");
         return null;
     }
 

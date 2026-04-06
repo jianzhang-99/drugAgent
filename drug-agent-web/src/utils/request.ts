@@ -8,7 +8,7 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 const instance: AxiosInstance = axios.create({
   baseURL: BASE_URL,
-  timeout: 30000,
+  timeout: 300000, // 5分钟，标书审查等 LLM 调用耗时较长
 });
 
 // 请求拦截器

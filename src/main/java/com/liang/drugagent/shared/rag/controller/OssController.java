@@ -1,9 +1,10 @@
-package com.liang.drugagent.controller;
+package com.liang.drugagent.shared.rag.controller;
 
-import com.liang.drugagent.agent.common.entity.OssFile;
-import com.liang.drugagent.agent.common.mapper.OssFileMapper;
+import com.liang.drugagent.shared.model.Result;
+import com.liang.drugagent.shared.rag.cos.TencentCosStorageService;
+import com.liang.drugagent.shared.rag.entity.OssFile;
+import com.liang.drugagent.shared.rag.mapper.OssFileMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.liang.drugagent.shared.cos.TencentCosStorageService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,17 +39,16 @@ public class OssController {
     /**
      * 上传文件到COS并记录元信息。
      *
-     * @param file     上传的文件
-     * @param fileType 文件类型：1-对话附件，2-RAG知识库
+     * @param file      上传的文件
+     * @param fileType  文件类型：1-对话附件，2-RAG知识库
      * @param sessionId 关联的业务ID
      */
     @PostMapping("/upload")
-    public Map<String, Object> upload(
+    public Result<Map<String, Object>> upload(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "fileType", defaultValue = "1") Integer fileType,
             @RequestParam(value = "sessionId", required = false) String sessionId
     ) {
-        Map<String, Object> result = new HashMap<>();
         try {
             String suffix = getFileSuffix(file.getOriginalFilename());
             String objectKey = buildObjectKey(fileType, suffix);
@@ -71,41 +71,37 @@ public class OssController {
                     .build();
             ossFileMapper.insert(ossFile);
 
-            result.put("success", true);
-            result.put("data", Map.of(
-                    "id", ossFile.getId(),
-                    "ossUrl", objectKey,
-                    "etag", etag,
-                    "bucket", cosStorageService.getBucketName(),
-                    "fileName", file.getOriginalFilename(),
-                    "fileSize", file.getSize()
-            ));
+            Map<String, Object> data = new HashMap<>();
+            data.put("id", ossFile.getId());
+            data.put("ossUrl", objectKey);
+            data.put("etag", etag);
+            data.put("bucket", cosStorageService.getBucketName());
+            data.put("fileName", file.getOriginalFilename());
+            data.put("fileSize", file.getSize());
             log.info("[OssController] 文件上传成功，ossUrl: {}, fileId: {}", objectKey, ossFile.getId());
-            return result;
+            return Result.success(data);
         } catch (Exception e) {
             log.error("[OssController] 文件上传失败", e);
-            result.put("success", false);
-            result.put("error", e.getMessage());
-            return result;
+            String msg = e.getMessage() != null ? e.getMessage() : "文件上传失败";
+            return Result.error(msg);
         }
     }
 
     /**
      * 获取文件列表。
      *
-     * @param fileType 文件类型：1-对话附件，2-RAG知识库
+     * @param fileType  文件类型：1-对话附件，2-RAG知识库
      * @param sessionId 关联的业务ID（可选）
-     * @param page     页码
-     * @param pageSize 每页数量
+     * @param page      页码
+     * @param pageSize  每页数量
      */
     @GetMapping("/files")
-    public Map<String, Object> listFiles(
+    public Result<Map<String, Object>> listFiles(
             @RequestParam(value = "fileType", required = false) Integer fileType,
             @RequestParam(value = "sessionId", required = false) String sessionId,
             @RequestParam(value = "page", defaultValue = "1") Integer page,
             @RequestParam(value = "pageSize", defaultValue = "50") Integer pageSize
     ) {
-        Map<String, Object> result = new HashMap<>();
         try {
             LambdaQueryWrapper<OssFile> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(fileType != null, OssFile::getFileType, fileType)
@@ -119,19 +115,15 @@ public class OssController {
             int end = Math.min(start + pageSize, files.size());
             List<OssFile> pageData = start < files.size() ? files.subList(start, end) : List.of();
 
-            result.put("success", true);
-            result.put("data", Map.of(
-                    "list", pageData,
-                    "total", files.size(),
-                    "page", page,
-                    "pageSize", pageSize
-            ));
-            return result;
+            Map<String, Object> data = new HashMap<>();
+            data.put("list", pageData);
+            data.put("total", files.size());
+            data.put("page", page);
+            data.put("pageSize", pageSize);
+            return Result.success(data);
         } catch (Exception e) {
             log.error("[OssController] 获取文件列表失败", e);
-            result.put("success", false);
-            result.put("error", e.getMessage());
-            return result;
+            return Result.error(e.getMessage() != null ? e.getMessage() : "获取文件列表失败");
         }
     }
 
@@ -139,29 +131,22 @@ public class OssController {
      * 删除文件（软删除COS文件并更新数据库状态）。
      */
     @DeleteMapping("/files/{id}")
-    public Map<String, Object> deleteFile(@PathVariable("id") String id) {
-        Map<String, Object> result = new HashMap<>();
+    public Result<Void> deleteFile(@PathVariable("id") String id) {
         try {
             OssFile ossFile = ossFileMapper.selectById(id);
             if (ossFile == null) {
-                result.put("success", false);
-                result.put("error", "文件不存在");
-                return result;
+                return Result.error("文件不存在");
             }
 
             cosStorageService.deleteFile(ossFile.getOssUrl());
             ossFile.setUploadStatus(3);
             ossFileMapper.updateById(ossFile);
 
-            result.put("success", true);
-            result.put("message", "删除成功");
             log.info("[OssController] 文件删除成功，id: {}, ossUrl: {}", id, ossFile.getOssUrl());
-            return result;
+            return Result.success(null);
         } catch (Exception e) {
             log.error("[OssController] 文件删除失败，id: {}", id, e);
-            result.put("success", false);
-            result.put("error", e.getMessage());
-            return result;
+            return Result.error(e.getMessage() != null ? e.getMessage() : "文件删除失败");
         }
     }
 
@@ -169,23 +154,42 @@ public class OssController {
      * 下载文件。
      */
     @GetMapping("/download/{ossUrl}")
-    public Map<String, Object> download(@PathVariable("ossUrl") String ossUrl) {
-        Map<String, Object> result = new HashMap<>();
+    public Result<Map<String, Object>> download(@PathVariable("ossUrl") String ossUrl) {
         try {
             File tempFile = File.createTempFile("cos_download_", ".tmp");
             cosStorageService.downloadFile(ossUrl, tempFile);
             byte[] data = java.nio.file.Files.readAllBytes(tempFile.toPath());
             tempFile.delete();
-            result.put("success", true);
-            result.put("size", data.length);
-            result.put("content", new String(data, 0, Math.min(100, data.length)));
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("size", data.length);
+            payload.put("content", new String(data, 0, Math.min(100, data.length)));
             log.info("[OssController] 文件下载成功，ossUrl: {}, size: {} bytes", ossUrl, data.length);
-            return result;
+            return Result.success(payload);
         } catch (Exception e) {
             log.error("[OssController] 文件下载失败，ossUrl: {}", ossUrl, e);
-            result.put("success", false);
-            result.put("error", e.getMessage());
-            return result;
+            return Result.error(e.getMessage() != null ? e.getMessage() : "文件下载失败");
+        }
+    }
+
+    /**
+     * 下载 COS 文件到临时文件（供其他服务调用）。
+     *
+     * @param ossUrl COS 对象路径（URLEncode 后传入）
+     * @return 临时文件路径
+     */
+    @GetMapping("/temp-file")
+    public Result<Map<String, Object>> getTempFile(@RequestParam("ossUrl") String ossUrl) {
+        try {
+            File tempFile = File.createTempFile("cos_temp_", ".tmp");
+            cosStorageService.downloadFile(ossUrl, tempFile);
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("tempPath", tempFile.getAbsolutePath());
+            payload.put("size", tempFile.length());
+            log.info("[OssController] 临时文件生成成功，ossUrl: {}, tempPath: {}", ossUrl, tempFile.getAbsolutePath());
+            return Result.success(payload);
+        } catch (Exception e) {
+            log.error("[OssController] 临时文件生成失败，ossUrl: {}", ossUrl, e);
+            return Result.error(e.getMessage() != null ? e.getMessage() : "临时文件生成失败");
         }
     }
 

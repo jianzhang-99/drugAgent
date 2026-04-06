@@ -7,8 +7,22 @@ import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication
 @ComponentScan(basePackages = "com.liang.drugagent")
-@MapperScan({"com.liang.drugagent.scene.common.mapper", "com.liang.drugagent.agent.common.mapper"})
+@MapperScan({"com.liang.drugagent.scene.common.mapper", "com.liang.drugagent.agent.common.mapper", "com.liang.drugagent.shared.rag.mapper"})
 public class DrugAgentApplication {
+
+    static {
+        // 解决本地开发时系统全局代理导致 DashScope API 请求返回 404 的问题
+        String dashscopeHost = "dashscope.aliyuncs.com";
+        String currentNoProxy = System.getProperty("http.nonProxyHosts", "");
+        if (!currentNoProxy.contains(dashscopeHost)) {
+            String newNoProxy = currentNoProxy.isEmpty()
+                    ? dashscopeHost
+                    : currentNoProxy + "|" + dashscopeHost;
+            System.setProperty("http.nonProxyHosts", newNoProxy);
+            System.setProperty("https.nonProxyHosts", newNoProxy);
+            System.out.println("[DrugAgentApplication] 已将 " + dashscopeHost + " 加入直连列表，绕过系统代理");
+        }
+    }
 
     public static void main(String[] args) {
         SpringApplication.run(DrugAgentApplication.class, args);

@@ -12,6 +12,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * 标书审查场景服务 facade。
  *
@@ -99,6 +102,21 @@ public class TenderReviewSceneService {
 
             // 5. 转换为 AgentExecutionResult
             AgentExecutionResult result = AgentExecutionResult.fromWorkflowResult(workflowResult);
+
+            // 6. 注入文件名，供前端报告抽屉展示
+            if (data.getDocuments() != null && !data.getDocuments().isEmpty()) {
+                List<String> docIds = new ArrayList<>();
+                List<String> docNames = new ArrayList<>();
+                for (var doc : data.getDocuments()) {
+                    docIds.add(doc.getDocumentId());
+                    String name = doc.getDocumentName() != null ? doc.getDocumentName()
+                            : (doc.getFilename() != null ? doc.getFilename() : doc.getDocumentId());
+                    docNames.add(name);
+                }
+                result.setDocumentIds(docIds);
+                result.setDocumentNames(docNames);
+                log.info("[TenderReviewSceneService] 注入文档信息到结果, docCount={}, names={}", docIds.size(), docNames);
+            }
 
             log.info("[TenderReviewSceneService] 标书审查完成, success={}, riskLevel={}",
                     result.isSuccess(), result.getRiskLevel());

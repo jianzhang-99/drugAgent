@@ -1,6 +1,7 @@
 package com.liang.drugagent.shared.rag.service;
 
 import com.liang.drugagent.agent.prompt.shared.rag.SharedRagPrompt;
+import com.liang.drugagent.shared.rag.cos.TencentCosStorageService;
 import com.liang.drugagent.shared.llm.LlmRequest;
 import com.liang.drugagent.shared.llm.LlmResponse;
 import com.liang.drugagent.shared.llm.LlmService;
@@ -109,13 +110,38 @@ public class RagService {
     }
 
     /**
-     * 构建向量检索请求
+     * 构建向量检索请求，支持 orgId / scene / subScene / docType / sourceId 多字段过滤
      */
     private SearchRequest buildSearchRequest(RagQueryRequest request) {
-        return SearchRequest.builder()
+        SearchRequest.Builder builder = SearchRequest.builder()
                 .query(request.getQuestion())
-                .topK(request.getTopK() != null ? request.getTopK() : 5)
-                .build();
+                .topK(request.getTopK() != null ? request.getTopK() : 5);
+
+        // orgId 为必填硬过滤，其余字段按需追加为 AND 过滤
+        List<String> filters = new ArrayList<>();
+        if (request.getOrgId() != null && !request.getOrgId().isBlank()) {
+            filters.add("orgId == '" + request.getOrgId() + "'");
+        }
+        if (request.getScene() != null && !request.getScene().isBlank()) {
+            filters.add("scene == '" + request.getScene() + "'");
+        }
+        if (request.getSubScene() != null && !request.getSubScene().isBlank()) {
+            filters.add("subScene == '" + request.getSubScene() + "'");
+        }
+        if (request.getDocType() != null && !request.getDocType().isBlank()) {
+            filters.add("docType == '" + request.getDocType() + "'");
+        }
+        if (request.getSourceId() != null && !request.getSourceId().isBlank()) {
+            filters.add("sourceId == '" + request.getSourceId() + "'");
+        }
+
+        if (!filters.isEmpty()) {
+            String filterExpression = String.join(" and ", filters);
+            log.debug("向量检索过滤条件: {}", filterExpression);
+            builder.filterExpression(filterExpression);
+        }
+
+        return builder.build();
     }
 
     /**

@@ -2,14 +2,39 @@
   <div class="composer-shell">
     <UploadPanel v-if="showUploadPanel" @close="showUploadPanel = false" />
 
-    <div class="composer-panel">
+    <!-- 拖拽覆盖层 -->
+    <div v-if="isDragOver" class="drop-overlay">
+      <div class="drop-hint">
+        <t-icon name="upload" size="40px" />
+        <p>松开上传文件</p>
+      </div>
+    </div>
+
+    <div
+      class="composer-panel"
+      :class="{ 'drag-active': isDragOver }"
+      @dragover.prevent="isDragOver = true"
+      @dragleave="handleDragLeave"
+      @drop.prevent="handleDrop"
+    >
+      <!-- 文件 chip 列表 -->
+      <div v-if="pendingFiles.length > 0" class="pending-files">
+        <div v-for="(file, index) in pendingFiles" :key="index" class="file-chip">
+          <t-icon name="file-pdf" size="14px" />
+          <span class="chip-name">{{ file.name }}</span>
+          <button class="chip-remove" type="button" @click.stop="removePendingFile(index)">
+            <t-icon name="close" size="12px" />
+          </button>
+        </div>
+      </div>
+
       <!-- 上半部分：多行文本输入区 -->
       <div class="composer-input-wrapper">
         <t-textarea
           v-model="inputText"
           class="composer-input"
-          :disabled="store.sending"
-          placeholder="描述您的监管需求，例如：检测这两份标书文件是否雷同..."
+          :disabled="store.sending || store.uploading"
+          placeholder="描述您的监管需求，例如：帮我审查这几份标书的围标风险..."
           :autosize="{ minRows: 2, maxRows: 8 }"
           @keydown="handleKeydown"
         />
@@ -25,11 +50,16 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             <span>上传材料</span>
           </button>
-          
+
           <button class="tool-btn" type="button" @click="handleKnowledgeClick">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
             <span>引用知识</span>
           </button>
+
+          <!-- 拖拽提示（无文件时显示） -->
+          <span v-if="pendingFiles.length === 0" class="drag-tip">
+            或直接拖拽文件到此处
+          </span>
         </div>
 
         <div class="composer-actions">
@@ -45,15 +75,15 @@
             </template>
           </t-select>
 
-          <button 
-            class="send-btn" 
-            :class="{ active: inputText.trim() && !store.sending }" 
-            :disabled="!inputText.trim() || store.sending"
+          <button
+            class="send-btn"
+            :class="{ active: canSend && !store.sending && !store.uploading }"
+            :disabled="!canSend || store.sending || store.uploading"
             @click="handleSend"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-            <span>发送任务</span>
-            <t-loading v-if="store.sending" size="small" inherit-color style="margin-left: 4px" />
+            <span>{{ store.uploading ? '上传中' : '发送任务' }}</span>
+            <t-loading v-if="store.sending || store.uploading" size="small" inherit-color style="margin-left: 4px" />
           </button>
         </div>
       </div>
@@ -74,9 +104,16 @@ import { MessagePlugin } from 'tdesign-vue-next';
 const store = useAgentStore();
 const inputText = ref('');
 const showUploadPanel = ref(false);
+const isDragOver = ref(false);
+const pendingFiles = ref<File[]>([]);
 
 const modelOptions = computed(() => {
   return store.availableModels.map(m => ({ label: m.name, value: m.model }));
+});
+
+/** 有文字或有文件时才能发送 */
+const canSend = computed(() => {
+  return inputText.value.trim().length > 0 || pendingFiles.value.length > 0;
 });
 
 onMounted(() => {
@@ -86,9 +123,32 @@ onMounted(() => {
 });
 
 function handleSend() {
-  if (!inputText.value.trim()) return;
-  store.sendMessage(inputText.value.trim());
-  inputText.value = '';
+  const hasFiles = pendingFiles.value.length > 0;
+  const hasText = inputText.value.trim().length > 0;
+
+  if (hasFiles) {
+    // 有文件：先上传（query 带上文字内容），再自动 chat
+    store.uploadFiles(pendingFiles.value, hasText ? inputText.value.trim() : undefined).then((result) => {
+      pendingFiles.value = [];
+      inputText.value = '';
+      // uploadFiles 成功后 fileIds 已写入 sessionFileIds，后续 chat 自动携带
+      // 若后端返回了直接审查结果（code=0 且有 answer），这里无需额外操作
+      // 若后端只上传了文件未审查，result 为审查结果或 null
+      if (result?.answer) {
+        // 后端已直接审查，结果已在 uploadFiles 中写入消息列表
+      } else {
+        // 后端只上传了文件，需要后续 chat 触发审查
+        // 此时 sessionFileIds 已有文件ID，用户可再发文字触发审查
+        if (!hasText) {
+          MessagePlugin.info('文件已上传，可继续输入审查指令');
+        }
+      }
+    });
+  } else if (hasText) {
+    // 无文件：走普通文字 chat（自动带上 sessionFileIds 中的历史文件）
+    store.sendMessage(inputText.value.trim());
+    inputText.value = '';
+  }
 }
 
 function handleKeydown(value: string, context: { e: KeyboardEvent }) {
@@ -101,6 +161,41 @@ function handleKeydown(value: string, context: { e: KeyboardEvent }) {
 
 function handleKnowledgeClick() {
   MessagePlugin.info('知识库关联对话功能建设中，后续可支持拖拽法务条款');
+}
+
+function handleDragLeave(e: DragEvent) {
+  // 仅在真正离开 composer-panel 时才取消高亮，防止子元素事件干扰
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+  if (
+    e.clientX <= rect.left ||
+    e.clientX >= rect.right ||
+    e.clientY <= rect.top ||
+    e.clientY >= rect.bottom
+  ) {
+    isDragOver.value = false;
+  }
+}
+
+function handleDrop(e: DragEvent) {
+  isDragOver.value = false;
+  const droppedFiles = Array.from(e.dataTransfer?.files || []);
+  const validFiles = droppedFiles.filter((f) =>
+    /\.(pdf|doc|docx|md|txt)$/i.test(f.name)
+  );
+  if (validFiles.length === 0) {
+    MessagePlugin.warning('仅支持 PDF、Word、Markdown、TXT 格式');
+    return;
+  }
+  validFiles.forEach((file) => {
+    if (!pendingFiles.value.some((f) => f.name === file.name)) {
+      pendingFiles.value.push(file);
+    }
+  });
+  MessagePlugin.success(`已添加 ${validFiles.length} 个文件，可直接发送`);
+}
+
+function removePendingFile(index: number) {
+  pendingFiles.value.splice(index, 1);
 }
 </script>
 
@@ -123,7 +218,79 @@ function handleKnowledgeClick() {
 
 .composer-panel:focus-within {
   border-color: #cbd5e1;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); /* 更柔和聚焦阴影 */
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+}
+
+.composer-panel.drag-active {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+}
+
+/* 拖拽覆盖层 */
+.drop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: rgba(96, 165, 250, 0.08);
+  border: 2px dashed #60a5fa;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.drop-hint {
+  color: #60a5fa;
+  text-align: center;
+}
+
+.drop-hint p {
+  margin: 12px 0 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* 文件 chip */
+.pending-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px 0;
+}
+
+.file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 20px;
+  color: #1d4ed8;
+  font-size: 13px;
+  max-width: 220px;
+}
+
+.chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip-remove {
+  border: none;
+  background: transparent;
+  color: #60a5fa;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+}
+
+.chip-remove:hover {
+  color: #2563eb;
 }
 
 /* 输入区 */
@@ -192,6 +359,12 @@ function handleKnowledgeClick() {
   color: #1e293b;
 }
 
+.drag-tip {
+  font-size: 12px;
+  color: #94a3b8;
+  font-style: italic;
+}
+
 /* 发送按钮 */
 .composer-actions {
   display: flex;
@@ -207,7 +380,7 @@ function handleKnowledgeClick() {
   height: 36px;
   border-radius: 6px;
   border: none;
-  background: #cbd5e1; /* 图中那种较浅的蓝灰色/禁用态 */
+  background: #cbd5e1;
   color: #ffffff;
   font-size: 14px;
   font-weight: 600;
@@ -216,14 +389,13 @@ function handleKnowledgeClick() {
 }
 
 .send-btn.active {
-  background: #b0c4de; /* 比如一个稍微深一点的蓝色，假设为主题色，你说的：如果有内容发声变化 */
-  background: #60a5fa; /* 让它在可按时变成明显的蓝色 */
+  background: #60a5fa;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(96, 165, 250, 0.3);
 }
 
 .send-btn.active:hover {
-  background: #3b82f6; 
+  background: #3b82f6;
 }
 
 .send-btn.active:active {

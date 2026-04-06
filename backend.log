@@ -1,0 +1,494 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------------< com.liang:drug-agent >------------------------
+[INFO] Building drug-agent 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.4.4:run (default-cli) > test-compile @ drug-agent >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ drug-agent ---
+[INFO] Copying 2 resources from src/main/resources to target/classes
+[INFO] Copying 3 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ drug-agent ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ drug-agent ---
+[INFO] Copying 2 resources from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.11.0:testCompile (default-testCompile) @ drug-agent ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] <<< spring-boot:3.4.4:run (default-cli) < test-compile @ drug-agent <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.4.4:run (default-cli) @ drug-agent ---
+[INFO] Attaching agents: []
+[DrugAgentApplication] 已将 dashscope.aliyuncs.com 加入直连列表，绕过系统代理
+21:29:11,076 |-INFO in ch.qos.logback.classic.LoggerContext[default] - This is logback-classic version 1.5.18
+21:29:11,077 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - Here is a list of configurators discovered as a service, by rank: 
+21:29:11,077 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 -   org.springframework.boot.logging.logback.RootLogLevelConfigurator
+21:29:11,077 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - They will be invoked in order until ExecutionStatus.DO_NOT_INVOKE_NEXT_IF_ANY is returned.
+21:29:11,077 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - Constructed configurator of type class org.springframework.boot.logging.logback.RootLogLevelConfigurator
+21:29:11,080 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - org.springframework.boot.logging.logback.RootLogLevelConfigurator.configure() call lasted 0 milliseconds. ExecutionStatus=INVOKE_NEXT_IF_ANY
+21:29:11,080 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - Trying to configure with ch.qos.logback.classic.joran.SerializedModelConfigurator
+21:29:11,081 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - Constructed configurator of type class ch.qos.logback.classic.joran.SerializedModelConfigurator
+21:29:11,081 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback-test.scmo]
+21:29:11,081 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback.scmo]
+21:29:11,081 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - ch.qos.logback.classic.joran.SerializedModelConfigurator.configure() call lasted 0 milliseconds. ExecutionStatus=INVOKE_NEXT_IF_ANY
+21:29:11,081 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - Trying to configure with ch.qos.logback.classic.util.DefaultJoranConfigurator
+21:29:11,081 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - Constructed configurator of type class ch.qos.logback.classic.util.DefaultJoranConfigurator
+21:29:11,081 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback-test.xml]
+21:29:11,081 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback.xml]
+21:29:11,081 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - ch.qos.logback.classic.util.DefaultJoranConfigurator.configure() call lasted 0 milliseconds. ExecutionStatus=INVOKE_NEXT_IF_ANY
+21:29:11,081 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - Trying to configure with ch.qos.logback.classic.BasicConfigurator
+21:29:11,082 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - Constructed configurator of type class ch.qos.logback.classic.BasicConfigurator
+21:29:11,082 |-INFO in ch.qos.logback.classic.BasicConfigurator@46b695ec - Setting up default configuration.
+21:29:11,089 |-INFO in ch.qos.logback.core.ConsoleAppender[console] - BEWARE: Writing to the console can be very slow. Avoid logging to the 
+21:29:11,089 |-INFO in ch.qos.logback.core.ConsoleAppender[console] - console in production environments, especially in high volume systems.
+21:29:11,089 |-INFO in ch.qos.logback.core.ConsoleAppender[console] - See also https://logback.qos.ch/codes.html#slowConsole
+21:29:11,089 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - ch.qos.logback.classic.BasicConfigurator.configure() call lasted 7 milliseconds. ExecutionStatus=NEUTRAL
+21:29:11,250 |-WARN in ch.qos.logback.core.joran.action.ConversionRuleAction - [converterClass] attribute is deprecated and replaced by [class]. See element [conversionRule] near line 13
+21:29:11,250 |-WARN in ch.qos.logback.core.joran.action.ConversionRuleAction - [converterClass] attribute is deprecated and replaced by [class]. See element [conversionRule] near line 14
+21:29:11,250 |-WARN in ch.qos.logback.core.joran.action.ConversionRuleAction - [converterClass] attribute is deprecated and replaced by [class]. See element [conversionRule] near line 15
+21:29:11,260 |-INFO in ch.qos.logback.core.model.processor.ConversionRuleModelHandler - registering conversion word clr with class [org.springframework.boot.logging.logback.ColorConverter]
+21:29:11,260 |-INFO in ch.qos.logback.core.model.processor.ConversionRuleModelHandler - registering conversion word wex with class [org.springframework.boot.logging.logback.WhitespaceThrowableProxyConverter]
+21:29:11,260 |-INFO in ch.qos.logback.core.model.processor.ConversionRuleModelHandler - registering conversion word wEx with class [org.springframework.boot.logging.logback.ExtendedWhitespaceThrowableProxyConverter]
+21:29:11,261 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [CONSOLE]
+21:29:11,261 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.ConsoleAppender]
+21:29:11,262 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.classic.encoder.PatternLayoutEncoder] for [encoder] property
+21:29:11,263 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@408613cc - value "%d{HH:mm:ss.SSS} %highlight(%-5level) [%magenta(%X{traceId:-无})] [%blue(%X{scene:-无})] %cyan([%thread]) %green(%-40.40logger{20}) - %m%n%wEx" substituted for "${CONSOLE_LOG_PATTERN}"
+21:29:11,269 |-INFO in ch.qos.logback.core.ConsoleAppender[CONSOLE] - BEWARE: Writing to the console can be very slow. Avoid logging to the 
+21:29:11,269 |-INFO in ch.qos.logback.core.ConsoleAppender[CONSOLE] - console in production environments, especially in high volume systems.
+21:29:11,269 |-INFO in ch.qos.logback.core.ConsoleAppender[CONSOLE] - See also https://logback.qos.ch/codes.html#slowConsole
+21:29:11,269 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [JSON_FILE]
+21:29:11,269 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.rolling.RollingFileAppender]
+21:29:11,269 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@408613cc - value "doc/log/drug-agent.json" substituted for "${LOG_PATH}/drug-agent.json"
+21:29:11,270 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@408613cc - value "doc/log/drug-agent.%d{yyyy-MM-dd}.json" substituted for "${LOG_PATH}/drug-agent.%d{yyyy-MM-dd}.json"
+21:29:11,271 |-INFO in c.q.l.core.rolling.TimeBasedRollingPolicy@845119401 - setting totalSizeCap to 3 GB
+21:29:11,271 |-INFO in c.q.l.core.rolling.TimeBasedRollingPolicy@845119401 - No compression will be used
+21:29:11,272 |-INFO in c.q.l.core.rolling.TimeBasedRollingPolicy@845119401 - Will use the pattern doc/log/drug-agent.%d{yyyy-MM-dd}.json for the active file
+21:29:11,278 |-INFO in c.q.l.core.rolling.DefaultTimeBasedFileNamingAndTriggeringPolicy - The date pattern is 'yyyy-MM-dd' from file name pattern 'doc/log/drug-agent.%d{yyyy-MM-dd}.json'.
+21:29:11,278 |-INFO in c.q.l.core.rolling.DefaultTimeBasedFileNamingAndTriggeringPolicy - Roll-over at midnight.
+21:29:11,282 |-INFO in c.q.l.core.rolling.DefaultTimeBasedFileNamingAndTriggeringPolicy - Setting initial period to 2026-04-05T13:24:53.841Z
+21:29:11,355 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[JSON_FILE] - Active log file name: doc/log/drug-agent.json
+21:29:11,355 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[JSON_FILE] - File property is set to [doc/log/drug-agent.json]
+21:29:11,356 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [TENDER_REVIEW_FILE]
+21:29:11,356 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.rolling.RollingFileAppender]
+21:29:11,356 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@408613cc - value "doc/log/tender-review.json" substituted for "${LOG_PATH}/tender-review.json"
+21:29:11,356 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@408613cc - value "doc/log/tender-review.%d{yyyy-MM-dd}.%i.json" substituted for "${LOG_PATH}/tender-review.%d{yyyy-MM-dd}.%i.json"
+21:29:11,356 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@298724898 - setting totalSizeCap to 3 GB
+21:29:11,357 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@298724898 - Archive files will be limited to [100 MB] each.
+21:29:11,357 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@298724898 - No compression will be used
+21:29:11,357 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@298724898 - Will use the pattern doc/log/tender-review.%d{yyyy-MM-dd}.%i.json for the active file
+21:29:11,357 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@63a5d002 - The date pattern is 'yyyy-MM-dd' from file name pattern 'doc/log/tender-review.%d{yyyy-MM-dd}.%i.json'.
+21:29:11,357 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@63a5d002 - Roll-over at midnight.
+21:29:11,357 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@63a5d002 - Setting initial period to 2026-04-05T13:06:40.573Z
+21:29:11,358 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[TENDER_REVIEW_FILE] - Active log file name: doc/log/tender-review.json
+21:29:11,359 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[TENDER_REVIEW_FILE] - Setting currentFileLength to 20093 for doc/log/tender-review.json
+21:29:11,359 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[TENDER_REVIEW_FILE] - File property is set to [doc/log/tender-review.json]
+21:29:11,359 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [CONTRACT_FILE]
+21:29:11,359 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.rolling.RollingFileAppender]
+21:29:11,359 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@408613cc - value "doc/log/contract.json" substituted for "${LOG_PATH}/contract.json"
+21:29:11,359 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@408613cc - value "doc/log/contract.%d{yyyy-MM-dd}.%i.json" substituted for "${LOG_PATH}/contract.%d{yyyy-MM-dd}.%i.json"
+21:29:11,359 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@332244937 - setting totalSizeCap to 3 GB
+21:29:11,359 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@332244937 - Archive files will be limited to [100 MB] each.
+21:29:11,359 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@332244937 - No compression will be used
+21:29:11,359 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@332244937 - Will use the pattern doc/log/contract.%d{yyyy-MM-dd}.%i.json for the active file
+21:29:11,359 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@5aa6202e - The date pattern is 'yyyy-MM-dd' from file name pattern 'doc/log/contract.%d{yyyy-MM-dd}.%i.json'.
+21:29:11,359 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@5aa6202e - Roll-over at midnight.
+21:29:11,359 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@5aa6202e - Setting initial period to 2026-04-03T07:13:00.995Z
+21:29:11,360 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[CONTRACT_FILE] - Active log file name: doc/log/contract.json
+21:29:11,360 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[CONTRACT_FILE] - Setting currentFileLength to 0 for doc/log/contract.json
+21:29:11,360 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[CONTRACT_FILE] - File property is set to [doc/log/contract.json]
+21:29:11,360 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [RISK_FILE]
+21:29:11,360 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.rolling.RollingFileAppender]
+21:29:11,360 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@408613cc - value "doc/log/risk.json" substituted for "${LOG_PATH}/risk.json"
+21:29:11,360 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@408613cc - value "doc/log/risk.%d{yyyy-MM-dd}.%i.json" substituted for "${LOG_PATH}/risk.%d{yyyy-MM-dd}.%i.json"
+21:29:11,360 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@989440614 - setting totalSizeCap to 3 GB
+21:29:11,360 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@989440614 - Archive files will be limited to [100 MB] each.
+21:29:11,360 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@989440614 - No compression will be used
+21:29:11,360 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@989440614 - Will use the pattern doc/log/risk.%d{yyyy-MM-dd}.%i.json for the active file
+21:29:11,361 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@771158fb - The date pattern is 'yyyy-MM-dd' from file name pattern 'doc/log/risk.%d{yyyy-MM-dd}.%i.json'.
+21:29:11,361 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@771158fb - Roll-over at midnight.
+21:29:11,361 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@771158fb - Setting initial period to 2026-04-03T07:13:00.996Z
+21:29:11,361 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[RISK_FILE] - Active log file name: doc/log/risk.json
+21:29:11,361 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[RISK_FILE] - Setting currentFileLength to 0 for doc/log/risk.json
+21:29:11,361 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[RISK_FILE] - File property is set to [doc/log/risk.json]
+21:29:11,362 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [com.liang.drugagent.scene.tender_review] to DEBUG
+21:29:11,362 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating DEBUG level on Logger[com.liang.drugagent.scene.tender_review] onto the JUL framework
+21:29:11,362 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting additivity of logger [com.liang.drugagent.scene.tender_review] to false
+21:29:11,362 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [CONSOLE] to Logger[com.liang.drugagent.scene.tender_review]
+21:29:11,362 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [JSON_FILE] to Logger[com.liang.drugagent.scene.tender_review]
+21:29:11,362 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [TENDER_REVIEW_FILE] to Logger[com.liang.drugagent.scene.tender_review]
+21:29:11,362 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [com.liang.drugagent.scene.contract] to DEBUG
+21:29:11,362 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating DEBUG level on Logger[com.liang.drugagent.scene.contract] onto the JUL framework
+21:29:11,362 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting additivity of logger [com.liang.drugagent.scene.contract] to false
+21:29:11,362 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [CONSOLE] to Logger[com.liang.drugagent.scene.contract]
+21:29:11,362 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [JSON_FILE] to Logger[com.liang.drugagent.scene.contract]
+21:29:11,362 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [CONTRACT_FILE] to Logger[com.liang.drugagent.scene.contract]
+21:29:11,362 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [com.liang.drugagent.scene.risk] to DEBUG
+21:29:11,362 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating DEBUG level on Logger[com.liang.drugagent.scene.risk] onto the JUL framework
+21:29:11,362 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting additivity of logger [com.liang.drugagent.scene.risk] to false
+21:29:11,362 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [CONSOLE] to Logger[com.liang.drugagent.scene.risk]
+21:29:11,362 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [JSON_FILE] to Logger[com.liang.drugagent.scene.risk]
+21:29:11,362 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [RISK_FILE] to Logger[com.liang.drugagent.scene.risk]
+21:29:11,362 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [org.springframework] to WARN
+21:29:11,362 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating WARN level on Logger[org.springframework] onto the JUL framework
+21:29:11,362 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [org.hibernate] to WARN
+21:29:11,362 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating WARN level on Logger[org.hibernate] onto the JUL framework
+21:29:11,362 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [com.alibaba.nacos] to WARN
+21:29:11,362 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating WARN level on Logger[com.alibaba.nacos] onto the JUL framework
+21:29:11,362 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [org.apache.catalina] to WARN
+21:29:11,362 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating WARN level on Logger[org.apache.catalina] onto the JUL framework
+21:29:11,362 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [org.apache.coyote] to WARN
+21:29:11,362 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating WARN level on Logger[org.apache.coyote] onto the JUL framework
+21:29:11,362 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [org.apache.tomcat] to WARN
+21:29:11,362 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating WARN level on Logger[org.apache.tomcat] onto the JUL framework
+21:29:11,362 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [com.baomidou.mybatisplus] to WARN
+21:29:11,362 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating WARN level on Logger[com.baomidou.mybatisplus] onto the JUL framework
+21:29:11,362 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [com.liang.drugagent] to DEBUG
+21:29:11,362 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating DEBUG level on Logger[com.liang.drugagent] onto the JUL framework
+21:29:11,362 |-INFO in ch.qos.logback.classic.model.processor.RootLoggerModelHandler - Setting level of ROOT logger to INFO
+21:29:11,362 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating INFO level on Logger[ROOT] onto the JUL framework
+21:29:11,362 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [CONSOLE] to Logger[ROOT]
+21:29:11,362 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [JSON_FILE] to Logger[ROOT]
+21:29:11,362 |-INFO in ch.qos.logback.core.model.processor.DefaultProcessor@62d0ac62 - End of configuration.
+21:29:11,362 |-INFO in org.springframework.boot.logging.logback.SpringBootJoranConfigurator@150d80c4 - Registering current configuration as safe fallback point
+
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.4.4)
+
+21:29:11.392 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[main][0;39m [32mc.l.d.a.DrugAgentApplication            [0;39m - Starting DrugAgentApplication using Java 21.0.10 with PID 43092 (/Users/changlei/Desktop/drugAgent-master/target/classes started by changlei in /Users/changlei/Desktop/drugAgent-master)
+21:29:11.396 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[main][0;39m [32mc.l.d.a.DrugAgentApplication            [0;39m - Running with Spring Boot v3.4.4, Spring v6.2.5
+21:29:11.396 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[main][0;39m [32mc.l.d.a.DrugAgentApplication            [0;39m - The following 1 profile is active: "local"
+ _ _   |_  _ _|_. ___ _ |    _ 
+| | |\/|_)(_| | |_\  |_)||_|_\ 
+     /               |         
+                        3.5.7 
+21:29:12.489 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[main][0;39m [32mc.l.d.s.v.VectorStoreConfig             [0;39m - 已从本地缓存加载向量数据: vector_store.json
+21:29:12.696 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[main][0;39m [32mc.l.d.a.DrugAgentApplication            [0;39m - Started DrugAgentApplication in 1.57 seconds (process running for 1.702)
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  04:44 min
+[INFO] Finished at: 2026-04-05T21:33:54+08:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.4.4:run (default-cli) on project drug-agent: Process terminated with exit code: 137 -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------------< com.liang:drug-agent >------------------------
+[INFO] Building drug-agent 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.4.4:run (default-cli) > test-compile @ drug-agent >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ drug-agent ---
+[INFO] Copying 2 resources from src/main/resources to target/classes
+[INFO] Copying 3 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ drug-agent ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ drug-agent ---
+[INFO] Copying 2 resources from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.11.0:testCompile (default-testCompile) @ drug-agent ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] <<< spring-boot:3.4.4:run (default-cli) < test-compile @ drug-agent <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.4.4:run (default-cli) @ drug-agent ---
+[INFO] Attaching agents: []
+[DrugAgentApplication] 已将 dashscope.aliyuncs.com 加入直连列表，绕过系统代理
+21:34:36,180 |-INFO in ch.qos.logback.classic.LoggerContext[default] - This is logback-classic version 1.5.18
+21:34:36,181 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - Here is a list of configurators discovered as a service, by rank: 
+21:34:36,181 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 -   org.springframework.boot.logging.logback.RootLogLevelConfigurator
+21:34:36,181 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - They will be invoked in order until ExecutionStatus.DO_NOT_INVOKE_NEXT_IF_ANY is returned.
+21:34:36,181 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - Constructed configurator of type class org.springframework.boot.logging.logback.RootLogLevelConfigurator
+21:34:36,184 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - org.springframework.boot.logging.logback.RootLogLevelConfigurator.configure() call lasted 0 milliseconds. ExecutionStatus=INVOKE_NEXT_IF_ANY
+21:34:36,184 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - Trying to configure with ch.qos.logback.classic.joran.SerializedModelConfigurator
+21:34:36,184 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - Constructed configurator of type class ch.qos.logback.classic.joran.SerializedModelConfigurator
+21:34:36,185 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback-test.scmo]
+21:34:36,185 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback.scmo]
+21:34:36,185 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - ch.qos.logback.classic.joran.SerializedModelConfigurator.configure() call lasted 1 milliseconds. ExecutionStatus=INVOKE_NEXT_IF_ANY
+21:34:36,185 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - Trying to configure with ch.qos.logback.classic.util.DefaultJoranConfigurator
+21:34:36,185 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - Constructed configurator of type class ch.qos.logback.classic.util.DefaultJoranConfigurator
+21:34:36,185 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback-test.xml]
+21:34:36,185 |-INFO in ch.qos.logback.classic.LoggerContext[default] - Could NOT find resource [logback.xml]
+21:34:36,185 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - ch.qos.logback.classic.util.DefaultJoranConfigurator.configure() call lasted 0 milliseconds. ExecutionStatus=INVOKE_NEXT_IF_ANY
+21:34:36,185 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - Trying to configure with ch.qos.logback.classic.BasicConfigurator
+21:34:36,185 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - Constructed configurator of type class ch.qos.logback.classic.BasicConfigurator
+21:34:36,185 |-INFO in ch.qos.logback.classic.BasicConfigurator@46b695ec - Setting up default configuration.
+21:34:36,192 |-INFO in ch.qos.logback.core.ConsoleAppender[console] - BEWARE: Writing to the console can be very slow. Avoid logging to the 
+21:34:36,192 |-INFO in ch.qos.logback.core.ConsoleAppender[console] - console in production environments, especially in high volume systems.
+21:34:36,192 |-INFO in ch.qos.logback.core.ConsoleAppender[console] - See also https://logback.qos.ch/codes.html#slowConsole
+21:34:36,192 |-INFO in ch.qos.logback.classic.util.ContextInitializer@595f4da5 - ch.qos.logback.classic.BasicConfigurator.configure() call lasted 7 milliseconds. ExecutionStatus=NEUTRAL
+21:34:36,354 |-WARN in ch.qos.logback.core.joran.action.ConversionRuleAction - [converterClass] attribute is deprecated and replaced by [class]. See element [conversionRule] near line 13
+21:34:36,354 |-WARN in ch.qos.logback.core.joran.action.ConversionRuleAction - [converterClass] attribute is deprecated and replaced by [class]. See element [conversionRule] near line 14
+21:34:36,354 |-WARN in ch.qos.logback.core.joran.action.ConversionRuleAction - [converterClass] attribute is deprecated and replaced by [class]. See element [conversionRule] near line 15
+21:34:36,363 |-INFO in ch.qos.logback.core.model.processor.ConversionRuleModelHandler - registering conversion word clr with class [org.springframework.boot.logging.logback.ColorConverter]
+21:34:36,363 |-INFO in ch.qos.logback.core.model.processor.ConversionRuleModelHandler - registering conversion word wex with class [org.springframework.boot.logging.logback.WhitespaceThrowableProxyConverter]
+21:34:36,363 |-INFO in ch.qos.logback.core.model.processor.ConversionRuleModelHandler - registering conversion word wEx with class [org.springframework.boot.logging.logback.ExtendedWhitespaceThrowableProxyConverter]
+21:34:36,365 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [CONSOLE]
+21:34:36,365 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.ConsoleAppender]
+21:34:36,366 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.classic.encoder.PatternLayoutEncoder] for [encoder] property
+21:34:36,366 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@408613cc - value "%d{HH:mm:ss.SSS} %highlight(%-5level) [%magenta(%X{traceId:-无})] [%blue(%X{scene:-无})] %cyan([%thread]) %green(%-40.40logger{20}) - %m%n%wEx" substituted for "${CONSOLE_LOG_PATTERN}"
+21:34:36,372 |-INFO in ch.qos.logback.core.ConsoleAppender[CONSOLE] - BEWARE: Writing to the console can be very slow. Avoid logging to the 
+21:34:36,372 |-INFO in ch.qos.logback.core.ConsoleAppender[CONSOLE] - console in production environments, especially in high volume systems.
+21:34:36,372 |-INFO in ch.qos.logback.core.ConsoleAppender[CONSOLE] - See also https://logback.qos.ch/codes.html#slowConsole
+21:34:36,372 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [JSON_FILE]
+21:34:36,372 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.rolling.RollingFileAppender]
+21:34:36,373 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@408613cc - value "doc/log/drug-agent.json" substituted for "${LOG_PATH}/drug-agent.json"
+21:34:36,374 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@408613cc - value "doc/log/drug-agent.%d{yyyy-MM-dd}.json" substituted for "${LOG_PATH}/drug-agent.%d{yyyy-MM-dd}.json"
+21:34:36,375 |-INFO in c.q.l.core.rolling.TimeBasedRollingPolicy@845119401 - setting totalSizeCap to 3 GB
+21:34:36,375 |-INFO in c.q.l.core.rolling.TimeBasedRollingPolicy@845119401 - No compression will be used
+21:34:36,376 |-INFO in c.q.l.core.rolling.TimeBasedRollingPolicy@845119401 - Will use the pattern doc/log/drug-agent.%d{yyyy-MM-dd}.json for the active file
+21:34:36,382 |-INFO in c.q.l.core.rolling.DefaultTimeBasedFileNamingAndTriggeringPolicy - The date pattern is 'yyyy-MM-dd' from file name pattern 'doc/log/drug-agent.%d{yyyy-MM-dd}.json'.
+21:34:36,382 |-INFO in c.q.l.core.rolling.DefaultTimeBasedFileNamingAndTriggeringPolicy - Roll-over at midnight.
+21:34:36,386 |-INFO in c.q.l.core.rolling.DefaultTimeBasedFileNamingAndTriggeringPolicy - Setting initial period to 2026-04-05T13:29:12.696Z
+21:34:36,449 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[JSON_FILE] - Active log file name: doc/log/drug-agent.json
+21:34:36,449 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[JSON_FILE] - File property is set to [doc/log/drug-agent.json]
+21:34:36,449 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [TENDER_REVIEW_FILE]
+21:34:36,449 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.rolling.RollingFileAppender]
+21:34:36,449 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@408613cc - value "doc/log/tender-review.json" substituted for "${LOG_PATH}/tender-review.json"
+21:34:36,449 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@408613cc - value "doc/log/tender-review.%d{yyyy-MM-dd}.%i.json" substituted for "${LOG_PATH}/tender-review.%d{yyyy-MM-dd}.%i.json"
+21:34:36,449 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@298724898 - setting totalSizeCap to 3 GB
+21:34:36,450 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@298724898 - Archive files will be limited to [100 MB] each.
+21:34:36,450 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@298724898 - No compression will be used
+21:34:36,450 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@298724898 - Will use the pattern doc/log/tender-review.%d{yyyy-MM-dd}.%i.json for the active file
+21:34:36,451 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@63a5d002 - The date pattern is 'yyyy-MM-dd' from file name pattern 'doc/log/tender-review.%d{yyyy-MM-dd}.%i.json'.
+21:34:36,451 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@63a5d002 - Roll-over at midnight.
+21:34:36,451 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@63a5d002 - Setting initial period to 2026-04-05T13:06:40.573Z
+21:34:36,452 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[TENDER_REVIEW_FILE] - Active log file name: doc/log/tender-review.json
+21:34:36,452 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[TENDER_REVIEW_FILE] - Setting currentFileLength to 20093 for doc/log/tender-review.json
+21:34:36,452 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[TENDER_REVIEW_FILE] - File property is set to [doc/log/tender-review.json]
+21:34:36,453 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [CONTRACT_FILE]
+21:34:36,453 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.rolling.RollingFileAppender]
+21:34:36,453 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@408613cc - value "doc/log/contract.json" substituted for "${LOG_PATH}/contract.json"
+21:34:36,453 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@408613cc - value "doc/log/contract.%d{yyyy-MM-dd}.%i.json" substituted for "${LOG_PATH}/contract.%d{yyyy-MM-dd}.%i.json"
+21:34:36,453 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@332244937 - setting totalSizeCap to 3 GB
+21:34:36,453 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@332244937 - Archive files will be limited to [100 MB] each.
+21:34:36,453 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@332244937 - No compression will be used
+21:34:36,453 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@332244937 - Will use the pattern doc/log/contract.%d{yyyy-MM-dd}.%i.json for the active file
+21:34:36,453 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@5aa6202e - The date pattern is 'yyyy-MM-dd' from file name pattern 'doc/log/contract.%d{yyyy-MM-dd}.%i.json'.
+21:34:36,453 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@5aa6202e - Roll-over at midnight.
+21:34:36,453 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@5aa6202e - Setting initial period to 2026-04-03T07:13:00.995Z
+21:34:36,454 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[CONTRACT_FILE] - Active log file name: doc/log/contract.json
+21:34:36,454 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[CONTRACT_FILE] - Setting currentFileLength to 0 for doc/log/contract.json
+21:34:36,454 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[CONTRACT_FILE] - File property is set to [doc/log/contract.json]
+21:34:36,454 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [RISK_FILE]
+21:34:36,454 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.rolling.RollingFileAppender]
+21:34:36,454 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@408613cc - value "doc/log/risk.json" substituted for "${LOG_PATH}/risk.json"
+21:34:36,454 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@408613cc - value "doc/log/risk.%d{yyyy-MM-dd}.%i.json" substituted for "${LOG_PATH}/risk.%d{yyyy-MM-dd}.%i.json"
+21:34:36,454 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@989440614 - setting totalSizeCap to 3 GB
+21:34:36,454 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@989440614 - Archive files will be limited to [100 MB] each.
+21:34:36,454 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@989440614 - No compression will be used
+21:34:36,454 |-INFO in c.q.l.core.rolling.SizeAndTimeBasedRollingPolicy@989440614 - Will use the pattern doc/log/risk.%d{yyyy-MM-dd}.%i.json for the active file
+21:34:36,454 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@771158fb - The date pattern is 'yyyy-MM-dd' from file name pattern 'doc/log/risk.%d{yyyy-MM-dd}.%i.json'.
+21:34:36,454 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@771158fb - Roll-over at midnight.
+21:34:36,455 |-INFO in ch.qos.logback.core.rolling.SizeAndTimeBasedFileNamingAndTriggeringPolicy@771158fb - Setting initial period to 2026-04-03T07:13:00.996Z
+21:34:36,455 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[RISK_FILE] - Active log file name: doc/log/risk.json
+21:34:36,455 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[RISK_FILE] - Setting currentFileLength to 0 for doc/log/risk.json
+21:34:36,455 |-INFO in ch.qos.logback.core.rolling.RollingFileAppender[RISK_FILE] - File property is set to [doc/log/risk.json]
+21:34:36,455 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [com.liang.drugagent.scene.tender_review] to DEBUG
+21:34:36,455 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating DEBUG level on Logger[com.liang.drugagent.scene.tender_review] onto the JUL framework
+21:34:36,456 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting additivity of logger [com.liang.drugagent.scene.tender_review] to false
+21:34:36,456 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [CONSOLE] to Logger[com.liang.drugagent.scene.tender_review]
+21:34:36,456 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [JSON_FILE] to Logger[com.liang.drugagent.scene.tender_review]
+21:34:36,456 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [TENDER_REVIEW_FILE] to Logger[com.liang.drugagent.scene.tender_review]
+21:34:36,456 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [com.liang.drugagent.scene.contract] to DEBUG
+21:34:36,456 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating DEBUG level on Logger[com.liang.drugagent.scene.contract] onto the JUL framework
+21:34:36,456 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting additivity of logger [com.liang.drugagent.scene.contract] to false
+21:34:36,456 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [CONSOLE] to Logger[com.liang.drugagent.scene.contract]
+21:34:36,456 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [JSON_FILE] to Logger[com.liang.drugagent.scene.contract]
+21:34:36,456 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [CONTRACT_FILE] to Logger[com.liang.drugagent.scene.contract]
+21:34:36,456 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [com.liang.drugagent.scene.risk] to DEBUG
+21:34:36,456 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating DEBUG level on Logger[com.liang.drugagent.scene.risk] onto the JUL framework
+21:34:36,456 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting additivity of logger [com.liang.drugagent.scene.risk] to false
+21:34:36,456 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [CONSOLE] to Logger[com.liang.drugagent.scene.risk]
+21:34:36,456 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [JSON_FILE] to Logger[com.liang.drugagent.scene.risk]
+21:34:36,456 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [RISK_FILE] to Logger[com.liang.drugagent.scene.risk]
+21:34:36,456 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [org.springframework] to WARN
+21:34:36,456 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating WARN level on Logger[org.springframework] onto the JUL framework
+21:34:36,456 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [org.hibernate] to WARN
+21:34:36,456 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating WARN level on Logger[org.hibernate] onto the JUL framework
+21:34:36,456 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [com.alibaba.nacos] to WARN
+21:34:36,456 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating WARN level on Logger[com.alibaba.nacos] onto the JUL framework
+21:34:36,456 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [org.apache.catalina] to WARN
+21:34:36,456 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating WARN level on Logger[org.apache.catalina] onto the JUL framework
+21:34:36,456 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [org.apache.coyote] to WARN
+21:34:36,456 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating WARN level on Logger[org.apache.coyote] onto the JUL framework
+21:34:36,456 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [org.apache.tomcat] to WARN
+21:34:36,456 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating WARN level on Logger[org.apache.tomcat] onto the JUL framework
+21:34:36,456 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [com.baomidou.mybatisplus] to WARN
+21:34:36,456 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating WARN level on Logger[com.baomidou.mybatisplus] onto the JUL framework
+21:34:36,456 |-INFO in ch.qos.logback.classic.model.processor.LoggerModelHandler - Setting level of logger [com.liang.drugagent] to DEBUG
+21:34:36,456 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating DEBUG level on Logger[com.liang.drugagent] onto the JUL framework
+21:34:36,456 |-INFO in ch.qos.logback.classic.model.processor.RootLoggerModelHandler - Setting level of ROOT logger to INFO
+21:34:36,456 |-INFO in ch.qos.logback.classic.jul.LevelChangePropagator@91c4a3f - Propagating INFO level on Logger[ROOT] onto the JUL framework
+21:34:36,456 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [CONSOLE] to Logger[ROOT]
+21:34:36,456 |-INFO in ch.qos.logback.core.model.processor.AppenderRefModelHandler - Attaching appender named [JSON_FILE] to Logger[ROOT]
+21:34:36,456 |-INFO in ch.qos.logback.core.model.processor.DefaultProcessor@62d0ac62 - End of configuration.
+21:34:36,456 |-INFO in org.springframework.boot.logging.logback.SpringBootJoranConfigurator@150d80c4 - Registering current configuration as safe fallback point
+
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.4.4)
+
+21:34:36.486 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[main][0;39m [32mc.l.d.a.DrugAgentApplication            [0;39m - Starting DrugAgentApplication using Java 21.0.10 with PID 53458 (/Users/changlei/Desktop/drugAgent-master/target/classes started by changlei in /Users/changlei/Desktop/drugAgent-master)
+21:34:36.490 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[main][0;39m [32mc.l.d.a.DrugAgentApplication            [0;39m - Running with Spring Boot v3.4.4, Spring v6.2.5
+21:34:36.491 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[main][0;39m [32mc.l.d.a.DrugAgentApplication            [0;39m - The following 1 profile is active: "local"
+ _ _   |_  _ _|_. ___ _ |    _ 
+| | |\/|_)(_| | |_\  |_)||_|_\ 
+     /               |         
+                        3.5.7 
+21:34:37.560 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[main][0;39m [32mc.l.d.s.v.VectorStoreConfig             [0;39m - 已从本地缓存加载向量数据: vector_store.json
+21:34:37.764 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[main][0;39m [32mc.l.d.a.DrugAgentApplication            [0;39m - Started DrugAgentApplication in 1.536 seconds (process running for 1.656)
+21:36:33.354 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-2][0;39m [32mc.z.h.HikariDataSource                  [0;39m - DrugAgentHikariPool - Starting...
+21:36:33.708 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-2][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Added connection com.mysql.cj.jdbc.ConnectionImpl@4d2d52a9
+21:36:33.709 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-2][0;39m [32mc.z.h.HikariDataSource                  [0;39m - DrugAgentHikariPool - Start completed.
+21:36:33.714 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-2][0;39m [32mc.l.d.s.r.m.R.findByOssId               [0;39m - ==>  Preparing: SELECT * FROM rag_file WHERE oss_id = ? LIMIT 1
+21:36:33.726 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-2][0;39m [32mc.l.d.s.r.m.R.findByOssId               [0;39m - ==> Parameters: e376b724-7ef6-4c73-84c3-66a6947786bc(String)
+21:36:33.770 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-2][0;39m [32mc.l.d.s.r.m.R.findByOssId               [0;39m - <==      Total: 0
+21:36:33.822 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-2][0;39m [32mc.l.d.s.r.c.CosClientManager            [0;39m - [CosClientManager] COS客户端初始化成功，Bucket: hengdu-1258032972, Region: ap-guangzhou
+21:36:34.217 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-2][0;39m [32mc.l.d.s.r.c.TencentCosStorageService    [0;39m - [TencentCosStorage] 文件下载成功，objectKey: attachment/2026-04-04/eb10fb1065a45d106c97445bf02aae33/7344c457-7696-44cd-84be-98b9d0b218f3.txt, localFile: /var/folders/6z/sqmkl1fx44n80w_57qv_1vnw0000gn/T/rag_oss_4485018186619556414.tmp, size: 10157 bytes
+21:36:34.218 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-2][0;39m [32mc.l.d.s.r.m.O.selectById                [0;39m - ==>  Preparing: SELECT id,session_id,file_name,file_suffix,file_size,oss_url,file_type,upload_status,created_at,updated_at FROM oss_file WHERE id=?
+21:36:34.218 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-2][0;39m [32mc.l.d.s.r.m.O.selectById                [0;39m - ==> Parameters: e376b724-7ef6-4c73-84c3-66a6947786bc(String)
+21:36:34.247 [39mDEBUG[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-2][0;39m [32mc.l.d.s.r.m.O.selectById                [0;39m - <==      Total: 1
+21:36:34.250 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-2][0;39m [32mc.l.d.s.r.s.Chunker                     [0;39m - 文档切分完成 - sourceId=DOC-9AC74A28, chunk数量=5
+21:36:36.117 [1;31mERROR[0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[http-nio-8124-exec-2][0;39m [32mc.l.d.s.r.c.RagController               [0;39m - [RagController] COS文件入库失败 - ossUrl=attachment/2026-04-04/eb10fb1065a45d106c97445bf02aae33/7344c457-7696-44cd-84be-98b9d0b218f3.txt
+
+org.springframework.web.client.HttpClientErrorException$Unauthorized: 401 Unauthorized: [no body]
+	at org.springframework.web.client.HttpClientErrorException.create(HttpClientErrorException.java:106)
+	at org.springframework.web.client.StatusHandler.lambda$defaultHandler$3(StatusHandler.java:86)
+	at org.springframework.web.client.StatusHandler.handle(StatusHandler.java:146)
+	at org.springframework.web.client.DefaultRestClient$DefaultResponseSpec.applyStatusHandlers(DefaultRestClient.java:826)
+	at org.springframework.web.client.DefaultRestClient$DefaultResponseSpec.lambda$readBody$4(DefaultRestClient.java:815)
+	at org.springframework.web.client.DefaultRestClient.readWithMessageConverters(DefaultRestClient.java:215)
+	at org.springframework.web.client.DefaultRestClient$DefaultResponseSpec.readBody(DefaultRestClient.java:814)
+	at org.springframework.web.client.DefaultRestClient$DefaultResponseSpec.lambda$body$0(DefaultRestClient.java:745)
+	at org.springframework.web.client.DefaultRestClient$DefaultRequestBodyUriSpec.exchangeInternal(DefaultRestClient.java:574)
+	at org.springframework.web.client.DefaultRestClient$DefaultRequestBodyUriSpec.exchange(DefaultRestClient.java:535)
+	at org.springframework.web.client.RestClient$RequestHeadersSpec.exchange(RestClient.java:677)
+	at org.springframework.web.client.DefaultRestClient$DefaultResponseSpec.executeAndExtract(DefaultRestClient.java:809)
+	at org.springframework.web.client.DefaultRestClient$DefaultResponseSpec.body(DefaultRestClient.java:745)
+	at com.liang.drugagent.shared.rag.config.DirectDashScopeEmbeddingModel.call(DirectDashScopeEmbeddingModel.java:75)
+	at com.liang.drugagent.shared.rag.service.EmbeddingService.embed(EmbeddingService.java:36)
+	at com.liang.drugagent.shared.rag.service.IngestService.ingest(IngestService.java:83)
+	at com.liang.drugagent.shared.rag.controller.RagController.ingestFromOss(RagController.java:115)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at org.springframework.web.method.support.InvocableHandlerMethod.doInvoke(InvocableHandlerMethod.java:258)
+	at org.springframework.web.method.support.InvocableHandlerMethod.invokeForRequest(InvocableHandlerMethod.java:191)
+	at org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod.invokeAndHandle(ServletInvocableHandlerMethod.java:118)
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.invokeHandlerMethod(RequestMappingHandlerAdapter.java:986)
+	at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.handleInternal(RequestMappingHandlerAdapter.java:891)
+	at org.springframework.web.servlet.mvc.method.AbstractHandlerMethodAdapter.handle(AbstractHandlerMethodAdapter.java:87)
+	at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:1089)
+	at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:979)
+	at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1014)
+	at org.springframework.web.servlet.FrameworkServlet.doPost(FrameworkServlet.java:914)
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:590)
+	at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:885)
+	at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:658)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:195)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
+	at org.apache.tomcat.websocket.server.WsFilter.doFilter(WsFilter.java:51)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
+	at org.springframework.web.filter.CorsFilter.doFilterInternal(CorsFilter.java:91)
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
+	at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100)
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
+	at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93)
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
+	at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:201)
+	at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116)
+	at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140)
+	at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:167)
+	at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:90)
+	at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:483)
+	at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:115)
+	at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93)
+	at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:74)
+	at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:344)
+	at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:397)
+	at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:63)
+	at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:905)
+	at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1743)
+	at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:52)
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1190)
+	at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:659)
+	at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:63)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+
+21:57:16.790 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=16m12s936ms).
+21:59:26.250 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=2m9s461ms).
+22:16:24.750 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=16m58s500ms).
+22:18:34.223 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=2m9s473ms).
+22:37:24.203 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=18m49s980ms).
+22:56:05.457 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=18m41s254ms).
+23:13:26.778 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=17m21s321ms).
+23:15:36.227 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=2m9s449ms).
+23:33:23.882 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=17m47s655ms).
+23:35:33.257 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=2m9s375ms).
+00:00:41.815 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=25m8s557ms).
+00:06:37.612 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=5m55s798ms).
+00:21:27.692 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=14m20s76ms).
+00:43:17.786 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=21m50s94ms).
+00:44:37.456 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=1m19s670ms).
+00:46:22.023 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=1m44s566ms).
+01:05:05.892 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=18m43s870ms).
+01:07:15.326 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=2m9s434ms).
+01:40:17.828 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=33m2s502ms).
+01:44:17.660 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=3m59s831ms).
+01:53:43.985 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=9m26s325ms).
+02:16:53.533 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=2m9s370ms).
+02:34:11.893 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=17m18s360ms).
+02:35:06.739 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=54s847ms).
+02:52:21.680 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=17m14s941ms).
+03:19:09.983 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=26m48s303ms).
+03:21:19.460 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=2m9s477ms).
+03:39:41.575 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=18m22s115ms).
+03:41:50.976 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=2m9s401ms).
+04:00:12.151 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=18m21s175ms).
+04:02:21.613 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=2m9s462ms).
+04:17:23.760 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=15m2s147ms).
+04:36:51.677 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=19m27s917ms).
+04:38:36.244 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=1m44s567ms).
+05:05:33.711 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=26m57s467ms).
+06:17:45.053 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=1h12m11s341ms).
+07:36:38.317 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=1h18m53s265ms).
+08:53:03.739 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=1h16m25s422ms).
+09:24:06.079 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=31m2s339ms).
+09:46:16.863 [31mWARN [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[DrugAgentHikariPool housekeeper][0;39m [32mc.z.h.p.HikariPool                      [0;39m - DrugAgentHikariPool - Thread starvation or clock leap detected (housekeeper delta=22m10s784ms).

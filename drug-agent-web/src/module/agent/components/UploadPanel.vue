@@ -3,7 +3,7 @@
     <div class="panel-header">
       <div>
         <div class="panel-label">上传材料</div>
-        <span class="panel-title">开始一轮 mock 审查</span>
+        <span class="panel-title">上传标书材料，发起一轮审查</span>
       </div>
       <t-button theme="default" variant="text" @click="handleClose">
         <t-icon name="close" />
@@ -22,7 +22,7 @@
         <div class="upload-hint">
           <t-icon name="upload" size="32px" />
           <p>点击或拖拽文件到此处上传</p>
-          <p class="upload-formats">支持 PDF、Word、Markdown、TXT 格式，当前仅做前端 mock 演示</p>
+          <p class="upload-formats">支持 PDF、Word、Markdown、TXT 格式</p>
         </div>
       </div>
 
