@@ -89,6 +89,21 @@ public class TenderSemanticReviewService {
     }
 
     /**
+     * 根据规则编码获取对应的语义判断 Prompt。
+     */
+    private String getRuleSpecificPrompt(String ruleCode) {
+        return switch (ruleCode) {
+            case "W-P1" -> TenderReviewJudgePrompt.SEMANTIC_JUDGE_W_P1;
+            case "W-P4" -> TenderReviewJudgePrompt.SEMANTIC_JUDGE_W_P4;
+            case "W-M8" -> TenderReviewJudgePrompt.SEMANTIC_JUDGE_W_M8;
+            case "W-P2" -> TenderReviewJudgePrompt.SEMANTIC_JUDGE_W_P2;
+            case "W-P3" -> TenderReviewJudgePrompt.SEMANTIC_JUDGE_W_P3;
+            case "W-M3" -> TenderReviewJudgePrompt.SEMANTIC_JUDGE_W_M3;
+            default -> TenderReviewJudgePrompt.SEMANTIC_JUDGE_W_P1; // 默认使用W-P1
+        };
+    }
+
+    /**
      * 判断是否为降级响应（置信度为 0.3 的默认降级结果）。
      */
     private boolean isDegradedResponse(TenderSemanticJudgeResp resp) {
@@ -145,10 +160,11 @@ public class TenderSemanticReviewService {
             rightSnippetsSb.append("片段").append(i + 1).append(": ").append(req.getRightSnippets().get(i)).append("\n");
         }
 
-        return String.format(
-                TenderReviewJudgePrompt.SEMANTIC_JUDGE_USER_PROMPT,
+        // 使用规则专属Prompt构建完整提示
+        String rulePrompt = getRuleSpecificPrompt(req.getRuleCode());
+        return buildRuleSpecificUserPrompt(
+                rulePrompt,
                 req.getRuleCode(),
-                getRuleDescription(req.getRuleCode()),
                 req.getCompareTopic(),
                 req.getLeftDocumentId(),
                 leftSnippetsSb.toString(),
@@ -158,18 +174,34 @@ public class TenderSemanticReviewService {
     }
 
     /**
-     * 获取规则描述。
+     * 使用规则专属Prompt构建带比对内容的User Prompt。
      */
-    private String getRuleDescription(String ruleCode) {
-        return switch (ruleCode) {
-            case "W-P1" -> "技术方案抄袭：判断是否属于技术方案的实质同源改写，如共享相同的系统架构骨架、模块划分、业务闭环逻辑。仅行业通用术语不得判定命中。";
-            case "W-P4" -> "风险识别抄袭：判断风险项拆解逻辑、风险影响链条、应对措施是否高度同源。轻度改写（如同义替换、句式重写）应判定为同源。";
-            case "W-M8" -> "商务条款配合：判断是否存在\"一方完全接受、一方附条件接受\"的互补配合模式，或\"一个强响应、一个柔性偏离\"的协同策略。";
-            case "W-P2" -> "实施方法抄袭：判断阶段名称不同但流程骨架是否一致，关键里程碑、交付顺序、组织方式是否同源。";
-            case "W-P3" -> "服务承诺抄袭：判断服务等级、时效组合、承诺逻辑是否高度同源，表达不同但服务体系配置基本一致应判定为同源。";
-            case "W-M3" -> "核心团队重叠：辅助判断同一人不同岗位包装、简历表达改写但履历骨架一致、团队构成关系相似的情况。";
-            default -> "未知规则，请根据语义自行判断。";
-        };
+    private String buildRuleSpecificUserPrompt(String rulePrompt, String ruleCode, String compareTopic,
+                                                String leftDocId, String leftSnippets,
+                                                String rightDocId, String rightSnippets) {
+        return String.format("""
+                %s
+
+                【比对主题】%s
+
+                【左侧文档 ID】%s
+                【左侧候选片段】
+                %s
+
+                【右侧文档 ID】%s
+                【右侧候选片段】
+                %s
+
+                【输出要求】
+                直接输出 ```json ... ``` 代码块内的 JSON 对象，不做任何解释说明。
+                """,
+                rulePrompt,
+                compareTopic,
+                leftDocId,
+                leftSnippets,
+                rightDocId,
+                rightSnippets
+        );
     }
 
     /**
@@ -179,7 +211,7 @@ public class TenderSemanticReviewService {
         try {
             Future<LlmResponse> future = llmCallExecutor.submit(() -> {
                 LlmRequest request = LlmRequest.builder()
-                        .systemPrompt(TenderReviewJudgePrompt.SEMANTIC_JUDGE_PROMPT)
+                        .systemPrompt(getSemanticJudgeSystemPrompt())
                         .messages(List.of(LlmRequest.ChatMessage.builder()
                                 .role("user")
                                 .content(prompt)
@@ -198,6 +230,27 @@ public class TenderSemanticReviewService {
             log.error("[TenderSemanticReviewService] LLM 调用异常 - caseId: {}, error: {}", caseId, e.getMessage());
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * 获取语义裁判 System Prompt。
+     */
+    private String getSemanticJudgeSystemPrompt() {
+        return """
+                你是标书审查的语义裁判。
+
+                核心职责：
+                1. 严格按照给定规则进行语义判断
+                2. 只输出JSON对象，禁止输出任何解释说明文字
+                3. 证据不足时允许返回hit=false
+                4. 必须给出来自双方文档的证据片段
+
+                禁止事项：
+                - 禁止仅凭相似性直接认定违规
+                - 禁止将法规条文引用判定为风险
+                - 禁止给出最终处罚结论
+                - 置信度低于0.6时应返回hit=false
+                """;
     }
 
     /**

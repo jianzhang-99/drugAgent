@@ -7,7 +7,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 工作流执行结果。
@@ -32,6 +34,12 @@ public class WorkflowResult {
     private List<EvidenceItem> evidenceList = new ArrayList<>();
     private List<EvidenceGroup> evidenceGroups = new ArrayList<>();
     private List<String> steps = new ArrayList<>();
+    /**
+     * 分析覆盖度信息，记录各 LLM 分析器的执行状态。
+     * key: 分析器名称（如 W-P1、W-P2 等）
+     * value: 分析器状态 SUCCESS / FAILED
+     */
+    private Map<String, String> analyzerStatus = new LinkedHashMap<>();
 
     public static WorkflowResult of(SceneEnum scene, String answer) {
         WorkflowResult result = new WorkflowResult();

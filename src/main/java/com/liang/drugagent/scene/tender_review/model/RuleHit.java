@@ -51,4 +51,10 @@ public class RuleHit {
     private Integer adjustedWeight;
     private Boolean exempted;
     private String exemptionReason;
+    /**
+     * LLM 语义判断置信度，范围 0.0 ~ 1.0。
+     * 仅 LLM 语义命中的规则项才有此字段，用于融合评分时的连续加权。
+     * 确定性规则命中此字段为 null。
+     */
+    private Double confidence;
 }

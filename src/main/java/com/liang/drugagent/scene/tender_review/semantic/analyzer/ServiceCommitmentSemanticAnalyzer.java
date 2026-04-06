@@ -125,6 +125,7 @@ public class ServiceCommitmentSemanticAnalyzer implements TenderSemanticAnalyzer
         hit.setPriority(PRIORITY);
         hit.setVersion(VERSION);
         hit.setWeight(resp.getSuggestedWeight() != null ? resp.getSuggestedWeight() : 70);
+        hit.setConfidence(resp.getConfidence());
         hit.setMatchedValue("semantic:" + resp.getConclusion());
 
         String triggerSummary = String.format("两份标书服务承诺章节存在语义同源特征（置信度 %.2f）：%s",

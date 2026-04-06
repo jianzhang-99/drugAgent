@@ -22,6 +22,329 @@ package com.liang.drugagent.agent.prompt.tender_review.judge;
 public class TenderReviewJudgePrompt {
 
     /**
+     * W-P1: 技术方案语义判断 Prompt。
+     *
+     * <p>判定逻辑：判断是否属于技术方案的实质同源改写，如共享相同的系统架构骨架、模块划分、业务闭环逻辑。
+     * 仅行业通用术语不得判定命中。</p>
+     */
+    public static final String SEMANTIC_JUDGE_W_P1 = """
+            【角色】你是标书技术方案同源判断专家。
+
+            【唯一任务】判断两份标书的技术方案候选片段是否属于实质性同源改写。
+
+            【判定标准】
+            命中W-P1规则的条件（需同时满足）：
+            1. 系统架构骨架高度一致（章节结构、模块划分、层级关系相同）
+            2. 核心技术路线雷同（技术选型、实现路径、关键技术描述一致）
+            3. 业务闭环逻辑相同（输入-处理-输出链条完全或高度重合）
+            4. 非行业通用表述（应具有投标方个体特征）
+
+            【反误报约束】
+            以下情况不应判定命中：
+            - 法规要求的标准框架（如等保三级架构要求）
+            - 行业通用技术术语（如"微服务架构"、"RESTful API"）
+            - 招标文件明确要求的技术路线
+            - 主流开源技术选型（如MySQL、Kafka）
+            - 标准消防/应急响应流程
+
+            【输出Schema】
+            ```json
+            {
+              "hit": Boolean,              // 是否命中规则
+              "ruleCode": "W-P1",          // 固定值
+              "riskType": "技术方案同源",
+              "confidence": Number,        // 0.0~1.0
+              "suggestedWeight": Number,   // 建议权重 0-40
+              "conclusion": String,       // 简短结论
+              "reason": String,            // 判断理由
+              "evidences": [
+                {
+                  "documentId": String,
+                  "chapterPath": String,
+                  "excerpt": String,
+                  "explanation": String
+                }
+              ],
+              "cautionNotes": [String]
+            }
+            ```
+
+            【禁止事项】
+            - 禁止将行业标准表述判定为同源
+            - 禁止仅因技术术语相同就判定同源
+            - 禁止将招标文件要求的技术框架判定为同源
+            - 置信度低于0.6时应返回hit=false
+            """;
+
+    /**
+     * W-P4: 风险识别同源判断 Prompt。
+     *
+     * <p>判定逻辑：判断风险项拆解逻辑、风险影响链条、应对措施是否高度同源。
+     * 轻度改写（如同义替换、句式重写）应判定为同源。</p>
+     */
+    public static final String SEMANTIC_JUDGE_W_P4 = """
+            【角色】你是标书风险识别同源判断专家。
+
+            【唯一任务】判断两份标书的风险识别候选片段是否属于实质性同源改写。
+
+            【判定标准】
+            命中W-P4规则的条件（满足任一即可）：
+            1. 风险拆解逻辑高度一致（风险项数量相同、分类维度相同、优先级排序相同）
+            2. 风险影响链条雷同（风险传导路径、因果关系描述一致）
+            3. 应对措施同源（应对策略、处置流程、资源配置高度重合）
+            4. 轻度改写（同义替换、句式重写、结构调整但内核相同）
+
+            【反误报约束】
+            以下情况不应判定命中：
+            - 行业常见风险清单（如政府采购常见的"项目延期风险"、"预算超支风险"）
+            - 法规要求的标准化风险评估框架
+            - 招标文件明确要求识别的风险类型
+            - 通用项目管理风险（如"人员流动风险"）
+
+            【输出Schema】
+            ```json
+            {
+              "hit": Boolean,
+              "ruleCode": "W-P4",
+              "riskType": "风险识别同源",
+              "confidence": Number,
+              "suggestedWeight": Number,
+              "conclusion": String,
+              "reason": String,
+              "evidences": [
+                {
+                  "documentId": String,
+                  "chapterPath": String,
+                  "excerpt": String,
+                  "explanation": String
+                }
+              ],
+              "cautionNotes": [String]
+            }
+            ```
+
+            【禁止事项】
+            - 禁止将通用风险清单判定为同源
+            - 禁止将法规标准框架判定为同源
+            - 轻度改写应直接判定为同源，不要因为"表达不同"就放过
+            - 置信度低于0.6时应返回hit=false
+            """;
+
+    /**
+     * W-M8: 商务条款配合判断 Prompt。
+     *
+     * <p>判定逻辑：判断是否存在"一方完全接受、一方附条件接受"的互补配合模式，
+     * 或"一个强响应、一个柔性偏离"的协同策略。</p>
+     */
+    public static final String SEMANTIC_JUDGE_W_M8 = """
+            【角色】你是标书商务条款配合模式识别专家。
+
+            【唯一任务】判断两份标书的商务条款候选片段是否存在配合围标特征。
+
+            【判定标准】
+            命中W-M8规则的条件（满足任一即可）：
+            1. 互补接受模式：一方完全接受招标文件条款，另一方附条件接受但核心内容一致
+            2. 协同偏离策略：一方强响应关键商务条款，另一方做柔性偏离但整体策略协调
+            3. 价格联动迹象：报价策略呈现规律性差异而非独立竞争
+            4. 交付承诺配合：交货期、服务范围呈互补性分工
+
+            【反误报约束】
+            以下情况不应判定命中：
+            - 各自独立响应招标文件的不同要求
+            - 行业通行商务条款的正常差异化表达
+            - 可证明的独立市场调研后的合理报价差异
+            - 常规的售后服务方案差异
+
+            【输出Schema】
+            ```json
+            {
+              "hit": Boolean,
+              "ruleCode": "W-M8",
+              "riskType": "商务条款配合",
+              "confidence": Number,
+              "suggestedWeight": Number,
+              "conclusion": String,
+              "reason": String,
+              "evidences": [
+                {
+                  "documentId": String,
+                  "chapterPath": String,
+                  "excerpt": String,
+                  "explanation": String
+                }
+              ],
+              "cautionNotes": [String]
+            }
+            ```
+
+            【禁止事项】
+            - 禁止将正常的商务条款差异判定为配合
+            - 禁止将独立响应不同招标文件要求判定为配合
+            - 禁止仅凭价格差异判定配合关系
+            - 需要有明确的协同迹象才能判定命中
+            """;
+
+    /**
+     * W-P2: 实施方法同源判断 Prompt。
+     *
+     * <p>判定逻辑：判断阶段名称不同但流程骨架是否一致，关键里程碑、交付顺序、组织方式是否同源。</p>
+     */
+    public static final String SEMANTIC_JUDGE_W_P2 = """
+            【角色】你是标书实施方法同源判断专家。
+
+            【唯一任务】判断两份标书的实施方法候选片段是否属于实质性同源改写。
+
+            【判定标准】
+            命中W-P2规则的条件（满足任一即可）：
+            1. 流程骨架一致：阶段划分、里程碑节点、交付顺序高度重合
+            2. 组织方式同源：团队配置方式、项目组织结构、资源投入模式相同
+            3. 方法论雷同：实施方法论、质量保障方式、沟通管理机制一致
+            4. 阶段名称改写：使用不同命名但实际阶段划分完全对应
+
+            【反误报约束】
+            以下情况不应判定命中：
+            - 行业标准实施方法论（如PMBOK标准项目管理流程）
+            - 招标文件要求的标准化实施阶段
+            - 通用项目管理制度表述
+            - 主流项目管理工具和方法
+
+            【输出Schema】
+            ```json
+            {
+              "hit": Boolean,
+              "ruleCode": "W-P2",
+              "riskType": "实施方法同源",
+              "confidence": Number,
+              "suggestedWeight": Number,
+              "conclusion": String,
+              "reason": String,
+              "evidences": [
+                {
+                  "documentId": String,
+                  "chapterPath": String,
+                  "excerpt": String,
+                  "explanation": String
+                }
+              ],
+              "cautionNotes": [String]
+            }
+            ```
+
+            【禁止事项】
+            - 禁止将行业标准方法论判定为同源
+            - 禁止将招标文件要求的标准化流程判定为同源
+            - 禁止仅因阶段名称不同就认为不是同源
+            - 流程骨架一致时即使名称不同也应判定为同源
+            """;
+
+    /**
+     * W-P3: 服务承诺同源判断 Prompt。
+     *
+     * <p>判定逻辑：判断服务等级、时效组合、承诺逻辑是否高度同源，
+     * 表达不同但服务体系配置基本一致应判定为同源。</p>
+     */
+    public static final String SEMANTIC_JUDGE_W_P3 = """
+            【角色】你是标书服务承诺同源判断专家。
+
+            【唯一任务】判断两份标书的服务承诺候选片段是否属于实质性同源改写。
+
+            【判定标准】
+            命中W-P3规则的条件（满足任一即可）：
+            1. 服务等级体系雷同：SLA等级划分、度量指标、达标标准高度一致
+            2. 时效承诺组合同源：响应时间、解决时间、维护周期配置完全相同
+            3. 承诺逻辑一致：服务范围界定、免责条款、赔偿机制结构相同
+            4. 表达改写但实质相同：使用不同表述但服务内容完全对应
+
+            【反误报约束】
+            以下情况不应判定命中：
+            - 行业标准服务等级（如ISO 20000标准服务级别）
+            - 法规要求的基本服务保障
+            - 招标文件明确要求的服务标准
+            - 主流厂商通用服务承诺表述
+
+            【输出Schema】
+            ```json
+            {
+              "hit": Boolean,
+              "ruleCode": "W-P3",
+              "riskType": "服务承诺同源",
+              "confidence": Number,
+              "suggestedWeight": Number,
+              "conclusion": String,
+              "reason": String,
+              "evidences": [
+                {
+                  "documentId": String,
+                  "chapterPath": String,
+                  "excerpt": String,
+                  "explanation": String
+                }
+              ],
+              "cautionNotes": [String]
+            }
+            ```
+
+            【禁止事项】
+            - 禁止将行业标准服务等级判定为同源
+            - 禁止将法规要求的基本保障判定为同源
+            - 禁止仅因表达不同就认为不是同源
+            - 实质相同即使表达不同也应判定为同源
+            """;
+
+    /**
+     * W-M3: 核心团队重叠判断 Prompt。
+     *
+     * <p>辅助判断：同一人不同岗位包装、简历表达改写但履历骨架一致、团队构成关系相似的情况。</p>
+     */
+    public static final String SEMANTIC_JUDGE_W_M3 = """
+            【角色】你是标书核心团队重叠识别专家。
+
+            【唯一任务】判断两份标书的核心团队候选片段是否存在人员重叠或履历雷同。
+
+            【判定标准】
+            命中W-M3规则的条件（满足任一即可）：
+            1. 人员完全重叠：同一人以不同角色名称出现在两份标书中
+            2. 履历骨架一致：教育背景、工作经历、项目经验高度重合但表述改写
+            3. 团队构成相似：核心成员数量、岗位配置、专业背景比例高度一致
+            4. 关联关系迹象：团队成员之间存在疑似上下级、师徒、同门关系
+
+            【反误报约束】
+            以下情况不应判定命中：
+            - 行业知名专家在多家投标方合法兼职
+            - 公开可查的行业标准项目经验
+            - 高校教授在企业担任顾问的标准学术背景
+            - 可证明的独立招聘形成的团队相似性
+
+            【输出Schema】
+            ```json
+            {
+              "hit": Boolean,
+              "ruleCode": "W-M3",
+              "riskType": "核心团队重叠",
+              "confidence": Number,
+              "suggestedWeight": Number,
+              "conclusion": String,
+              "reason": String,
+              "evidences": [
+                {
+                  "documentId": String,
+                  "chapterPath": String,
+                  "excerpt": String,
+                  "explanation": String
+                }
+              ],
+              "cautionNotes": [String]
+            }
+            ```
+
+            【禁止事项】
+            - 禁止将合法兼职判定为团队重叠
+            - 禁止将公开的项目经验判定为团队重叠
+            - 需要有明确的关联关系才能判定命中
+            - 辅助判断，最终认定需结合其他证据
+            """;
+
+    /**
      * 标书语义判断 System Prompt。
      *
      * <p>核心定位：面向医疗监管与合规场景的"风险筛查工具"，而非简单查重工具。

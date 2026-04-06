@@ -33,10 +33,13 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * 标书审查工作流。
@@ -64,6 +67,14 @@ public class TenderReviewWorkflow {
     private final ServiceCommitmentSemanticAnalyzer serviceCommitmentSemanticAnalyzer;
     private final TeamOverlapSemanticAnalyzer teamOverlapSemanticAnalyzer;
     private final Executor semanticAnalyzerExecutor;
+
+    /**
+     * LLM语义分析结果封装，包含命中的规则列表和各分析器的执行状态。
+     */
+    public record SemanticAnalysisResult(
+            List<RuleHit> hits,
+            Map<String, String> analyzerStatus
+    ) {}
 
     public TenderReviewWorkflow(LLMChatService LLMChatService,
                                 @Qualifier("miniMaxLlmClient") LlmClient llmClient,
@@ -123,18 +134,39 @@ public class TenderReviewWorkflow {
      */
     public WorkflowResult execute(AgentChatContext context) {
         TenderReviewData tenderReviewData = readTenderReviewData(context);
-        if (tenderReviewData != null) {
-            return executeRuleFlow(tenderReviewData);
+        if (tenderReviewData == null) {
+            return buildInsufficientDataErrorResult(null);
         }
 
-        String answer = LLMChatService.chatWithScene(context.getQuery(), SceneEnum.DEFAULT, context.getSessionId(), context.getModel());
-        WorkflowResult result = WorkflowResult.of(SceneEnum.TENDER_REVIEW, answer);
-        result.setRiskLevel("NONE");
-        result.setScore(0);
-        result.setSteps(List.of("场景路由", "通用审查"));
+        // 文档数量校验：标书审查至少需要2份文档
+        int docCount = tenderReviewData.getDocuments() == null ? 0 : tenderReviewData.getDocuments().size();
+        if (docCount < 2) {
+            return buildInsufficientDataErrorResult(docCount);
+        }
+
+        return executeRuleFlow(tenderReviewData);
+    }
+
+    /**
+     * 构建数据不足时的结构化错误结果。
+     * 不再降级为通用闲聊，避免产生虚假审查报告。
+     */
+    private WorkflowResult buildInsufficientDataErrorResult(Integer docCount) {
+        String errorMessage;
+        if (docCount == null || docCount == 0) {
+            errorMessage = "请上传至少2份标书文件，当前未检测到有效的标书文档。";
+        } else {
+            errorMessage = "请上传至少2份标书文件，当前仅检测到 " + docCount + " 份文档。";
+        }
+
+        WorkflowResult result = WorkflowResult.of(SceneEnum.TENDER_REVIEW, errorMessage);
+        result.setRiskLevel("UNKNOWN");
+        result.setScore(null);
+        result.setSteps(List.of("场景路由", "数据校验"));
         result.setEvidenceList(List.of(
-                new EvidenceItem("system_note", "MVP fallback path is still using generic chat ability.", "system")
+                new EvidenceItem("data_validation", errorMessage, "system")
         ));
+        result.getAnalyzerStatus().put("workflow", "DATA_INSUFFICIENT");
         return result;
     }
 
@@ -149,8 +181,9 @@ public class TenderReviewWorkflow {
         List<RuleHit> allHits = tenderRuleEngine.execute(tenderReviewData);
 
         // LLM 语义命中补强（W-P1/W-P4/W-M8/W-P2/W-P3/W-M3）
-        List<RuleHit> semanticHits = executeSemanticAnalyzers(tenderReviewData);
-        allHits.addAll(semanticHits);
+        SemanticAnalysisResult semanticResult = executeSemanticAnalyzers(tenderReviewData);
+        allHits.addAll(semanticResult.hits());
+        Map<String, String> analyzerStatus = semanticResult.analyzerStatus();
 
         // 免责判定
         var exemptionResult = tenderExemptionEngine.apply(allHits, tenderReviewData);
@@ -189,6 +222,21 @@ public class TenderReviewWorkflow {
         result.setReport(report);
         result.setEvidenceList(evidenceAssemblyResult.getFlatItems());
         result.setEvidenceGroups(evidenceAssemblyResult.getGroups());
+        result.setAnalyzerStatus(analyzerStatus);
+
+        // 如果超过一半的 LLM 分析器失败，在报告中增加警告说明
+        long failedCount = analyzerStatus.values().stream().filter("FAILED"::equals).count();
+        if (failedCount > 3) {
+            String warning = "警告：LLM语义分析器有 " + failedCount + " 个执行失败（" + analyzerStatus.entrySet().stream()
+                    .filter(e -> "FAILED".equals(e.getValue()))
+                    .map(Map.Entry::getKey)
+                    .collect(Collectors.joining("、")) + "），可能导致部分风险未被检测到，建议人工复核。";
+            log.warn("[TenderReviewWorkflow] {}", warning);
+            // 在报告的explanations中追加警告信息
+            if (report.getExplanations() != null) {
+                report.getExplanations().put("analyzer_warning", warning);
+            }
+        }
 
         // L4 校验：检查输出合规性并生成规范的 answer
         validateAndNormalizeResult(result);
@@ -199,98 +247,73 @@ public class TenderReviewWorkflow {
     /**
      * 执行 LLM 语义分析器集合。
      * 对 W-P1、W-P4、W-M8（W-P2、W-P3、W-M3）规则进行 LLM 语义补强判断。
-     * Phase 1 分析器（W-P1/W-P4/W-M8）并行执行，Phase 2 分析器（W-P2/W-P3/W-M3）在 Phase 1 完成后并行执行。
+     * 6个分析器并行执行，每个分析器独立超时30秒，超时则标记为FAILED。
+     * 各分析器执行状态会记录在返回结果的 analyzerStatus 中。
      *
      * @param tenderReviewData 标书审查数据
-     * @return LLM 语义命中的规则列表
+     * @return 语义分析结果，包含命中的规则列表和各分析器的执行状态
      */
-    private List<RuleHit> executeSemanticAnalyzers(TenderReviewData tenderReviewData) {
-        List<RuleHit> allSemanticHits = new ArrayList<>();
+    private SemanticAnalysisResult executeSemanticAnalyzers(TenderReviewData tenderReviewData) {
         String caseId = tenderReviewData.getACase() != null ? tenderReviewData.getACase().getCaseId() : "unknown";
-        log.info("[TenderReviewWorkflow] 开始执行 LLM 语义分析（W-P1/W-P4/W-M8/W-P2/W-P3/W-M3）- caseId: {}", caseId);
+        log.info("[TenderReviewWorkflow] 开始执行 LLM 语义分析（6个分析器并行） - caseId: {}", caseId);
 
-        // Phase 1 分析器并行执行：W-P1、W-P4、W-M8
-        CompletableFuture<List<RuleHit>> wp1Future = CompletableFuture.supplyAsync(() -> {
-            try {
-                List<RuleHit> hits = proposalSemanticAnalyzer.analyze(tenderReviewData);
-                log.info("[TenderReviewWorkflow] W-P1 语义分析完成，命中数: {} - caseId: {}", hits.size(), caseId);
-                return hits;
-            } catch (Exception e) {
-                log.error("[TenderReviewWorkflow] W-P1 语义分析异常 - caseId: {}, error: {}", caseId, e.getMessage());
-                return List.of();
-            }
-        }, semanticAnalyzerExecutor);
+        // 使用线程安全的Map记录各分析器状态
+        Map<String, String> analyzerStatus = new ConcurrentHashMap<>();
 
-        CompletableFuture<List<RuleHit>> wp4Future = CompletableFuture.supplyAsync(() -> {
-            try {
-                List<RuleHit> hits = riskIdentificationSemanticAnalyzer.analyze(tenderReviewData);
-                log.info("[TenderReviewWorkflow] W-P4 语义分析完成，命中数: {} - caseId: {}", hits.size(), caseId);
-                return hits;
-            } catch (Exception e) {
-                log.error("[TenderReviewWorkflow] W-P4 语义分析异常 - caseId: {}, error: {}", caseId, e.getMessage());
-                return List.of();
-            }
-        }, semanticAnalyzerExecutor);
+        // 定义6个分析器的名称与实现
+        List<AnalyzerTask> tasks = List.of(
+                new AnalyzerTask("W-P1", data -> proposalSemanticAnalyzer.analyze(data)),
+                new AnalyzerTask("W-P4", data -> riskIdentificationSemanticAnalyzer.analyze(data)),
+                new AnalyzerTask("W-M8", data -> commercialCoordinationSemanticAnalyzer.analyze(data)),
+                new AnalyzerTask("W-P2", data -> implementationMethodSemanticAnalyzer.analyze(data)),
+                new AnalyzerTask("W-P3", data -> serviceCommitmentSemanticAnalyzer.analyze(data)),
+                new AnalyzerTask("W-M3", data -> teamOverlapSemanticAnalyzer.analyze(data))
+        );
 
-        CompletableFuture<List<RuleHit>> wm8Future = CompletableFuture.supplyAsync(() -> {
-            try {
-                List<RuleHit> hits = commercialCoordinationSemanticAnalyzer.analyze(tenderReviewData);
-                log.info("[TenderReviewWorkflow] W-M8 语义分析完成，命中数: {} - caseId: {}", hits.size(), caseId);
-                return hits;
-            } catch (Exception e) {
-                log.error("[TenderReviewWorkflow] W-M8 语义分析异常 - caseId: {}, error: {}", caseId, e.getMessage());
-                return List.of();
-            }
-        }, semanticAnalyzerExecutor);
+        // Phase 2 分析器
+        try {
+            // W-P2 实施方法抄袭语义分析
+            List<RuleHit> wp2Hits = implementationMethodSemanticAnalyzer.analyze(tenderReviewData);
+            allSemanticHits.addAll(wp2Hits);
+            log.info("[TenderReviewWorkflow] W-P2 语义分析完成，命中数: {} - caseId: {}", wp2Hits.size(), caseId);
+        } catch (Exception e) {
+            log.error("[TenderReviewWorkflow] W-P2 语义分析异常 - caseId: {}, error: {}", caseId, e.getMessage());
+        }
 
-        // 等待 Phase 1 完成并收集结果
-        CompletableFuture.allOf(wp1Future, wp4Future, wm8Future).join();
-        allSemanticHits.addAll(wp1Future.join());
-        allSemanticHits.addAll(wp4Future.join());
-        allSemanticHits.addAll(wm8Future.join());
+        try {
+            // W-P3 服务承诺抄袭语义分析
+            List<RuleHit> wp3Hits = serviceCommitmentSemanticAnalyzer.analyze(tenderReviewData);
+            allSemanticHits.addAll(wp3Hits);
+            log.info("[TenderReviewWorkflow] W-P3 语义分析完成，命中数: {} - caseId: {}", wp3Hits.size(), caseId);
+        } catch (Exception e) {
+            log.error("[TenderReviewWorkflow] W-P3 语义分析异常 - caseId: {}, error: {}", caseId, e.getMessage());
+        }
 
-        // Phase 2 分析器并行执行：W-P2、W-P3、W-M3
-        CompletableFuture<List<RuleHit>> wp2Future = CompletableFuture.supplyAsync(() -> {
-            try {
-                List<RuleHit> hits = implementationMethodSemanticAnalyzer.analyze(tenderReviewData);
-                log.info("[TenderReviewWorkflow] W-P2 语义分析完成，命中数: {} - caseId: {}", hits.size(), caseId);
-                return hits;
-            } catch (Exception e) {
-                log.error("[TenderReviewWorkflow] W-P2 语义分析异常 - caseId: {}, error: {}", caseId, e.getMessage());
-                return List.of();
-            }
-        }, semanticAnalyzerExecutor);
-
-        CompletableFuture<List<RuleHit>> wp3Future = CompletableFuture.supplyAsync(() -> {
-            try {
-                List<RuleHit> hits = serviceCommitmentSemanticAnalyzer.analyze(tenderReviewData);
-                log.info("[TenderReviewWorkflow] W-P3 语义分析完成，命中数: {} - caseId: {}", hits.size(), caseId);
-                return hits;
-            } catch (Exception e) {
-                log.error("[TenderReviewWorkflow] W-P3 语义分析异常 - caseId: {}, error: {}", caseId, e.getMessage());
-                return List.of();
-            }
-        }, semanticAnalyzerExecutor);
-
-        CompletableFuture<List<RuleHit>> wm3Future = CompletableFuture.supplyAsync(() -> {
-            try {
-                List<RuleHit> hits = teamOverlapSemanticAnalyzer.analyze(tenderReviewData);
-                log.info("[TenderReviewWorkflow] W-M3 语义分析完成，命中数: {} - caseId: {}", hits.size(), caseId);
-                return hits;
-            } catch (Exception e) {
-                log.error("[TenderReviewWorkflow] W-M3 语义分析异常 - caseId: {}, error: {}", caseId, e.getMessage());
-                return List.of();
-            }
-        }, semanticAnalyzerExecutor);
-
-        // 等待 Phase 2 完成并收集结果
-        CompletableFuture.allOf(wp2Future, wp3Future, wm3Future).join();
-        allSemanticHits.addAll(wp2Future.join());
-        allSemanticHits.addAll(wp3Future.join());
-        allSemanticHits.addAll(wm3Future.join());
+        try {
+            // W-M3 核心团队重叠语义分析
+            List<RuleHit> wm3Hits = teamOverlapSemanticAnalyzer.analyze(tenderReviewData);
+            allSemanticHits.addAll(wm3Hits);
+            log.info("[TenderReviewWorkflow] W-M3 语义分析完成，命中数: {} - caseId: {}", wm3Hits.size(), caseId);
+        } catch (Exception e) {
+            log.error("[TenderReviewWorkflow] W-M3 语义分析异常 - caseId: {}, error: {}", caseId, e.getMessage());
+        }
 
         log.info("[TenderReviewWorkflow] LLM 语义分析完成，总命中数: {} - caseId: {}", allSemanticHits.size(), caseId);
-        return allSemanticHits;
+        return new SemanticAnalysisResult(allSemanticHits, analyzerStatus);
+    }
+
+    /**
+     * 分析器任务封装，内部类。
+     * 用于将分析器名称与其实施方法绑定。
+     */
+    private static class AnalyzerTask {
+        final String name;
+        final java.util.function.Function<TenderReviewData, List<RuleHit>> analyzer;
+
+        AnalyzerTask(String name, java.util.function.Function<TenderReviewData, List<RuleHit>> analyzer) {
+            this.name = name;
+            this.analyzer = analyzer;
+        }
     }
 
     /**
