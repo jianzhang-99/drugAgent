@@ -32,9 +32,9 @@ public class DirectDashScopeEmbeddingModel implements EmbeddingModel {
     private final String model;
 
     public DirectDashScopeEmbeddingModel(
-            @Value("${spring.ai.openai.embedding.options.model:text-embedding-v3}") String model,
-            @Value("${spring.ai.openai.api-key}") String apiKey,
-            @Value("${spring.ai.openai.base-url}") String baseUrl) {
+            @Value("${spring.ai.dashscope.embedding.model:text-embedding-v3}") String model,
+            @Value("${spring.ai.dashscope.api-key}") String apiKey,
+            @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com/compatible-mode/v1}") String baseUrl) {
 
         this.model = model;
         String resolvedBaseUrl = (baseUrl != null && !baseUrl.isBlank())

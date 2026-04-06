@@ -2,6 +2,9 @@ spring:
   ai:
     dashscope:
       api-key: test-dummy-key-for-unit-tests
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      embedding:
+        model: text-embedding-v3
       chat:
         options:
           model: qwen-plus
