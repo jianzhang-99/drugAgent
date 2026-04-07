@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -259,6 +260,9 @@ public class TenderReviewWorkflow {
 
         // 使用线程安全的Map记录各分析器状态
         Map<String, String> analyzerStatus = new ConcurrentHashMap<>();
+
+        // 收集所有语义分析命中结果
+        List<RuleHit> allSemanticHits = new ArrayList<>();
 
         // 定义6个分析器的名称与实现
         List<AnalyzerTask> tasks = List.of(

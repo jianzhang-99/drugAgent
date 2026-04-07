@@ -1,7 +1,6 @@
 package com.liang.drugagent.shared.rag.extractor;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.stereotype.Component;
@@ -32,7 +31,7 @@ public class PdfTextExtractor {
             throw new IllegalArgumentException("PDF 内容不能为空");
         }
 
-        try (PDDocument document = Loader.loadPDF(content)) {
+        try (PDDocument document = PDDocument.load(content)) {
             PDFTextStripper stripper = new PDFTextStripper();
             String text = stripper.getText(document);
             return cleanText(text);
@@ -56,7 +55,7 @@ public class PdfTextExtractor {
             throw new IllegalArgumentException("PDF 内容不能为空");
         }
 
-        try (PDDocument document = Loader.loadPDF(content)) {
+        try (PDDocument document = PDDocument.load(content)) {
             PDFTextStripper stripper = new PDFTextStripper();
 
             if (startPage != null && startPage > 0) {
@@ -86,7 +85,7 @@ public class PdfTextExtractor {
             throw new IllegalArgumentException("PDF 内容不能为空");
         }
 
-        try (PDDocument document = Loader.loadPDF(content)) {
+        try (PDDocument document = PDDocument.load(content)) {
             PDFTextStripper stripper = new PDFTextStripper();
             StringBuilder result = new StringBuilder();
             int totalPages = document.getNumberOfPages();
