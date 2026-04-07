@@ -147,6 +147,7 @@ public class AgentChatService {
                 .success(false)
                 .scene(decision != null ? decision.getScene() : SceneEnum.UNKNOWN)
                 .errorMessage(clarifyQuestion)
+                .clarificationQuestion(clarifyQuestion)
                 .needsFallback(true)
                 .build();
 

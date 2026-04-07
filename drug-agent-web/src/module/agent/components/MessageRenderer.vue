@@ -13,6 +13,7 @@
           </div>
           <div>{{ message.content }}</div>
         </div>
+        <div class="message-time user-time" v-if="message.createdAt">{{ formatTime(message.createdAt) }}</div>
       </div>
     </div>
 
@@ -22,6 +23,10 @@
       </div>
       <div class="message-body">
         <div class="message-content">{{ message.content }}</div>
+        <div class="message-time agent-time" v-if="message.createdAt">
+          <span>内容由横渡智能体生成 · {{ formatTime(message.createdAt) }}</span>
+          <button type="button" class="copy-btn" @click="handleCopy(message.content)">复制</button>
+        </div>
       </div>
     </div>
 
@@ -40,6 +45,9 @@
       <div class="message-body">
         <div class="message-content">
           <ResultCard :data="message.result" />
+        </div>
+        <div class="message-time agent-time" v-if="message.createdAt">
+          <span>内容由横渡智能体生成 · {{ formatTime(message.createdAt) }}</span>
         </div>
       </div>
     </div>
@@ -60,6 +68,10 @@
       </div>
       <div class="message-body">
         <div class="message-content">{{ message.content }}</div>
+        <div class="message-time agent-time" v-if="message.createdAt">
+          <span>内容由横渡智能体生成 · {{ formatTime(message.createdAt) }}</span>
+          <button type="button" class="copy-btn" @click="handleCopy(message.content)">复制</button>
+        </div>
       </div>
     </div>
   </div>
@@ -68,8 +80,29 @@
 <script setup lang="ts">
 import type { Message } from '../types/agent';
 import ResultCard from './ResultCard.vue';
+import { ElMessage } from 'element-plus';
 
 defineProps<{ message: Message }>();
+
+function formatTime(isoStr?: string) {
+  if (!isoStr) return '';
+  const date = new Date(isoStr);
+  if (isNaN(date.getTime())) return isoStr;
+  const h = String(date.getHours()).padStart(2, '0');
+  const m = String(date.getMinutes()).padStart(2, '0');
+  const s = String(date.getSeconds()).padStart(2, '0');
+  return `${h}:${m}:${s}`;
+}
+
+async function handleCopy(text: string) {
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    ElMessage.success('复制成功');
+  } catch (e) {
+    ElMessage.error('复制失败');
+  }
+}
 </script>
 
 <style scoped>
@@ -226,5 +259,39 @@ defineProps<{ message: Message }>();
   color: #5b7380;
   border-radius: 18px;
   border: 1px solid rgba(19, 49, 59, 0.08);
+}
+
+.message-time {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-time {
+  justify-content: flex-end;
+  padding-right: 4px;
+}
+
+.agent-time {
+  justify-content: flex-start;
+  padding-left: 4px;
+}
+
+.copy-btn {
+  background: transparent;
+  border: none;
+  color: #3b82f6;
+  cursor: pointer;
+  padding: 0;
+  font-size: 12px;
+  transition: color 0.2s;
+}
+
+.copy-btn:hover {
+  color: #2563eb;
+  text-decoration: underline;
 }
 </style>

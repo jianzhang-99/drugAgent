@@ -15,7 +15,7 @@ spring:
       api-key: sk-a433391322b54c3db665851b085ba4d4
       base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
       embedding:
-        model: text-embedding-v3
+        model: text-embedding-v2
       chat:
         options:
           model: qwen3.5-plus
@@ -37,7 +37,7 @@ spring:
     # PGVector 向量存储配置
     vectorstore:
       pgvector:
-        dimension: 1536
+        dimension: 1024
         table-name: vector_store
 
 mybatis-plus:

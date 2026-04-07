@@ -19,6 +19,10 @@ dashscope:
 
 # 数据库配置
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
   datasource:
     url: jdbc:mysql://118.195.198.44:3306/drug-agent-test
     username: drug-agent-test

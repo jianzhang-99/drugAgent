@@ -82,7 +82,12 @@ public class AgentResponseService {
         // 处理需要降级的情况
         if (executionResult.isNeedsFallback()) {
             resp.setRequiresClarification(true);
-            resp.setClarificationQuestion("系统检测到执行异常，可能需要人工介入处理。");
+            // 优先使用执行结果中已有的澄清问题，否则使用默认提示
+            String clarifyQuestion = executionResult.getClarificationQuestion();
+            if (clarifyQuestion == null || clarifyQuestion.isBlank()) {
+                clarifyQuestion = "系统检测到执行异常，可能需要人工介入处理。";
+            }
+            resp.setClarificationQuestion(clarifyQuestion);
         }
 
         log.info("[AgentResponseService] 响应构建完成: scene={}, answerLength={}",

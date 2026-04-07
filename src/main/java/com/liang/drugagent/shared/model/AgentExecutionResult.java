@@ -114,6 +114,11 @@ public class AgentExecutionResult {
     private String generatedTitle;
 
     /**
+     * 澄清问题（当 needsClarification 为 true 时）。
+     */
+    private String clarificationQuestion;
+
+    /**
      * 创建成功结果。
      */
     public static AgentExecutionResult success(SceneEnum scene, String answer) {

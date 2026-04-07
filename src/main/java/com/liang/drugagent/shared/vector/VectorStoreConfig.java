@@ -6,8 +6,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
@@ -62,9 +64,12 @@ public class VectorStoreConfig {
     }
 
     /**
-     * PostgreSQL JdbcTemplate（专供 PGVector 使用）
+     * PostgreSQL JdbcTemplate（专供 PGVector 使用）。
+     * 标记 @Primary 确保 PgVectorStore 默认使用此 JdbcTemplate。
+     * 添加 @Qualifier("pgVectorJdbcTemplate") 确保可被精确注入。
      */
-    @Bean
+    @Bean("pgVectorJdbcTemplate")
+    @Primary
     public JdbcTemplate pgVectorJdbcTemplate(DataSource pgVectorDataSource) {
         return new JdbcTemplate(pgVectorDataSource);
     }
@@ -78,15 +83,20 @@ public class VectorStoreConfig {
      * - 向量相似度检索
      * - metadata 过滤</p>
      *
-     * @param jdbcTemplate PostgreSQL JdbcTemplate
+     * <p>注意：直接在方法内部使用 pgVectorDataSource 创建 JdbcTemplate，
+     * 避免因 Spring Boot 多 DataSource 配置导致的注入混乱。</p>
+     *
      * @param embeddingModel Spring AI 自动注入的 Embedding 模型
      * @param properties PGVector 配置属性
      * @return PGVector 向量数据库实例
      */
     @Bean
-    public PgVectorStore pgVectorStore(JdbcTemplate jdbcTemplate, EmbeddingModel embeddingModel,
+    public PgVectorStore pgVectorStore(EmbeddingModel embeddingModel,
                                         PgVectorProperties properties) {
-        PgVectorStore pgVectorStore = PgVectorStore.builder(jdbcTemplate, embeddingModel)
+        // 直接使用 pgVectorDataSource 创建 JdbcTemplate，避免 Spring 注入混乱
+        JdbcTemplate pgVectorJdbcTemplate = new JdbcTemplate(pgVectorDataSource(properties));
+
+        PgVectorStore pgVectorStore = PgVectorStore.builder(pgVectorJdbcTemplate, embeddingModel)
                 .vectorTableName(properties.getTableName())
                 .dimensions(properties.getDimension())
                 .initializeSchema(true)

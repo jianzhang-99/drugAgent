@@ -137,8 +137,8 @@ public class IngestService {
     private Document toAiDocument(RagChunk chunk) {
         ChunkMetadata metadata = chunk.getMetadata();
         Map<String, Object> attributes = new HashMap<>();
-        attributes.put("chunkId", metadata.getChunkId());
-        attributes.put("sourceId", metadata.getSourceId());
+        attributes.put("chunkId", metadata.getChunkId() != null ? metadata.getChunkId() : "");
+        attributes.put("sourceId", metadata.getSourceId() != null ? metadata.getSourceId() : "");
         attributes.put("sourceTitle", metadata.getSourceTitle() != null ? metadata.getSourceTitle() : "");
         attributes.put("orgId", metadata.getOrgId() != null ? metadata.getOrgId() : "");
         attributes.put("scene", metadata.getScene() != null ? metadata.getScene() : "");
@@ -146,15 +146,19 @@ public class IngestService {
         attributes.put("docType", metadata.getDocType() != null ? metadata.getDocType() : "");
         attributes.put("chunkIndex", metadata.getChunkIndex() != null ? metadata.getChunkIndex() : 0);
         attributes.put("sectionTitle", metadata.getSectionTitle() != null ? metadata.getSectionTitle() : "");
+        attributes.put("topicTags", metadata.getTopicTags() != null ? String.join(",", metadata.getTopicTags()) : "");
         attributes.put("pageNo", metadata.getPageNo() != null ? metadata.getPageNo() : 0);
         attributes.put("version", metadata.getVersion() != null ? metadata.getVersion() : "");
-        attributes.put("effectiveDate", metadata.getEffectiveDate() != null ? metadata.getEffectiveDate().toString() : null);
+        attributes.put("effectiveDate", metadata.getEffectiveDate() != null ? metadata.getEffectiveDate().toString() : "");
         attributes.put("hierarchyLevel", metadata.getHierarchyLevel() != null ? metadata.getHierarchyLevel() : "");
         attributes.put("status", metadata.getStatus() != null ? metadata.getStatus() : "");
         attributes.put("sourceOrg", metadata.getSourceOrg() != null ? metadata.getSourceOrg() : "");
 
+        // PGVector 要求 Document ID 必须是有效的 UUID 格式
+        String uuid = UUID.randomUUID().toString();
+
         return Document.builder()
-                .id(chunk.getChunkId())
+                .id(uuid)
                 .text(chunk.getContent())
                 .metadata(attributes)
                 .build();
