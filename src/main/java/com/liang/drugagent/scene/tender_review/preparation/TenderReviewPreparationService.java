@@ -288,19 +288,7 @@ public class TenderReviewPreparationService {
         if (sessionId == null || sessionId.isBlank()) {
             return List.of();
         }
-
-        List<com.liang.drugagent.scene.tender_review.model.TenderCase> allCases = caseService.listCases();
-        java.util.List<TenderDocument> documents = new java.util.ArrayList<>();
-
-        for (var tenderCase : allCases) {
-            if (sessionId.equals(tenderCase.getCaseId()) && tenderCase.getDocumentIds() != null) {
-                for (String docId : tenderCase.getDocumentIds()) {
-                    caseService.getDocument(docId).ifPresent(documents::add);
-                }
-            }
-        }
-
-        return documents;
+        return caseService.findDocumentsBySessionId(sessionId);
     }
 
     /**

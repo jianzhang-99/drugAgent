@@ -12,6 +12,7 @@ import type {
   Attachment,
   ChatSession,
   ModelInfo,
+  ChatRequest,
 } from '../types/agent';
 import * as agentApi from '../api/agentApi';
 import {
@@ -20,6 +21,7 @@ import {
   createUserMessage,
   createErrorMessage,
   createUploadingMessage,
+  createAssistantMessage,
 } from '../utils/messageMapper';
 
 export const useAgentStore = defineStore('agent', () => {
@@ -43,6 +45,15 @@ export const useAgentStore = defineStore('agent', () => {
 
   /** 发送消息状态 */
   const sending = ref(false);
+
+  /** 流式输出状态 */
+  const streaming = ref(false);
+  const streamingContent = ref('');
+  const streamingMessageId = ref<string | null>(null);
+
+  /** 语音状态 */
+  const speechRecognizing = ref(false);
+  const speechSynthesizing = ref(false);
 
   /** 上传文件状态 */
   const uploading = ref(false);
@@ -250,34 +261,50 @@ export const useAgentStore = defineStore('agent', () => {
       const currentFileIds = sessionFileIds.value[activeSessionId.value!] || [];
       console.log('[agentStore] sendMessage fileIds, sessionId=' + activeSessionId.value + ', count=' + currentFileIds.length + ', ids=' + JSON.stringify(currentFileIds));
 
-      const res = await agentApi.chat({
-        query: content,
-        sessionId: activeSessionId.value,
-        userId: 'default_user',
-        sceneHint: activeSession.value?.scene,
-        model: currentModel.value,
-        fileIds: currentFileIds.length > 0 ? currentFileIds : undefined,
-      });
+      // 根据是否有文件判断是否使用流式（复杂场景如标书审查不使用流式）
+      const useStream = currentFileIds.length === 0 && !activeSession.value?.scene;
 
-      if (res.data.code === 200 || res.data.code === 0) {
-        const aiMsg = mapResponseToMessage(res.data.data);
-        addMessage(aiMsg);
-
-        // 如果是澄清消息，设置澄清问题
-        if (aiMsg.type === 'assistant_clarify') {
-          // 澄清消息已包含内容
-        }
-
-        // 实时更新会话标题
-        if (res.data.data?.sessionTitle) {
-          const session = sessions.value.find(s => s.id === activeSessionId.value);
-          if (session) {
-            session.title = res.data.data.sessionTitle;
-          }
-        }
+      if (useStream) {
+        // 使用流式输出
+        await sendMessageStream({
+          query: content,
+          sessionId: activeSessionId.value,
+          userId: 'default_user',
+          sceneHint: activeSession.value?.scene,
+          model: currentModel.value,
+          stream: true,
+        });
       } else {
-        const errorMsg = createErrorMessage(res.data.message || '请求失败');
-        addMessage(errorMsg);
+        // 使用同步输出
+        const res = await agentApi.chat({
+          query: content,
+          sessionId: activeSessionId.value,
+          userId: 'default_user',
+          sceneHint: activeSession.value?.scene,
+          model: currentModel.value,
+          fileIds: currentFileIds.length > 0 ? currentFileIds : undefined,
+        });
+
+        if (res.data.code === 200 || res.data.code === 0) {
+          const aiMsg = mapResponseToMessage(res.data.data);
+          addMessage(aiMsg);
+
+          // 如果是澄清消息，设置澄清问题
+          if (aiMsg.type === 'assistant_clarify') {
+            // 澄清消息已包含内容
+          }
+
+          // 实时更新会话标题
+          if (res.data.data?.sessionTitle) {
+            const session = sessions.value.find(s => s.id === activeSessionId.value);
+            if (session) {
+              session.title = res.data.data.sessionTitle;
+            }
+          }
+        } else {
+          const errorMsg = createErrorMessage(res.data.message || '请求失败');
+          addMessage(errorMsg);
+        }
       }
     } catch (error: unknown) {
       console.error('发送消息失败:', error);
@@ -287,6 +314,85 @@ export const useAgentStore = defineStore('agent', () => {
       addMessage(errorMsg);
     } finally {
       sending.value = false;
+    }
+  }
+
+  /**
+   * 流式发送消息
+   */
+  async function sendMessageStream(req: ChatRequest) {
+    if (!activeSessionId.value) return;
+
+    // 重置流式状态
+    streaming.value = true;
+    streamingContent.value = '';
+    streamingMessageId.value = null;
+
+    // 创建初始助手消息
+    const assistantMsg = createAssistantMessage('');
+    assistantMsg.id = `stream_${Date.now()}`;
+    streamingMessageId.value = assistantMsg.id;
+    addMessage(assistantMsg);
+
+    try {
+      const stream = agentApi.streamChat(req);
+      const reader = stream.getReader();
+
+      let fullContent = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        if (value?.answer) {
+          fullContent += value.answer;
+          streamingContent.value = fullContent;
+
+          // 更新消息内容
+          if (streamingMessageId.value) {
+            const messages = messagesBySession.value[activeSessionId.value!];
+            const msg = messages?.find(m => m.id === streamingMessageId.value);
+            if (msg) {
+              msg.content = fullContent;
+            }
+          }
+        }
+
+        // 如果收到完整响应（含结构化数据），处理最终结果
+        if (value?.sessionTitle || value?.report || value?.riskLevel) {
+          // 实时更新会话标题
+          if (value?.sessionTitle) {
+            const session = sessions.value.find(s => s.id === activeSessionId.value);
+            if (session) {
+              session.title = value.sessionTitle;
+            }
+          }
+        }
+      }
+
+      // 流式结束，将最终内容的消息转换为完整消息
+      if (streamingMessageId.value) {
+        const messages = messagesBySession.value[activeSessionId.value!];
+        const msg = messages?.find(m => m.id === streamingMessageId.value);
+        if (msg && fullContent) {
+          // 保留流式内容作为最终消息
+          msg.content = fullContent;
+        }
+      }
+    } catch (error: unknown) {
+      console.error('[agentStore] 流式发送消息失败:', error);
+      const errorMsg = createErrorMessage(
+        error instanceof Error ? error.message : '网络错误，请稍后重试'
+      );
+      // 移除流式消息，添加错误消息
+      if (streamingMessageId.value) {
+        removeMessage(streamingMessageId.value);
+      }
+      addMessage(errorMsg);
+    } finally {
+      streaming.value = false;
+      streamingContent.value = '';
+      streamingMessageId.value = null;
     }
   }
 
@@ -470,6 +576,11 @@ export const useAgentStore = defineStore('agent', () => {
     messagesBySession,
     loading,
     sending,
+    streaming,
+    streamingContent,
+    streamingMessageId,
+    speechRecognizing,
+    speechSynthesizing,
     uploading,
     currentResult,
     pendingFiles,
@@ -491,6 +602,7 @@ export const useAgentStore = defineStore('agent', () => {
     clearAllSessions,
     updateSessionTitle,
     sendMessage,
+    sendMessageStream,
     uploadFiles,
     addMessage,
     removeMessage,

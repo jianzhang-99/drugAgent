@@ -13,6 +13,8 @@ import type {
   ChatMessage,
   ApiResponse,
   ModelInfo,
+  SpeechRecognitionResponse,
+  SpeechSynthesisResponse,
 } from '../types/agent';
 import * as mockAgentApi from './mockAgentApi';
 
@@ -159,4 +161,169 @@ export function addMessage(
     `/api/agent/sessions/${sessionId}/messages`,
     { content, role }
   );
+}
+
+/**
+ * 流式对话
+ * POST /api/agent/chat/stream
+ * 返回 SSE 流，需要使用 ReadableStream 处理
+ */
+export function streamChat(req: ChatRequest): ReadableStream<DrugAgentResp> {
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+  const url = BASE_URL + '/api/agent/chat/stream';
+
+  const readableStream = new ReadableStream<DrugAgentResp>({
+    async start(controller) {
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(req),
+        });
+
+        if (!response.ok) {
+          controller.close();
+          return;
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          controller.close();
+          return;
+        }
+
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('data:')) {
+              const data = line.slice(5).trim();
+              if (data && data !== '[DONE]') {
+                try {
+                  // SSE data format: {"event":"message","data":{...}}
+                  const parsed = JSON.parse(data);
+                  // The actual data is in parsed.data due to ServerSentEvent structure
+                  const eventData = parsed.data || parsed;
+                  controller.enqueue(eventData as DrugAgentResp);
+                } catch (e) {
+                  // Ignore parse errors for incomplete JSON
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error('[streamChat] SSE error:', e);
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return readableStream;
+}
+
+/**
+ * 语音识别（将音频转为文本）
+ * POST /agent/speech/recognize
+ * @param audioFile 音频文件
+ * @param format 音频格式（pcm, wav, mp3, opus）
+ * @param sampleRate 采样率（默认16000）
+ * @param language 语言（默认zh）
+ */
+export async function speechRecognize(
+  audioFile: File,
+  format: string = 'pcm',
+  sampleRate: number = 16000,
+  language: string = 'zh'
+): Promise<SpeechRecognitionResponse> {
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+  const url = BASE_URL + '/agent/speech/recognize';
+
+  try {
+    const formData = new FormData();
+    formData.append('file', audioFile);
+    formData.append('format', format);
+    formData.append('sampleRate', String(sampleRate));
+    formData.append('language', language);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        errorCode: 'HTTP_ERROR',
+        errorMessage: `请求失败: ${response.status}`,
+      };
+    }
+
+    const data = await response.json();
+    return data as SpeechRecognitionResponse;
+  } catch (e) {
+    console.error('[speechRecognize] error:', e);
+    return {
+      success: false,
+      errorCode: 'NETWORK_ERROR',
+      errorMessage: e instanceof Error ? e.message : '网络错误',
+    };
+  }
+}
+
+/**
+ * 语音合成（将文本转为音频）
+ * POST /agent/speech/synthesize
+ * @param text 要转换的文本
+ * @param voice 语音名称（默认friendly）
+ * @param format 音频格式（默认mp3）
+ * @param speed 语速（默认1.0）
+ */
+export async function speechSynthesize(
+  text: string,
+  voice: string = 'friendly',
+  format: string = 'mp3',
+  speed: number = 1.0
+): Promise<SpeechSynthesisResponse> {
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+  const url = BASE_URL + '/agent/speech/synthesize';
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ text, voice, format, speed }),
+    });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        errorCode: 'HTTP_ERROR',
+        errorMessage: `请求失败: ${response.status}`,
+      };
+    }
+
+    const data = await response.json();
+    return data as SpeechSynthesisResponse;
+  } catch (e) {
+    console.error('[speechSynthesize] error:', e);
+    return {
+      success: false,
+      errorCode: 'NETWORK_ERROR',
+      errorMessage: e instanceof Error ? e.message : '网络错误',
+    };
+  }
 }

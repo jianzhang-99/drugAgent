@@ -15,6 +15,7 @@ import com.liang.drugagent.shared.llm.LlmResponse;
 import com.liang.drugagent.shared.model.EvidenceItem;
 import com.liang.drugagent.shared.model.RagOutcome;
 import com.liang.drugagent.shared.tool.KnowledgeRetrievalTool;
+import com.liang.drugagent.shared.intent.IntentDetectionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -51,6 +52,7 @@ public class AgentSceneService {
     private final LlmService llmService;
     private final TenderReviewSceneService tenderReviewSceneService;
     private final KnowledgeRetrievalTool knowledgeRetrievalTool;
+    private final IntentDetectionService intentDetectionService;
 
     /**
      * 执行对话并返回结果。
@@ -68,11 +70,16 @@ public class AgentSceneService {
      */
     public AgentSceneExecution decideAndExecute(AgentChatContext context, AgentChatReq req) {
         log.info("[AgentSceneService] 开始处理对话请求: sessionId={}", context.getSessionId());
+        long totalStartTime = System.currentTimeMillis();
 
         try {
             // 1. 路由决策
+            long routeStartTime = System.currentTimeMillis();
             WorkflowRouteDecision decision = decideRoute(context, req);
+            long routeCostMs = System.currentTimeMillis() - routeStartTime;
             context.setSceneType(decision.getScene());
+            log.info("[AgentSceneService] 路由决策完成 - routeCostMs={}, scene={}, source={}",
+                    routeCostMs, decision.getScene(), decision.getSource());
 
             // 1.5 如果需要澄清，直接返回澄清响应
             if (decision.isRequiresClarification()) {
@@ -239,15 +246,29 @@ public class AgentSceneService {
             }
         }
 
-        // ========== 第三层：未命中 -> 普通对话（不跑 LLM）==========
+        // ========== 第三层：LLM 意图识别兜底 ==========
 
-        // 没有强/弱规则命中，说明是普通对话，直接走 DEFAULT 场景
-        // 注意：这里不调用 LLM 意图分类，直接判定为普通对话
-        log.info("[AgentSceneService] 【未命中】普通对话，直接走 DEFAULT 场景");
+        // 没有强/弱规则命中，使用 tongyi-intent-detect-v3 做意图识别
+        log.info("[AgentSceneService] 【未命中】调用意图识别模型 tongyi-intent-detect-v3 做兜底判断");
+        SceneEnum detectedScene = intentDetectionService.detectIntent(query);
+
+        if (detectedScene != SceneEnum.DEFAULT) {
+            log.info("[AgentSceneService] 【意图识别】检测到业务场景: {}", detectedScene);
+            return WorkflowRouteDecision.builder()
+                    .scene(detectedScene)
+                    .source("intent-model")
+                    .reason("tongyi-intent-detect-v3 意图识别结果: " + detectedScene.name())
+                    .confidence(0.7)
+                    .requiresClarification(false)
+                    .build();
+        }
+
+        // 意图识别也是 DEFAULT，说明确实是普通对话
+        log.info("[AgentSceneService] 【意图识别】识别为普通对话，走 DEFAULT 场景");
         return WorkflowRouteDecision.builder()
                 .scene(SceneEnum.DEFAULT)
-                .source("default")
-                .reason("无业务场景信号，使用默认对话")
+                .source("intent-model")
+                .reason("tongyi-intent-detect-v3 意图识别结果: DEFAULT")
                 .confidence(0.5)
                 .requiresClarification(false)
                 .build();
@@ -393,11 +414,14 @@ public class AgentSceneService {
     private AgentSceneExecution dispatchToGeneralChat(AgentChatContext context, String query,
                                                        WorkflowRouteDecision decision) {
         log.info("[AgentSceneService] 分发到通用对话");
+        long totalStartTime = System.currentTimeMillis();
 
         try {
-            // 1. 知识检索增强
+            // 1. 知识检索增强（仅检索不生成答案，避免双LLM调用）
+            long ragStartTime = System.currentTimeMillis();
             String orgId = extractOrgId(context);
-            RagOutcome ragOutcome = knowledgeRetrievalTool.retrieve(query, orgId, null);
+            RagOutcome ragOutcome = knowledgeRetrievalTool.search(query, orgId, null, null, null);
+            long ragRetrieveCostMs = System.currentTimeMillis() - ragStartTime;
 
             // 2. 判断检索结果，决定是否使用 RAG 上下文
             boolean useRagContext = "ANSWERED".equals(ragOutcome.getDecision())
@@ -405,19 +429,25 @@ public class AgentSceneService {
                     && !ragOutcome.getEvidenceList().isEmpty();
 
             if (useRagContext) {
-                log.info("[AgentSceneService] 知识检索命中，使用 RAG 增强回答，evidenceCount={}",
-                        ragOutcome.getEvidenceList().size());
+                log.info("[AgentSceneService] 知识检索命中，使用 RAG 增强回答 - ragRetrieveCostMs={}, evidenceCount={}",
+                        ragRetrieveCostMs, ragOutcome.getEvidenceList().size());
             } else {
-                log.info("[AgentSceneService] 知识检索未命中，使用纯 LLM 回答，decision={}",
-                        ragOutcome.getDecision());
+                log.info("[AgentSceneService] 知识检索未命中，使用纯 LLM 回答 - ragRetrieveCostMs={}, decision={}",
+                        ragRetrieveCostMs, ragOutcome.getDecision());
             }
 
             // 3. 构建增强后的 system prompt
             String systemPrompt = buildEnhancedSystemPrompt(ragOutcome, useRagContext);
 
             // 4. 调用 LLM 获取回答
+            long answerStartTime = System.currentTimeMillis();
             GeneralChatResult chatResult = generalChatWithTitle(query, context.getSessionId(),
                     context.getModel(), systemPrompt);
+            long finalAnswerCostMs = System.currentTimeMillis() - answerStartTime;
+
+            long totalCostMs = System.currentTimeMillis() - totalStartTime;
+            log.info("[AgentSceneService] 通用对话完成 - totalCostMs={}, ragRetrieveCostMs={}, finalAnswerCostMs={}, useRagContext={}",
+                    totalCostMs, ragRetrieveCostMs, finalAnswerCostMs, useRagContext);
 
             return AgentSceneExecution.builder()
                     .decision(decision)
@@ -488,27 +518,28 @@ public class AgentSceneService {
                         provider, llmResponse.getSuccess(), llmResponse.getErrorMessage());
                 throw new RuntimeException("LLM调用失败: " + llmResponse.getErrorMessage());
             }
-            String fullResponse = llmResponse.getContent();
+            String answer = llmResponse.getContent();
 
-            // 从回答中提取标题（最后一行格式：【会话标题】xxx）
-            String title = "新对话";
-            String answer = fullResponse;
-
-            int titleIndex = fullResponse.lastIndexOf("【会话标题】");
-            if (titleIndex != -1) {
-                title = fullResponse.substring(titleIndex + 7).trim();
-                answer = fullResponse.substring(0, titleIndex).trim();
-            }
-
-            // 限制标题长度
-            if (title.length() > 20) {
-                title = title.substring(0, 20);
-            }
+            // 使用 query 截断作为默认标题，不等待 LLM 生成
+            // LLM 回答中不要包含【会话标题】标记，避免解析混乱
+            String title = generateDefaultTitle(query);
 
             return new GeneralChatResult(answer, title);
         } catch (Exception e) {
             throw new RuntimeException("通用对话失败: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * 生成默认标题（使用 query 截断）。
+     */
+    private String generateDefaultTitle(String query) {
+        if (query == null || query.isBlank()) {
+            return "新对话";
+        }
+        // 截取前20个字符作为标题
+        String title = query.length() > 20 ? query.substring(0, 20) : query;
+        return title;
     }
 
     /**

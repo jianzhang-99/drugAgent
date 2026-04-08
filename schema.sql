@@ -64,3 +64,19 @@ CREATE TABLE IF NOT EXISTS rag_file (
     UNIQUE KEY uk_source_id (source_id),
     KEY idx_deleted (deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='RAG文件表（关联OSS文件与向量库sourceId）';
+
+-- 标书案例文档表
+-- 负责持久化标书审查案例中的文档元数据，并关联 oss_file
+CREATE TABLE IF NOT EXISTS tender_case_document (
+    id VARCHAR(36) PRIMARY KEY COMMENT '文档唯一标识（UUID）',
+    case_id VARCHAR(36) NOT NULL COMMENT '所属标书案例ID',
+    oss_file_id VARCHAR(36) DEFAULT NULL COMMENT '关联的OSS文件ID',
+    file_name VARCHAR(255) NOT NULL COMMENT '原始文件名',
+    document_name VARCHAR(255) DEFAULT NULL COMMENT '文档展示名',
+    file_type VARCHAR(50) DEFAULT NULL COMMENT '文件扩展名',
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING' COMMENT '文档处理状态',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    INDEX idx_case_id (case_id),
+    INDEX idx_oss_file_id (oss_file_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='标书案例文档表';

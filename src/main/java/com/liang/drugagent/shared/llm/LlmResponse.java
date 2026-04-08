@@ -90,6 +90,11 @@ public class LlmResponse {
     private Map<String, Object> extraInfo;
 
     /**
+     * 工具调用（当模型选择调用工具时填充）
+     */
+    private ToolCallResult toolCall;
+
+    /**
      * Token 使用量内部类
      */
     @Data
@@ -112,6 +117,36 @@ public class LlmResponse {
          * 总 token 数
          */
         private Integer totalTokens;
+    }
+
+    /**
+     * 工具调用结果（Function Calling）
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ToolCallResult {
+
+        /**
+         * 调用 ID
+         */
+        private String id;
+
+        /**
+         * 调用的工具名称
+         */
+        private String name;
+
+        /**
+         * 工具参数（JSON 字符串）
+         */
+        private String arguments;
+
+        /**
+         * 解析后的参数 Map
+         */
+        private Map<String, Object> parsedArguments;
     }
 
     /**

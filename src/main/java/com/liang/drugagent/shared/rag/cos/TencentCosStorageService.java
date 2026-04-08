@@ -129,6 +129,48 @@ public class TencentCosStorageService {
     }
 
     /**
+     * 将字节内容保存到 COS 并写入 oss_file。
+     */
+    public OssFile saveBytesFile(String sessionId, String filename, byte[] content) {
+        if (content == null) {
+            throw new IllegalArgumentException("文件内容不能为空");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        String suffix = getFileSuffix(filename);
+        String objectKey = buildObjectKey(sessionId, suffix);
+        File tempFile = null;
+        try {
+            tempFile = File.createTempFile("cos_upload_", "." + suffix);
+            try (FileOutputStream fos = new FileOutputStream(tempFile)) {
+                fos.write(content);
+            }
+            uploadFile(tempFile, objectKey);
+
+            OssFile ossFile = OssFile.builder()
+                    .id(UUID.randomUUID().toString())
+                    .sessionId(sessionId)
+                    .fileName(filename)
+                    .fileSuffix(suffix)
+                    .fileSize((long) content.length)
+                    .ossUrl(objectKey)
+                    .fileType(FILE_TYPE_ATTACHMENT)
+                    .uploadStatus(1)
+                    .createdAt(now)
+                    .updatedAt(now)
+                    .build();
+            ossFileMapper.insert(ossFile);
+            return ossFile;
+        } catch (Exception e) {
+            throw new RuntimeException("字节文件保存失败: " + filename, e);
+        } finally {
+            if (tempFile != null && tempFile.exists()) {
+                tempFile.delete();
+            }
+        }
+    }
+
+    /**
      * 构建COS对象路径。
      * 格式：attachment/{yyyy-MM-dd}/{sessionId}/{uuid}.{suffix}
      */

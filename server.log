@@ -1,13 +1,13 @@
 [INFO] Scanning for projects...
-[WARNING] 
+[WARNING]
 [WARNING] Some problems were encountered while building the effective model for com.liang:drug-agent:jar:0.0.1-SNAPSHOT
 [WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.apache.pdfbox:pdfbox:jar -> version 3.0.0 vs 2.0.31 @ line 144, column 21
-[WARNING] 
+[WARNING]
 [WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
-[WARNING] 
+[WARNING]
 [WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
-[WARNING] 
-[INFO] 
+[WARNING]
+[INFO]
 [INFO] ------------------------< com.liang:drug-agent >------------------------
 [INFO] Building drug-agent 0.0.1-SNAPSHOT
 [INFO]   from pom.xml
@@ -36,7 +36,7 @@
 [DrugAgentApplication] 已将 dashscope.aliyuncs.com 加入直连列表，绕过系统代理
 Standard Commons Logging discovery in action with spring-jcl: please remove commons-logging.jar from classpath in order to avoid potential conflicts
 09:37:34,045 |-INFO in ch.qos.logback.classic.LoggerContext[default] - This is logback-classic version 1.5.18
-09:37:34,046 |-INFO in ch.qos.logback.classic.util.ContextInitializer@77e80a5e - Here is a list of configurators discovered as a service, by rank: 
+09:37:34,046 |-INFO in ch.qos.logback.classic.util.ContextInitializer@77e80a5e - Here is a list of configurators discovered as a service, by rank:
 09:37:34,046 |-INFO in ch.qos.logback.classic.util.ContextInitializer@77e80a5e -   org.springframework.boot.logging.logback.RootLogLevelConfigurator
 09:37:34,046 |-INFO in ch.qos.logback.classic.util.ContextInitializer@77e80a5e - They will be invoked in order until ExecutionStatus.DO_NOT_INVOKE_NEXT_IF_ANY is returned.
 09:37:34,046 |-INFO in ch.qos.logback.classic.util.ContextInitializer@77e80a5e - Constructed configurator of type class org.springframework.boot.logging.logback.RootLogLevelConfigurator
@@ -54,7 +54,7 @@ Standard Commons Logging discovery in action with spring-jcl: please remove comm
 09:37:34,052 |-INFO in ch.qos.logback.classic.util.ContextInitializer@77e80a5e - Trying to configure with ch.qos.logback.classic.BasicConfigurator
 09:37:34,053 |-INFO in ch.qos.logback.classic.util.ContextInitializer@77e80a5e - Constructed configurator of type class ch.qos.logback.classic.BasicConfigurator
 09:37:34,053 |-INFO in ch.qos.logback.classic.BasicConfigurator@1d8e2eea - Setting up default configuration.
-09:37:34,063 |-INFO in ch.qos.logback.core.ConsoleAppender[console] - BEWARE: Writing to the console can be very slow. Avoid logging to the 
+09:37:34,063 |-INFO in ch.qos.logback.core.ConsoleAppender[console] - BEWARE: Writing to the console can be very slow. Avoid logging to the
 09:37:34,063 |-INFO in ch.qos.logback.core.ConsoleAppender[console] - console in production environments, especially in high volume systems.
 09:37:34,063 |-INFO in ch.qos.logback.core.ConsoleAppender[console] - See also https://logback.qos.ch/codes.html#slowConsole
 09:37:34,063 |-INFO in ch.qos.logback.classic.util.ContextInitializer@77e80a5e - ch.qos.logback.classic.BasicConfigurator.configure() call lasted 10 milliseconds. ExecutionStatus=NEUTRAL
@@ -68,7 +68,7 @@ Standard Commons Logging discovery in action with spring-jcl: please remove comm
 09:37:34,311 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - About to instantiate appender of type [ch.qos.logback.core.ConsoleAppender]
 09:37:34,313 |-INFO in ch.qos.logback.core.model.processor.ImplicitModelHandler - Assuming default type [ch.qos.logback.classic.encoder.PatternLayoutEncoder] for [encoder] property
 09:37:34,313 |-INFO in ch.qos.logback.core.model.processor.ModelInterpretationContext@240139e1 - value "%d{HH:mm:ss.SSS} %highlight(%-5level) [%magenta(%X{traceId:-无})] [%blue(%X{scene:-无})] %cyan([%thread]) %green(%-40.40logger{20}) - %m%n%wEx" substituted for "${CONSOLE_LOG_PATTERN}"
-09:37:34,323 |-INFO in ch.qos.logback.core.ConsoleAppender[CONSOLE] - BEWARE: Writing to the console can be very slow. Avoid logging to the 
+09:37:34,323 |-INFO in ch.qos.logback.core.ConsoleAppender[CONSOLE] - BEWARE: Writing to the console can be very slow. Avoid logging to the
 09:37:34,323 |-INFO in ch.qos.logback.core.ConsoleAppender[CONSOLE] - console in production environments, especially in high volume systems.
 09:37:34,323 |-INFO in ch.qos.logback.core.ConsoleAppender[CONSOLE] - See also https://logback.qos.ch/codes.html#slowConsole
 09:37:34,323 |-INFO in ch.qos.logback.core.model.processor.AppenderModelHandler - Processing appender named [JSON_FILE]
@@ -215,3 +215,39 @@ Standard Commons Logging discovery in action with spring-jcl: please remove comm
 [ERROR] 
 [ERROR] For more information about the errors and possible solutions, please read the following articles:
 [ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
+{"level":30,"time":1775121416020,"pid":69296,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
+{"level":30,"time":1775121416020,"pid":69296,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1775121416312,"pid":69314,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
+{"level":30,"time":1775121416313,"pid":69314,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1775133138707,"pid":19940,"hostname":"TONY","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
+{"level":30,"time":1775133138707,"pid":19940,"hostname":"TONY","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1775133138813,"pid":16484,"hostname":"TONY","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
+{"level":30,"time":1775133138813,"pid":16484,"hostname":"TONY","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1775438825705,"pid":16673,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
+{"level":30,"time":1775438825705,"pid":16673,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1775438826010,"pid":16691,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
+{"level":30,"time":1775438826010,"pid":16691,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1775443622714,"pid":24240,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
+{"level":30,"time":1775443622714,"pid":24240,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1775443623007,"pid":24258,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
+{"level":30,"time":1775443623007,"pid":24258,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1775453947674,"pid":35056,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
+{"level":30,"time":1775453947674,"pid":35056,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1775453948022,"pid":35080,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
+{"level":30,"time":1775453948023,"pid":35080,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1775651561202,"pid":20492,"hostname":"TONY","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
+{"level":30,"time":1775651561203,"pid":20492,"hostname":"TONY","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1775651561305,"pid":19712,"hostname":"TONY","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
+{"level":30,"time":1775651561305,"pid":19712,"hostname":"TONY","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1775654547668,"pid":26984,"hostname":"TONY","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
+{"level":30,"time":1775654547669,"pid":26984,"hostname":"TONY","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1775654547785,"pid":32880,"hostname":"TONY","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
+{"level":30,"time":1775654547785,"pid":32880,"hostname":"TONY","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1775654829796,"pid":29780,"hostname":"TONY","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
+{"level":30,"time":1775654829797,"pid":29780,"hostname":"TONY","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1775654829903,"pid":27596,"hostname":"TONY","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
+{"level":30,"time":1775654829903,"pid":27596,"hostname":"TONY","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1775659095544,"pid":31224,"hostname":"TONY","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
+{"level":30,"time":1775659095544,"pid":31224,"hostname":"TONY","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1775659095760,"pid":33220,"hostname":"TONY","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
+{"level":30,"time":1775659095760,"pid":33220,"hostname":"TONY","msg":"MySQL MCP server running on stdio"}

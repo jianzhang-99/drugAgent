@@ -59,7 +59,10 @@ public class AgentController {
 
     @Operation(summary = "同步对话")
     @PostMapping("/chat")
-    public Result<AgentChatResp> chat(@RequestBody AgentChatReq req) {
+    public Object chat(@RequestBody AgentChatReq req) {
+        if (Boolean.TRUE.equals(req.getStream())) {
+            return streamChat(req);
+        }
         return Result.success(agentChatService.chat(req));
     }
 

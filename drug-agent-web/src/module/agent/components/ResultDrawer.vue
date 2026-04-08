@@ -77,7 +77,7 @@
         </div>
 
         <!-- Evidence Section -->
-        <div class="evidence-section">
+        <div class="evidence-section" v-if="mappedEvidences.length > 0">
           <div class="section-title-wrap">
             <div class="title-left">
               <t-icon name="search" color="#165dff"/>
@@ -102,6 +102,49 @@
                   <div class="col-header"><t-icon name="file-word" /> {{ fileB.toUpperCase() }}</div>
                   <div class="col-content" v-html="highlightText(ev.contentB)"></div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- OCR 文档解析结果 -->
+        <div class="ocr-section" v-if="result?.ocrResult">
+          <div class="section-title-wrap">
+            <div class="title-left">
+              <t-icon name="document" color="#165dff"/>
+              <span class="title-text">文档解析结果</span>
+            </div>
+            <div class="title-right">提取 {{ result?.ocrResult?.blocks?.length || 0 }} 个文本块</div>
+          </div>
+
+          <!-- 完整文本 -->
+          <div class="ocr-text" v-if="result?.ocrResult?.text">
+            <div class="ocr-text-label">提取文本</div>
+            <div class="ocr-text-content">{{ result.ocrResult.text }}</div>
+          </div>
+
+          <!-- 文本块列表 -->
+          <div class="ocr-blocks" v-if="result?.ocrResult?.blocks?.length">
+            <div class="ocr-block" v-for="(block, idx) in result.ocrResult.blocks" :key="idx">
+              <div class="block-header">
+                <span class="block-index">{{ idx + 1 }}</span>
+                <span class="block-page" v-if="block.page">第 {{ block.page }} 页</span>
+                <span class="block-confidence" v-if="block.confidence">{{ (block.confidence * 100).toFixed(0) }}% 置信度</span>
+              </div>
+              <div class="block-content">{{ block.text }}</div>
+            </div>
+          </div>
+
+          <!-- 表格列表 -->
+          <div class="ocr-tables" v-if="result?.ocrResult?.tables?.length">
+            <div class="ocr-table" v-for="(table, idx) in result.ocrResult.tables" :key="idx">
+              <div class="table-header">
+                <span class="table-index">{{ idx + 1 }}</span>
+                <span class="table-page" v-if="table.page">第 {{ table.page }} 页</span>
+              </div>
+              <div class="table-content" v-if="table.htmlContent" v-html="table.htmlContent"></div>
+              <div class="table-content csv-content" v-else-if="table.csvContent">
+                <pre>{{ table.csvContent }}</pre>
               </div>
             </div>
           </div>
@@ -573,5 +616,160 @@ async function handleExportPdf() {
   border-radius: 2px;
   padding: 2px 4px;
   margin: 0;
+}
+
+/* OCR 文档解析样式 */
+.ocr-section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #e5e6eb;
+  margin-bottom: 24px;
+}
+
+.ocr-text {
+  margin-bottom: 20px;
+}
+
+.ocr-text-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1d2129;
+  margin-bottom: 12px;
+}
+
+.ocr-text-content {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #333;
+  background: #f7f8fa;
+  padding: 16px;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ocr-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ocr-block {
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.block-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f9fafb;
+  padding: 10px 16px;
+  border-bottom: 1px solid #e5e6eb;
+}
+
+.block-index {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #e8f0ff;
+  color: #165dff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.block-page {
+  font-size: 12px;
+  color: #86909c;
+}
+
+.block-confidence {
+  font-size: 12px;
+  color: #00b42a;
+  background: #e8ffea;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.block-content {
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #333;
+}
+
+.ocr-tables {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ocr-table {
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.table-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f9fafb;
+  padding: 10px 16px;
+  border-bottom: 1px solid #e5e6eb;
+}
+
+.table-index {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #e8f0ff;
+  color: #165dff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.table-page {
+  font-size: 12px;
+  color: #86909c;
+}
+
+.table-content {
+  padding: 16px;
+  overflow-x: auto;
+}
+
+.table-content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.table-content table th,
+.table-content table td {
+  border: 1px solid #e5e6eb;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.table-content table th {
+  background: #f9fafb;
+  font-weight: 600;
+}
+
+.csv-content pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #333;
 }
 </style>

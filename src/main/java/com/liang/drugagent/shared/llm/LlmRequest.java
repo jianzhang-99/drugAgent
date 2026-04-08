@@ -80,6 +80,29 @@ public class LlmRequest {
     private Map<String, Object> extraParams;
 
     /**
+     * 可用工具列表（Function Calling）
+     */
+    private List<ToolDefinition> tools;
+
+    /**
+     * 强制使用的工具（可选，用于限制模型只能调用指定工具）
+     */
+    private String toolChoice;
+
+    /**
+     * 输出格式：null（默认）/ json_object / json_schema
+     */
+    private String responseFormat;
+
+    /**
+     * 是否启用深度思考模式（默认启用）
+     * 设置为 false 可降低延迟和成本，适用于简单问答
+     * 复杂推理和长报告生成时可启用
+     */
+    @Builder.Default
+    private Boolean thinkingEnabled = true;
+
+    /**
      * 聊天消息内部类
      */
     @Data
@@ -94,13 +117,67 @@ public class LlmRequest {
         private String role;
 
         /**
-         * 消息内容
+         * 消息内容（纯文本）
          */
         private String content;
+
+        /**
+         * 多模态内容（支持图片、视频等）
+         * 每个元素可以是：
+         * - {"text": "文本内容"}
+         * - {"image_url": {"url": "https://..."}}
+         * - {"image_base64": "base64数据", "image_type": "image/jpeg"}
+         */
+        private List<Map<String, Object>> multiModalContent;
 
         /**
          * 消息名称（可选）
          */
         private String name;
+
+        /**
+         * 工具调用（当 role=assistant 且模型选择调用工具时）
+         */
+        private ToolCall toolCall;
+
+        /**
+         * 判断是否有图片内容。
+         */
+        public boolean hasImageContent() {
+            if (multiModalContent == null || multiModalContent.isEmpty()) {
+                return false;
+            }
+            for (Map<String, Object> item : multiModalContent) {
+                if (item.containsKey("image_url") || item.containsKey("image_base64")) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    /**
+     * 工具调用内部类
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ToolCall {
+
+        /**
+         * 调用的工具 ID
+         */
+        private String id;
+
+        /**
+         * 调用的工具名称
+         */
+        private String name;
+
+        /**
+         * 工具参数（JSON 格式的字符串）
+         */
+        private String arguments;
     }
 }

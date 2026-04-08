@@ -98,4 +98,9 @@ public class AgentChatResp {
     /** 本轮上传的文件ID列表 */
     private List<String> fileIds;
 
+    /**
+     * 是否为流式响应
+     */
+    private Boolean streamed;
+
 }

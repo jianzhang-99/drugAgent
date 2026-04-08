@@ -26,6 +26,7 @@ import com.liang.drugagent.shared.model.WorkflowResult;
 import com.liang.drugagent.shared.llm.LlmClient;
 import com.liang.drugagent.shared.llm.LlmProviderType;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import com.liang.drugagent.shared.llm.LlmRequest;
 import com.liang.drugagent.shared.llm.LlmResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -68,6 +69,7 @@ public class TenderReviewWorkflow {
     private final ServiceCommitmentSemanticAnalyzer serviceCommitmentSemanticAnalyzer;
     private final TeamOverlapSemanticAnalyzer teamOverlapSemanticAnalyzer;
     private final Executor semanticAnalyzerExecutor;
+    private final boolean l4ValidationEnabled;
 
     /**
      * LLM语义分析结果封装，包含命中的规则列表和各分析器的执行状态。
@@ -92,7 +94,8 @@ public class TenderReviewWorkflow {
                                 ImplementationMethodSemanticAnalyzer implementationMethodSemanticAnalyzer,
                                 ServiceCommitmentSemanticAnalyzer serviceCommitmentSemanticAnalyzer,
                                 TeamOverlapSemanticAnalyzer teamOverlapSemanticAnalyzer,
-                                @Qualifier("semanticAnalyzerExecutor") Executor semanticAnalyzerExecutor) {
+                                @Qualifier("semanticAnalyzerExecutor") Executor semanticAnalyzerExecutor,
+                                @Value("${agent.tender-review.l4-validation-enabled:true}") boolean l4ValidationEnabled) {
         this.LLMChatService = LLMChatService;
         this.llmClient = llmClient;
         this.tenderRuleEngine = tenderRuleEngine;
@@ -109,6 +112,7 @@ public class TenderReviewWorkflow {
         this.serviceCommitmentSemanticAnalyzer = serviceCommitmentSemanticAnalyzer;
         this.teamOverlapSemanticAnalyzer = teamOverlapSemanticAnalyzer;
         this.semanticAnalyzerExecutor = semanticAnalyzerExecutor;
+        this.l4ValidationEnabled = l4ValidationEnabled;
     }
 
     public SceneEnum support() {
@@ -239,8 +243,12 @@ public class TenderReviewWorkflow {
             }
         }
 
-        // L4 校验：检查输出合规性并生成规范的 answer
-        validateAndNormalizeResult(result);
+        // L4 校验：检查输出合规性并生成规范的 answer（可配置开关）
+        if (l4ValidationEnabled) {
+            validateAndNormalizeResult(result);
+        } else {
+            log.info("[TenderReviewWorkflow] L4 校验已禁用，跳过校验阶段");
+        }
 
         return result;
     }
@@ -262,7 +270,7 @@ public class TenderReviewWorkflow {
         Map<String, String> analyzerStatus = new ConcurrentHashMap<>();
 
         // 收集所有语义分析命中结果
-        List<RuleHit> allSemanticHits = new ArrayList<>();
+        List<RuleHit> allSemanticHits = Collections.synchronizedList(new ArrayList<>());
 
         // 定义6个分析器的名称与实现
         List<AnalyzerTask> tasks = List.of(
@@ -274,35 +282,34 @@ public class TenderReviewWorkflow {
                 new AnalyzerTask("W-M3", data -> teamOverlapSemanticAnalyzer.analyze(data))
         );
 
-        // Phase 2 分析器
-        try {
-            // W-P2 实施方法抄袭语义分析
-            List<RuleHit> wp2Hits = implementationMethodSemanticAnalyzer.analyze(tenderReviewData);
-            allSemanticHits.addAll(wp2Hits);
-            log.info("[TenderReviewWorkflow] W-P2 语义分析完成，命中数: {} - caseId: {}", wp2Hits.size(), caseId);
-        } catch (Exception e) {
-            log.error("[TenderReviewWorkflow] W-P2 语义分析异常 - caseId: {}, error: {}", caseId, e.getMessage());
-        }
+        // 并行执行所有6个分析器，每个独立超时30秒
+        List<CompletableFuture<Void>> futures = tasks.stream()
+                .map(task -> CompletableFuture.runAsync(() -> {
+                    try {
+                        log.info("[TenderReviewWorkflow] 开始执行分析器 {} - caseId: {}", task.name, caseId);
+                        analyzerStatus.put(task.name, "RUNNING");
+                        List<RuleHit> hits = task.analyzer.apply(tenderReviewData);
+                        allSemanticHits.addAll(hits);
+                        analyzerStatus.put(task.name, "SUCCESS");
+                        log.info("[TenderReviewWorkflow] 分析器 {} 执行成功，命中数: {} - caseId: {}", task.name, hits.size(), caseId);
+                    } catch (Exception e) {
+                        analyzerStatus.put(task.name, "FAILED");
+                        log.error("[TenderReviewWorkflow] 分析器 {} 执行异常 - caseId: {}, error: {}", task.name, caseId, e.getMessage());
+                    }
+                }, semanticAnalyzerExecutor)
+                        .orTimeout(30, TimeUnit.SECONDS)
+                        .exceptionally(ex -> {
+                            analyzerStatus.put(task.name, "TIMEOUT");
+                            log.warn("[TenderReviewWorkflow] 分析器 {} 执行超时（30秒） - caseId: {}", task.name, caseId);
+                            return null;
+                        }))
+                .collect(Collectors.toList());
 
-        try {
-            // W-P3 服务承诺抄袭语义分析
-            List<RuleHit> wp3Hits = serviceCommitmentSemanticAnalyzer.analyze(tenderReviewData);
-            allSemanticHits.addAll(wp3Hits);
-            log.info("[TenderReviewWorkflow] W-P3 语义分析完成，命中数: {} - caseId: {}", wp3Hits.size(), caseId);
-        } catch (Exception e) {
-            log.error("[TenderReviewWorkflow] W-P3 语义分析异常 - caseId: {}, error: {}", caseId, e.getMessage());
-        }
+        // 等待所有分析器完成（或超时）
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
-        try {
-            // W-M3 核心团队重叠语义分析
-            List<RuleHit> wm3Hits = teamOverlapSemanticAnalyzer.analyze(tenderReviewData);
-            allSemanticHits.addAll(wm3Hits);
-            log.info("[TenderReviewWorkflow] W-M3 语义分析完成，命中数: {} - caseId: {}", wm3Hits.size(), caseId);
-        } catch (Exception e) {
-            log.error("[TenderReviewWorkflow] W-M3 语义分析异常 - caseId: {}, error: {}", caseId, e.getMessage());
-        }
-
-        log.info("[TenderReviewWorkflow] LLM 语义分析完成，总命中数: {} - caseId: {}", allSemanticHits.size(), caseId);
+        log.info("[TenderReviewWorkflow] LLM 语义分析完成，总命中数: {} - caseId: {}, 状态: {}",
+                allSemanticHits.size(), caseId, analyzerStatus);
         return new SemanticAnalysisResult(allSemanticHits, analyzerStatus);
     }
 

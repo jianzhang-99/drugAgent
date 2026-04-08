@@ -40,6 +40,12 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!-- Spring Boot WebSocket (实时语音识别) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
         <!-- Spring AI Anthropic (MiniMax兼容) -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
@@ -159,6 +165,7 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
+
 
         <!-- Logstash Logback Encoder for structured logging -->
         <dependency>

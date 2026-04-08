@@ -38,4 +38,11 @@ public class AgentChatReq {
     /** 上传的文件数组 */
     private MultipartFile[] files;
 
+    /**
+     * 是否使用流式响应（默认false）
+     * 当为true时，简单对话场景会返回流式SSE响应
+     */
+    @Builder.Default
+    private Boolean stream = false;
+
 }

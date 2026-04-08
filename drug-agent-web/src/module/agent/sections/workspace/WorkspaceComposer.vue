@@ -56,6 +56,17 @@
             <span>引用知识</span>
           </button>
 
+          <button
+            class="tool-btn"
+            type="button"
+            :disabled="store.speechRecognizing"
+            @click="handleSpeechClick"
+          >
+            <svg v-if="!store.speechRecognizing" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            <t-loading v-if="store.speechRecognizing" size="small" />
+            <span>{{ store.speechRecognizing ? '识别中' : '语音输入' }}</span>
+          </button>
+
           <!-- 拖拽提示（无文件时显示） -->
           <span v-if="pendingFiles.length === 0" class="drag-tip">
             或直接拖拽文件到此处
@@ -100,6 +111,7 @@ import { computed, ref, onMounted } from 'vue';
 import { useAgentStore } from '../../store/agentStore';
 import UploadPanel from '../../components/UploadPanel.vue';
 import { MessagePlugin } from 'tdesign-vue-next';
+import { speechRecognize } from '../../api/agentApi';
 
 const store = useAgentStore();
 const inputText = ref('');
@@ -161,6 +173,84 @@ function handleKeydown(value: string, context: { e: KeyboardEvent }) {
 
 function handleKnowledgeClick() {
   MessagePlugin.info('知识库关联对话功能建设中，后续可支持拖拽法务条款');
+}
+
+async function handleSpeechClick() {
+  try {
+    // 请求麦克风权限并获取音频流
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mediaRecorder = new MediaRecorder(stream, {
+      mimeType: 'audio/webm;codecs=opus'
+    });
+    const audioChunks: Blob[] = [];
+
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        audioChunks.push(event.data);
+      }
+    };
+
+    // 开始录音
+    store.speechRecognizing = true;
+    mediaRecorder.start();
+
+    // 显示录音中提示
+    MessagePlugin.info('正在聆听，请说话...');
+
+    // 监听录音结束（通过再次点击按钮停止）
+    const stopRecording = () => {
+      mediaRecorder.stop();
+      stream.getTracks().forEach(track => track.stop());
+    };
+
+    // 设置超时自动停止（10秒）
+    const timeout = setTimeout(() => {
+      if (mediaRecorder.state === 'recording') {
+        stopRecording();
+      }
+    }, 10000);
+
+    mediaRecorder.onstop = async () => {
+      clearTimeout(timeout);
+      store.speechRecognizing = false;
+
+      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+
+      try {
+        // 转换为 File 对象
+        const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
+
+        // 调用语音识别 API
+        const result = await speechRecognize(audioFile, 'webm', 16000, 'zh');
+
+        if (result.success && result.text) {
+          // 将识别结果填入输入框
+          inputText.value = inputText.value
+            ? inputText.value + ' ' + result.text
+            : result.text;
+          MessagePlugin.success('语音识别成功');
+        } else {
+          MessagePlugin.error(result.errorMessage || '语音识别失败');
+        }
+      } catch (e) {
+        console.error('[handleSpeechClick] 语音识别失败:', e);
+        MessagePlugin.error('语音识别失败，请重试');
+      }
+    };
+
+    // 停止录音（点击按钮时）
+    // 注意：这里通过再次调用来停止，实际使用时按钮应切换状态
+    setTimeout(() => {
+      if (mediaRecorder.state === 'recording') {
+        stopRecording();
+      }
+    }, 5000); // 默认5秒后自动停止
+
+  } catch (e) {
+    store.speechRecognizing = false;
+    console.error('[handleSpeechClick] 麦克风权限获取失败:', e);
+    MessagePlugin.error('无法访问麦克风，请检查权限设置');
+  }
 }
 
 function handleDragLeave(e: DragEvent) {

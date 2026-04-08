@@ -97,6 +97,8 @@ export interface ChatRequest {
   sceneHint?: string;
   fileIds?: string[];
   model?: string;
+  /** 是否使用流式响应 */
+  stream?: boolean;
 }
 
 export interface SubmitRequest {
@@ -146,6 +148,10 @@ export interface DrugAgentResp {
   sessionTitle?: string;
   /** 本次上传的文件ID列表，供前端会话级持久化用 */
   fileIds?: string[];
+  /** 是否为流式响应 */
+  streamed?: boolean;
+  /** OCR文档解析结果 */
+  ocrResult?: OcrResponse;
 }
 
 export interface EvidenceGroup {
@@ -190,4 +196,85 @@ export interface ModelInfo {
   name: string;
   description?: string;
   isDefault?: boolean;
+}
+
+// OCR 文档解析响应
+export interface OcrResponse {
+  success?: boolean;
+  text?: string;
+  blocks?: OcrTextBlock[];
+  tables?: OcrTableResult[];
+  errorCode?: string;
+  errorMessage?: string;
+  model?: string;
+  costMs?: number;
+}
+
+export interface OcrTextBlock {
+  text?: string;
+  page?: number;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  confidence?: number;
+}
+
+export interface OcrTableResult {
+  csvContent?: string;
+  htmlContent?: string;
+  page?: number;
+  startRow?: number;
+  endRow?: number;
+}
+
+// 语音识别请求
+export interface SpeechRecognitionRequest {
+  format?: string;
+  sampleRate?: number;
+  language?: string;
+  model?: string;
+  url?: string;
+  audioData?: string;
+  verbose?: boolean;
+}
+
+// 语音识别响应
+export interface SpeechRecognitionResponse {
+  success?: boolean;
+  text?: string;
+  language?: string;
+  segments?: SpeechSegment[];
+  errorCode?: string;
+  errorMessage?: string;
+}
+
+export interface SpeechSegment {
+  start?: number;
+  end?: number;
+  text?: string;
+  confidence?: number;
+}
+
+// 语音合成请求
+export interface SpeechSynthesisRequest {
+  text: string;
+  model?: string;
+  voice?: string;
+  format?: string;
+  sampleRate?: number;
+  speed?: number;
+  pitch?: number;
+  volume?: number;
+}
+
+// 语音合成响应
+export interface SpeechSynthesisResponse {
+  success?: boolean;
+  audioData?: string;
+  audioUrl?: string;
+  format?: string;
+  duration?: number;
+  errorCode?: string;
+  errorMessage?: string;
 }
