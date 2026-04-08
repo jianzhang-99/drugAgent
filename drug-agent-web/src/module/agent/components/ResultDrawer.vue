@@ -26,7 +26,7 @@
           </div>
         </div>
         <div class="header-right">
-          <t-button theme="primary" variant="base">
+          <t-button theme="primary" variant="base" @click="handleExportPdf">
             <template #icon><t-icon name="download" /></template>
             导出举证报告 (PDF)
           </t-button>
@@ -114,6 +114,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useAgentStore } from '../store/agentStore';
+import html2pdf from 'html2pdf.js';
 
 const store = useAgentStore();
 
@@ -204,6 +205,28 @@ function highlightText(text: string) {
 
 function handleClose() {
   store.setCurrentResult(null);
+}
+
+async function handleExportPdf() {
+  const element = document.querySelector('.drawer-content') as HTMLElement;
+  if (!element) {
+    console.error('导出失败：未找到报告内容元素');
+    return;
+  }
+
+  const opt = {
+    margin: 10,
+    filename: `标书审查报告_${result.value?.traceId || Date.now()}.pdf`,
+    image: { type: 'jpeg' as const, quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true },
+    jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
+  };
+
+  try {
+    await html2pdf().set(opt).from(element).save();
+  } catch (error) {
+    console.error('导出PDF失败:', error);
+  }
 }
 </script>
 

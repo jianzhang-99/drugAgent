@@ -163,10 +163,10 @@ export function deleteOssFile(id: string) {
  */
 export function uploadKnowledgeFile(
   file: File,
-  orgId: string,
-  scene?: string,
-  subScene?: string,
-  docType?: string
+  _orgId?: string,
+  _scene?: string,
+  _subScene?: string,
+  _docType?: string
 ) {
   const formData = new FormData();
   formData.append('file', file);
@@ -220,7 +220,7 @@ export function deleteKnowledgeFile(ossFileId: string) {
 /**
  * 获取知识库文件列表（fileType=2）
  */
-export function getKnowledgeFiles(orgId?: string) {
+export function getKnowledgeFiles(_orgId?: string) {
   return getOssFiles(FILE_TYPE.KNOWLEDGE);
 }
 
