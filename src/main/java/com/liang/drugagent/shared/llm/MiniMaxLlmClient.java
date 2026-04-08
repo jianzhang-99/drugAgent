@@ -1,6 +1,7 @@
 package com.liang.drugagent.shared.llm;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.messages.Message;
@@ -44,6 +45,7 @@ public class MiniMaxLlmClient implements LlmClient {
         try {
             String response = chatClient.prompt()
                     .messages(buildMessages(request))
+                    .options(buildOptions(request))
                     .advisors(a -> a.param("chat_memory_conversation_id", request.getSessionId())
                             .param("chat_memory_response_size", 10))
                     .call()
@@ -67,12 +69,30 @@ public class MiniMaxLlmClient implements LlmClient {
 
         return chatClient.prompt()
                 .messages(buildMessages(request))
+                .options(buildOptions(request))
                 .advisors(a -> a.param("chat_memory_conversation_id", request.getSessionId())
                         .param("chat_memory_response_size", 10))
                 .stream()
                 .content()
                 .map(chunk -> LlmResponse.streamedChunk(chunk, false))
                 .doOnError(e -> log.error("MiniMax(Anthropic兼容)流式聊天异常: {}", e.getMessage(), e));
+    }
+
+    private AnthropicChatOptions buildOptions(LlmRequest request) {
+        AnthropicChatOptions options = new AnthropicChatOptions();
+        options.setModel(request.getModel());
+
+        if (request.getTemperature() != null) {
+            options.setTemperature(request.getTemperature().doubleValue());
+        }
+        if (request.getTopP() != null) {
+            options.setTopP(request.getTopP().doubleValue());
+        }
+        if (request.getMaxTokens() != null) {
+            options.setMaxTokens(request.getMaxTokens());
+        }
+
+        return options;
     }
 
     private List<Message> buildMessages(LlmRequest request) {

@@ -8,32 +8,39 @@ spring:
       write-dates-as-timestamps: false
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
+
+  # Spring AI 框架配置。
+  # 这里不直接写死各家平台参数，而是统一从下方的业务配置区映射进来。
   ai:
-    # 阿里云百炼(DashScope) - Anthropic 兼容模式
-    dashscope:
+    # DashScope 聊天模型通过 OpenAI 兼容接口接入
+    openai:
       enabled: true
-      api-key: sk-a433391322b54c3db665851b085ba4d4
-      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
-      embedding:
-        model: text-embedding-v2
+      api-key: ${aliyun.dashscope.api-key:}
+      base-url: ${aliyun.dashscope.base-url:https://dashscope.aliyuncs.com/compatible-mode/v1}
       chat:
         options:
-          model: qwen3.5-plus
-    # MiniMax - Anthropic 兼容模式
+          model: ${aliyun.dashscope.chat-model:qwen-plus}
+
+    # DashScope Embedding 仍使用项目内自定义直连实现，保留独立配置前缀
+    dashscope:
+      enabled: true
+      api-key: ${aliyun.dashscope.api-key:}
+      base-url: ${aliyun.dashscope.base-url:https://dashscope.aliyuncs.com/compatible-mode/v1}
+      embedding:
+        model: ${aliyun.dashscope.embedding-model:text-embedding-v2}
+
+    # MiniMax 通过 Anthropic 兼容接口接入
     anthropic:
       enabled: true
-      base-url: https://api.minimaxi.com/anthropic
+      base-url: ${minimax.base-url:https://api.minimaxi.com/anthropic}
       api-key: ${minimax.api-key:}
       chat:
         options:
           model: ${minimax.model:MiniMax-M2.7}
           max-tokens: ${minimax.max-tokens:8192}
           temperature: ${minimax.temperature:0.7}
-    # OpenAI (用于 Embedding)
-    openai:
-      enabled: true
-      api-key: ${OPENAI_API_KEY:sk-ant-api03-placeholder}
-      base-url: https://api.openai.com/v1
+          top-p: ${minimax.top-p:0.9}
+
     # PGVector 向量存储配置
     vectorstore:
       pgvector:
@@ -43,11 +50,16 @@ spring:
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
 
+# Web 服务配置
 server:
   port: 8124
   servlet:
     context-path: /api
+    multipart:
+      max-file-size: ${app.multipart.max-file-size:100MB}
+      max-request-size: ${app.multipart.max-request-size:100MB}
 
+# OpenAPI / Swagger
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
@@ -65,22 +77,35 @@ knife4j:
   setting:
     language: zh_cn
 
+# 日志配置
 logging:
   level:
     root: INFO
     com.liang.drugagent: DEBUG
 
-# 阿里云百炼(DashScope) 千问模型配置
+# 业务侧统一 LLM Provider 配置
+# 上面的 spring.ai.* 只是框架消费层；
+# 这里才是项目内真正的“可维护配置源”。
 aliyun:
   dashscope:
     api-key: ${DASHSCOPE_API_KEY:}
+    base-url: ${DASHSCOPE_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+    chat-model: ${DASHSCOPE_CHAT_MODEL:qwen-plus}
+    embedding-model: ${DASHSCOPE_EMBEDDING_MODEL:text-embedding-v2}
 
-# MiniMax模型配置
 minimax:
   api-key: ${MINIMAX_API_KEY:}
+  base-url: ${MINIMAX_BASE_URL:https://api.minimaxi.com/anthropic}
   model: MiniMax-M2.7
   max-tokens: 8192
   temperature: 0.7
+  top-p: 0.9
+
+# 应用层通用配置
+app:
+  multipart:
+    max-file-size: 100MB
+    max-request-size: 100MB
 
 # Agent 路由配置
 agent:
@@ -90,7 +115,7 @@ agent:
     confidence-threshold: 0.75
     confidence-low-threshold: 0.5
 
-# LLM统一配置
+# LLM 统一路由策略
 llm:
   default-provider: MINIMAX
   routing-provider: MINIMAX
