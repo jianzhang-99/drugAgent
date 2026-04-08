@@ -1,35 +1,43 @@
 package com.liang.drugagent.shared.llm;
 
+import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversation;
+import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationOutput;
+import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationParam;
+import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationResult;
+import com.alibaba.dashscope.common.MultiModalMessage;
+import com.alibaba.dashscope.common.Role;
+import com.alibaba.dashscope.exception.ApiException;
+import com.alibaba.dashscope.exception.NoApiKeyException;
+import com.alibaba.dashscope.exception.UploadFileException;
+import io.reactivex.Flowable;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
-import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.SystemMessage;
-import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- * 阿里云百炼(DashScope) LLM 客户端 - OpenAI 兼容模式。
+ * 阿里云百炼(DashScope) LLM 客户端 - 官方 SDK 模式。
  *
- * <p>直接使用 Spring AI 自动装配的 OpenAI ChatModel 接入百炼兼容端点，
- * 避免维护手写的 ChatModel 适配层。
+ * <p>使用 DashScope 官方 Java SDK 直接调用原生 API，
+ * 与阿里云文档保持一致，便于使用原生能力和排查兼容性问题。
  */
 @Slf4j
 @Component
 public class DashScopeLlmClient implements LlmClient {
 
-    private final ChatClient chatClient;
+    private final String apiKey;
+    private final String defaultModel;
 
-    public DashScopeLlmClient(@Qualifier("openAiChatModel") ChatModel chatModel) {
-        this.chatClient = ChatClient.builder(chatModel)
-                .defaultAdvisors(new SimpleLoggerAdvisor())
-                .build();
+    public DashScopeLlmClient(
+            @Value("${aliyun.dashscope.api-key:}") String apiKey,
+            @Value("${aliyun.dashscope.chat-model:qwen3.5-plus}") String defaultModel) {
+        this.apiKey = apiKey;
+        this.defaultModel = defaultModel;
     }
 
     @Override
@@ -39,24 +47,21 @@ public class DashScopeLlmClient implements LlmClient {
 
     @Override
     public LlmResponse chat(LlmRequest request) {
-        log.debug("DashScope(OpenAI兼容)聊天请求 - sessionId: {}, 模型: {}",
-                request.getSessionId(), request.getModel());
+        String model = resolveModel(request);
+        log.debug("DashScope(官方SDK)聊天请求 - sessionId: {}, 模型: {}",
+                request.getSessionId(), model);
 
         try {
-            String response = chatClient.prompt()
-                    .messages(buildMessages(request))
-                    .options(buildOptions(request))
-                    .advisors(a -> a.param("chat_memory_conversation_id", request.getSessionId())
-                            .param("chat_memory_response_size", 10))
-                    .call()
-                    .content();
+            MultiModalConversation conversation = new MultiModalConversation();
+            MultiModalConversationResult result = conversation.call(buildParam(request, model, false));
+            String content = extractText(result);
 
-            log.debug("DashScope(OpenAI兼容)聊天响应 - sessionId: {}, 响应长度: {}",
-                    request.getSessionId(), response.length());
+            log.debug("DashScope(官方SDK)聊天响应 - sessionId: {}, 响应长度: {}",
+                    request.getSessionId(), content != null ? content.length() : 0);
 
-            return LlmResponse.success(response, LlmProviderType.DASHSCOPE, request.getModel());
-        } catch (Exception e) {
-            log.error("DashScope(OpenAI兼容)聊天异常 - sessionId: {}, 错误: {}",
+            return LlmResponse.success(content, LlmProviderType.DASHSCOPE, model);
+        } catch (ApiException | NoApiKeyException | UploadFileException e) {
+            log.error("DashScope(官方SDK)聊天异常 - sessionId: {}, 错误: {}",
                     request.getSessionId(), e.getMessage(), e);
             return LlmResponse.error("DASHSCOPE_ERROR", "DashScope API调用失败: " + e.getMessage());
         }
@@ -64,58 +69,144 @@ public class DashScopeLlmClient implements LlmClient {
 
     @Override
     public Flux<LlmResponse> streamChat(LlmRequest request) {
-        log.debug("DashScope(OpenAI兼容)流式聊天请求 - sessionId: {}, 模型: {}",
-                request.getSessionId(), request.getModel());
+        String model = resolveModel(request);
+        log.debug("DashScope(官方SDK)流式聊天请求 - sessionId: {}, 模型: {}",
+                request.getSessionId(), model);
 
-        return chatClient.prompt()
-                .messages(buildMessages(request))
-                .options(buildOptions(request))
-                .advisors(a -> a.param("chat_memory_conversation_id", request.getSessionId())
-                        .param("chat_memory_response_size", 10))
-                .stream()
-                .content()
-                .map(chunk -> LlmResponse.streamedChunk(chunk, false))
-                .doOnError(e -> log.error("DashScope(OpenAI兼容)流式聊天异常: {}", e.getMessage(), e));
+        return Flux.defer(() -> {
+            try {
+                MultiModalConversation conversation = new MultiModalConversation();
+                Flowable<MultiModalConversationResult> stream = conversation.streamCall(buildParam(request, model, true));
+                return Flux.from(stream)
+                        .map(result -> {
+                            String chunk = extractText(result);
+                            boolean isLast = hasFinishReason(result);
+                            return LlmResponse.builder()
+                                    .success(true)
+                                    .content(chunk)
+                                    .model(model)
+                                    .provider(LlmProviderType.DASHSCOPE)
+                                    .streamed(true)
+                                    .isLast(isLast)
+                                    .finishReason(extractFinishReason(result))
+                                    .build();
+                        })
+                        .filter(resp -> (resp.getContent() != null && !resp.getContent().isEmpty()) || Boolean.TRUE.equals(resp.getIsLast()))
+                        .doOnError(e -> log.error("DashScope(官方SDK)流式聊天异常 - sessionId: {}, 错误: {}",
+                                request.getSessionId(), e.getMessage(), e));
+            } catch (ApiException | NoApiKeyException | UploadFileException e) {
+                log.error("DashScope(官方SDK)流式聊天初始化失败 - sessionId: {}, 错误: {}",
+                        request.getSessionId(), e.getMessage(), e);
+                return Flux.error(new RuntimeException("DashScope 流式调用失败: " + e.getMessage(), e));
+            }
+        });
     }
 
-    private OpenAiChatOptions buildOptions(LlmRequest request) {
-        OpenAiChatOptions options = new OpenAiChatOptions();
-        options.setModel(request.getModel());
+    private String resolveModel(LlmRequest request) {
+        return request.getModel() != null && !request.getModel().isBlank()
+                ? request.getModel()
+                : defaultModel;
+    }
 
-        if (request.getTemperature() != null) {
-            options.setTemperature(request.getTemperature().doubleValue());
-        }
+    private MultiModalConversationParam buildParam(LlmRequest request, String model, boolean stream) {
+        MultiModalConversationParam.MultiModalConversationParamBuilder<?, ?> builder = MultiModalConversationParam.builder()
+                .apiKey(apiKey)
+                .model(model)
+                .messages(buildMessages(request))
+                .incrementalOutput(stream);
+
         if (request.getTopP() != null) {
-            options.setTopP(request.getTopP().doubleValue());
+            builder.topP(request.getTopP().doubleValue());
+        }
+        if (request.getTemperature() != null) {
+            builder.temperature(request.getTemperature());
         }
         if (request.getMaxTokens() != null) {
-            options.setMaxTokens(request.getMaxTokens());
+            builder.maxTokens(request.getMaxTokens());
         }
 
-        return options;
+        return builder.build();
     }
 
-    private List<Message> buildMessages(LlmRequest request) {
+    private List<Object> buildMessages(LlmRequest request) {
         List<LlmRequest.ChatMessage> messages = request.getMessages();
         if (messages == null || messages.isEmpty()) {
             log.error("DashScope buildMessages 失败: messages 为空");
             throw new IllegalArgumentException("messages 不能为空");
         }
 
-        LlmRequest.ChatMessage firstMsg = messages.get(0);
-        String content = firstMsg != null ? firstMsg.getContent() : null;
+        List<Object> sdkMessages = new ArrayList<>();
+        if (request.getSystemPrompt() != null && !request.getSystemPrompt().isBlank()) {
+            sdkMessages.add(MultiModalMessage.builder()
+                    .role(Role.SYSTEM.getValue())
+                    .content(buildTextContent(request.getSystemPrompt()))
+                    .build());
+        }
 
-        if (content == null || content.isBlank()) {
-            log.error("DashScope buildMessages 失败: 第一条消息 content 为空, content={}", content);
+        for (LlmRequest.ChatMessage message : messages) {
+            if (message == null || message.getContent() == null || message.getContent().isBlank()) {
+                continue;
+            }
+
+            String role = "assistant".equalsIgnoreCase(message.getRole())
+                    ? Role.ASSISTANT.getValue()
+                    : Role.USER.getValue();
+
+            sdkMessages.add(MultiModalMessage.builder()
+                    .role(role)
+                    .content(buildTextContent(message.getContent()))
+                    .build());
+        }
+
+        if (sdkMessages.isEmpty()) {
             throw new IllegalArgumentException("消息 content 不能为空");
         }
+        return sdkMessages;
+    }
 
-        if (request.getSystemPrompt() != null && !request.getSystemPrompt().isBlank()) {
-            return List.of(
-                    new SystemMessage(request.getSystemPrompt()),
-                    new UserMessage(content)
-            );
+    private List<Map<String, Object>> buildTextContent(String text) {
+        Map<String, Object> item = new HashMap<>();
+        item.put("text", text);
+        return List.of(item);
+    }
+
+    private String extractText(MultiModalConversationResult result) {
+        if (result == null || result.getOutput() == null || result.getOutput().getChoices() == null
+                || result.getOutput().getChoices().isEmpty()) {
+            return "";
         }
-        return List.of(new UserMessage(content));
+
+        MultiModalMessage message = result.getOutput().getChoices().get(0).getMessage();
+        if (message == null || message.getContent() == null || message.getContent().isEmpty()) {
+            return "";
+        }
+
+        StringBuilder builder = new StringBuilder();
+        for (Map<String, Object> item : message.getContent()) {
+            Object text = item.get("text");
+            if (text != null) {
+                builder.append(text);
+            }
+        }
+        return builder.toString();
+    }
+
+    private boolean hasFinishReason(MultiModalConversationResult result) {
+        String finishReason = extractFinishReason(result);
+        return finishReason != null
+                && !finishReason.isBlank()
+                && !"null".equalsIgnoreCase(finishReason);
+    }
+
+    private String extractFinishReason(MultiModalConversationResult result) {
+        if (result == null || result.getOutput() == null) {
+            return null;
+        }
+
+        MultiModalConversationOutput output = result.getOutput();
+        if (output.getChoices() != null && !output.getChoices().isEmpty()) {
+            return output.getChoices().get(0).getFinishReason();
+        }
+        return output.getFinishReason();
     }
 }

@@ -128,7 +128,7 @@ public class LlmService {
      */
     private void ensureModel(LlmRequest request, LlmProviderType provider) {
         if (request.getModel() == null || request.getModel().isBlank()) {
-            String defaultModel = LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7" : "qwen-plus";
+            String defaultModel = LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7-highspeed" : "qwen3.5-plus";
             request.setModel(defaultModel);
         }
     }

@@ -198,3 +198,20 @@ Standard Commons Logging discovery in action with spring-jcl: please remove comm
      /               |         
                         3.5.7 
 09:37:36.874 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[main][0;39m [32mc.l.d.a.DrugAgentApplication            [0;39m - Started DrugAgentApplication in 2.764 seconds (process running for 2.935)
+11:11:23.792 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[SpringApplicationShutdownHook][0;39m [32mc.z.h.HikariDataSource                  [0;39m - HikariPool-2 - Shutdown initiated...
+11:11:23.855 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[SpringApplicationShutdownHook][0;39m [32mc.z.h.HikariDataSource                  [0;39m - HikariPool-2 - Shutdown completed.
+11:11:23.855 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[SpringApplicationShutdownHook][0;39m [32mc.z.h.HikariDataSource                  [0;39m - HikariPool-1 - Shutdown initiated...
+11:11:23.856 [34mINFO [0;39m [[35m无[0;39m] [[34m无[0;39m] [36m[SpringApplicationShutdownHook][0;39m [32mc.z.h.HikariDataSource                  [0;39m - HikariPool-1 - Shutdown completed.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  01:33 h
+[INFO] Finished at: 2026-04-08T11:11:24+08:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.4.4:run (default-cli) on project drug-agent: Process terminated with exit code: 143 -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

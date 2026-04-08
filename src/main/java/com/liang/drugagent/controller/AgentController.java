@@ -9,6 +9,7 @@ import com.liang.drugagent.agent.common.entity.ChatMessage;
 import com.liang.drugagent.agent.common.entity.ChatSession;
 import com.liang.drugagent.controller.domain.request.agent.*;
 import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
+import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.shared.llm.LlmProviderType;
 import com.liang.drugagent.shared.llm.ModelInfo;
 import com.liang.drugagent.shared.model.Result;
@@ -17,8 +18,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
@@ -58,6 +61,24 @@ public class AgentController {
     @PostMapping("/chat")
     public Result<AgentChatResp> chat(@RequestBody AgentChatReq req) {
         return Result.success(agentChatService.chat(req));
+    }
+
+    @Operation(summary = "流式对话")
+    @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<String>> streamChat(@RequestBody AgentChatReq req) {
+        SceneEnum scene = SceneEnum.fromHint(req.getSceneHint());
+        SceneEnum effectiveScene = scene != null ? scene : SceneEnum.DEFAULT;
+        String sessionId = req.getSessionId() != null ? req.getSessionId() : "stream-" + System.currentTimeMillis();
+
+        return llmChatService.streamChatWithScene(req.getQuery(), effectiveScene, sessionId, req.getModel())
+                .map(chunk -> ServerSentEvent.<String>builder()
+                        .event("message")
+                        .data(chunk)
+                        .build())
+                .concatWithValues(ServerSentEvent.<String>builder()
+                        .event("done")
+                        .data("[DONE]")
+                        .build());
     }
 
     @Operation(summary = "文件上传对话（multipart/form-data）")

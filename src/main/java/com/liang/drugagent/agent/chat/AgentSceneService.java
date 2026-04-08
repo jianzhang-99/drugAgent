@@ -573,14 +573,14 @@ public class AgentSceneService {
             for (LlmProviderType pt : LlmProviderType.values()) {
                 if (pt.getConfigKey().equalsIgnoreCase(model)) {
                     // 是 provider 标识，需要解析为对应的模型名
-                    return LlmProviderType.MINIMAX.equals(pt) ? "MiniMax-M2.7" : "qwen-plus";
+                    return LlmProviderType.MINIMAX.equals(pt) ? "MiniMax-M2.7-highspeed" : "qwen3.5-plus";
                 }
             }
             // 不是 provider 标识，可能是实际的模型名，直接返回
             return model;
         }
         // 没有模型名，使用 provider 默认
-        return LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7" : "qwen-plus";
+        return LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7-highspeed" : "qwen3.5-plus";
     }
 
     // ==================== 内部类 ====================

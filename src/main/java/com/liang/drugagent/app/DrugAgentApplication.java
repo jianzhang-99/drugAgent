@@ -3,9 +3,10 @@ package com.liang.drugagent.app;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.ai.model.anthropic.autoconfigure.AnthropicChatAutoConfiguration;
 import org.springframework.context.annotation.ComponentScan;
 
-@SpringBootApplication
+@SpringBootApplication(exclude = AnthropicChatAutoConfiguration.class)
 @ComponentScan(basePackages = "com.liang.drugagent")
 @MapperScan({"com.liang.drugagent.scene.common.mapper", "com.liang.drugagent.agent.common.mapper", "com.liang.drugagent.shared.rag.mapper"})
 public class DrugAgentApplication {

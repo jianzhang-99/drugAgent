@@ -370,7 +370,7 @@ public class TenderReviewWorkflow {
 
             LlmRequest request = LlmRequest.builder()
                     .provider(LlmProviderType.MINIMAX)
-                    .model("MiniMax-M2.7")
+                    .model("MiniMax-M2.7-highspeed")
                     .sessionId(null)
                     .systemPrompt(TenderReviewValidatePrompt.SYSTEM_PROMPT)
                     .messages(List.of(LlmRequest.ChatMessage.builder()

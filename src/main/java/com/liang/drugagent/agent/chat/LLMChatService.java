@@ -124,7 +124,7 @@ public class LLMChatService {
         if (model != null && !model.isBlank()) {
             return model;
         }
-        return LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7" : "qwen-plus";
+        return LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7-highspeed" : "qwen3.5-plus";
     }
 
     /**
@@ -171,8 +171,8 @@ public class LLMChatService {
             boolean isAvailable = client != null && client.isAvailable();
 
             String defaultModel = LlmProviderType.MINIMAX.equals(providerType)
-                    ? "MiniMax-M2.7"
-                    : "qwen-plus";
+                    ? "MiniMax-M2.7-highspeed"
+                    : "qwen3.5-plus";
 
             result.add(ModelInfo.builder()
                     .model(providerType.getConfigKey())

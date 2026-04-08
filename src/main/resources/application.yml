@@ -9,44 +9,6 @@ spring:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
 
-  # Spring AI 框架配置。
-  # 这里不直接写死各家平台参数，而是统一从下方的业务配置区映射进来。
-  ai:
-    # DashScope 聊天模型通过 OpenAI 兼容接口接入
-    openai:
-      enabled: true
-      api-key: ${aliyun.dashscope.api-key:}
-      base-url: ${aliyun.dashscope.base-url:https://dashscope.aliyuncs.com/compatible-mode/v1}
-      chat:
-        options:
-          model: ${aliyun.dashscope.chat-model:qwen-plus}
-
-    # DashScope Embedding 仍使用项目内自定义直连实现，保留独立配置前缀
-    dashscope:
-      enabled: true
-      api-key: ${aliyun.dashscope.api-key:}
-      base-url: ${aliyun.dashscope.base-url:https://dashscope.aliyuncs.com/compatible-mode/v1}
-      embedding:
-        model: ${aliyun.dashscope.embedding-model:text-embedding-v2}
-
-    # MiniMax 通过 Anthropic 兼容接口接入
-    anthropic:
-      enabled: true
-      base-url: ${minimax.base-url:https://api.minimaxi.com/anthropic}
-      api-key: ${minimax.api-key:}
-      chat:
-        options:
-          model: ${minimax.model:MiniMax-M2.7}
-          max-tokens: ${minimax.max-tokens:8192}
-          temperature: ${minimax.temperature:0.7}
-          top-p: ${minimax.top-p:0.9}
-
-    # PGVector 向量存储配置
-    vectorstore:
-      pgvector:
-        dimension: 1024
-        table-name: vector_store
-
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
 
@@ -83,23 +45,26 @@ logging:
     root: INFO
     com.liang.drugagent: DEBUG
 
-# 业务侧统一 LLM Provider 配置
-# 上面的 spring.ai.* 只是框架消费层；
-# 这里才是项目内真正的“可维护配置源”。
+# 模型与 AI 能力配置
 aliyun:
   dashscope:
     api-key: ${DASHSCOPE_API_KEY:}
-    base-url: ${DASHSCOPE_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
-    chat-model: ${DASHSCOPE_CHAT_MODEL:qwen-plus}
+    base-url: ${DASHSCOPE_BASE_URL:https://dashscope.aliyuncs.com/api/v1}
+    chat-model: ${DASHSCOPE_CHAT_MODEL:qwen3.5-plus}
     embedding-model: ${DASHSCOPE_EMBEDDING_MODEL:text-embedding-v2}
 
 minimax:
   api-key: ${MINIMAX_API_KEY:}
   base-url: ${MINIMAX_BASE_URL:https://api.minimaxi.com/anthropic}
-  model: MiniMax-M2.7
+  model: MiniMax-M2.7-highspeed
   max-tokens: 8192
   temperature: 0.7
   top-p: 0.9
+
+# 向量库配置
+pgvector:
+  dimension: 1024
+  table-name: vector_store
 
 # 应用层通用配置
 app:

@@ -32,14 +32,14 @@ public class DirectDashScopeEmbeddingModel implements EmbeddingModel {
     private final String model;
 
     public DirectDashScopeEmbeddingModel(
-            @Value("${spring.ai.dashscope.embedding.model:text-embedding-v3}") String model,
-            @Value("${spring.ai.dashscope.api-key}") String apiKey,
-            @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com/compatible-mode/v1}") String baseUrl) {
+            @Value("${aliyun.dashscope.embedding-model:text-embedding-v3}") String model,
+            @Value("${aliyun.dashscope.api-key}") String apiKey,
+            @Value("${aliyun.dashscope.base-url:https://dashscope.aliyuncs.com/api/v1}") String baseUrl) {
 
         this.model = model;
         String resolvedBaseUrl = (baseUrl != null && !baseUrl.isBlank())
                 ? baseUrl
-                : "https://dashscope.aliyuncs.com/compatible-mode/v1";
+                : "https://dashscope.aliyuncs.com/api/v1";
 
         // 强制直连，绕过系统代理（Proxy.NO_PROXY 表示完全不经过任何代理）
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
