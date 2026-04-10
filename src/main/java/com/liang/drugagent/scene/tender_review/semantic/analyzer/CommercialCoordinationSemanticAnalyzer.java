@@ -50,7 +50,7 @@ public class CommercialCoordinationSemanticAnalyzer implements TenderSemanticAna
     private static final String RISK_TYPE = "collusion";
     private static final String RULE_NAME = "商务条款配合分析";
     private static final double HIGH_CONFIDENCE_THRESHOLD = 0.85;
-    private static final double MEDIUM_CONFIDENCE_THRESHOLD = 0.70;
+    private static final double MEDIUM_CONFIDENCE_THRESHOLD = 0.60;
 
     private final TenderSemanticCandidateService candidateService;
     private final TenderSemanticReviewService reviewService;
@@ -136,7 +136,7 @@ public class CommercialCoordinationSemanticAnalyzer implements TenderSemanticAna
     /**
      * 将 LLM 裁决响应转换为 RuleHit。
      *
-     * <p>注意：置信度低于 0.70 的结果不直接触发高风险，仅作为辅助参考。
+     * <p>注意：置信度低于 0.60 的结果不直接触发高风险，仅作为辅助参考。
      * RuleHit 的来源通过 triggerSummary 中的 [LLM_SEMANTIC_RULE] 标记区分。
      */
     private RuleHit convertToRuleHit(TenderSemanticJudgeResp resp, TenderReviewData data,

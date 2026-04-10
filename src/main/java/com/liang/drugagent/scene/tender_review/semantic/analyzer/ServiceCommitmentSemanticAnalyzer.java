@@ -93,7 +93,7 @@ public class ServiceCommitmentSemanticAnalyzer implements TenderSemanticAnalyzer
                         TenderSemanticJudgeResp resp = reviewService.judge(candidate);
 
                         // 置信度 < 0.70 不直接触发高风险，仅作为辅助证据
-                        if (!Boolean.TRUE.equals(resp.getHit()) || resp.getConfidence() == null || resp.getConfidence() < 0.70) {
+                        if (!Boolean.TRUE.equals(resp.getHit()) || resp.getConfidence() == null || resp.getConfidence() < 0.60) {
                             log.debug("[ServiceCommitmentSemanticAnalyzer] caseId={}, 候选未命中或置信度不足 confidence={}",
                                     caseId, resp.getConfidence());
                             continue;

@@ -63,8 +63,11 @@ public class TenderReviewPreparationService {
      * @return 标书审查数据（准备失败时返回 null）
      */
     public TenderReviewData prepare(AgentChatContext context, AgentChatReq req) {
-        log.info("[TenderReviewPreparationService] 开始准备标书审查数据, sessionId={}, req.fileIds={}, context.fileIds={}, hasUploadedFiles={}",
-                context.getSessionId(), req.getFileIds(), context.getFileIds(), hasUploadedFiles(req));
+        List<String> reqFileIds = req.getFileIds();
+        List<String> ctxFileIds = context.getFileIds();
+        String sessionScene = context.getSession() != null ? context.getSession().getLastScene() : "null";
+        log.info("[TenderReviewPreparationService] 开始准备标书审查数据, sessionId={}, req.fileIds={}, context.fileIds={}, session.lastScene={}, hasUploadedFiles={}",
+                context.getSessionId(), reqFileIds, ctxFileIds, sessionScene, hasUploadedFiles(req));
 
         // 优先处理上传的文件（本次请求中的临时文件）
         if (hasUploadedFiles(req)) {
@@ -214,6 +217,9 @@ public class TenderReviewPreparationService {
      *
      * <p>通过 sessionId 或 fileIds 从 TenderCaseService 获取文档内容，
      * 解析后组装为 TenderReviewData。</p>
+     *
+     * <p>关键设计：对于后续查询（如审查完成后的提问），fileIds 仍从请求传递，
+     * 但需要从 OSS 重新获取文档内容并解析，确保审查流程可以正确执行。</p>
      */
     private TenderReviewData buildFromFileIds(AgentChatContext context, AgentChatReq req) {
         List<String> fileIds = resolveFileIds(context, req);
@@ -224,25 +230,55 @@ public class TenderReviewPreparationService {
 
         log.info("[TenderReviewPreparationService] 通过 fileIds 构建数据, fileIds={}", fileIds);
 
-        // 尝试从 session 获取该会话关联的文档
-        List<TenderDocument> documents = fetchDocumentsBySessionId(context.getSessionId());
+        // 构建 TempDocument 列表，从 OSS 获取文件内容并解析
+        List<TempDocument> tempDocuments = new ArrayList<>();
+        int fetchSuccessCount = 0;
+        int fetchFailCount = 0;
 
-        // 如果 session 没有足够的文档，尝试直接用 fileIds 获取
-        if (documents.size() < 2) {
-            for (String fileId : fileIds) {
-                Optional<TenderDocument> docOpt = caseService.getDocument(fileId);
-                if (docOpt.isPresent() && !containsDoc(documents, fileId)) {
-                    documents.add(docOpt.get());
-                }
+        for (String fileId : fileIds) {
+            Optional<byte[]> contentOpt = caseService.getFileContent(fileId);
+            if (contentOpt.isPresent() && contentOpt.get().length > 0) {
+                byte[] content = contentOpt.get();
+                // 获取文档元信息用于构建文件名
+                Optional<TenderDocument> docMetaOpt = caseService.getDocument(fileId);
+                String filename = docMetaOpt.isPresent() ? docMetaOpt.get().getFilename() : fileId;
+                String docId = docMetaOpt.isPresent() ? docMetaOpt.get().getDocumentId() : fileId;
+
+                tempDocuments.add(TempDocument.builder()
+                        .documentId(docId)
+                        .filename(filename)
+                        .content(content)
+                        .build());
+                fetchSuccessCount++;
+                log.info("[TenderReviewPreparationService] 成功从 OSS 获取文档内容, fileId={}, filename={}, size={}",
+                        fileId, filename, content.length);
+            } else {
+                fetchFailCount++;
+                log.warn("[TenderReviewPreparationService] 从 OSS 获取文档内容失败, fileId={}", fileId);
             }
         }
 
-        if (documents.size() < 2) {
-            log.warn("[TenderReviewPreparationService] 可用文档不足, docCount={}", documents.size());
+        if (tempDocuments.size() < 2) {
+            log.warn("[TenderReviewPreparationService] 从 OSS 获取的有效文档不足, success={}, fail={}",
+                    fetchSuccessCount, fetchFailCount);
             return null;
         }
 
-        return buildTenderReviewDataFromDocuments(documents, context);
+        // 调用 DocumentTool 解析文档
+        DocumentToolReq docReq = DocumentToolReq.builder()
+                .documents(tempDocuments)
+                .build();
+        DocumentToolResult parseResult = documentTool.parse(docReq);
+
+        if (parseResult.getSuccessCount() < 2) {
+            log.warn("[TenderReviewPreparationService] OSS 文档解析失败, successCount={}, failCount={}",
+                    parseResult.getSuccessCount(), parseResult.getFailureCount());
+            return null;
+        }
+
+        // 通过 dataAssembler 构建 TenderReviewData
+        ParsedDocument[] parsedDocs = parseResult.getDocuments().toArray(new ParsedDocument[0]);
+        return dataAssembler.resolve(parsedDocs, context.getTraceId());
     }
 
     /**
@@ -279,16 +315,6 @@ public class TenderReviewPreparationService {
         data.setExtractionMeta(extractionMeta);
 
         return data;
-    }
-
-    /**
-     * 根据 sessionId 获取该会话关联的所有文档。
-     */
-    private List<TenderDocument> fetchDocumentsBySessionId(String sessionId) {
-        if (sessionId == null || sessionId.isBlank()) {
-            return List.of();
-        }
-        return caseService.findDocumentsBySessionId(sessionId);
     }
 
     /**
@@ -343,7 +369,4 @@ public class TenderReviewPreparationService {
         }
     }
 
-    private boolean containsDoc(List<TenderDocument> documents, String docId) {
-        return documents.stream().anyMatch(d -> d.getDocumentId().equals(docId));
-    }
 }

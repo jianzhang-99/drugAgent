@@ -50,7 +50,7 @@ public class RiskIdentificationSemanticAnalyzer implements TenderSemanticAnalyze
     private static final String RISK_TYPE = "collusion";
     private static final String RULE_NAME = "风险识别语义抄袭";
     private static final double HIGH_CONFIDENCE_THRESHOLD = 0.85;
-    private static final double MEDIUM_CONFIDENCE_THRESHOLD = 0.70;
+    private static final double MEDIUM_CONFIDENCE_THRESHOLD = 0.60;
 
     private final TenderSemanticCandidateService candidateService;
     private final TenderSemanticReviewService reviewService;

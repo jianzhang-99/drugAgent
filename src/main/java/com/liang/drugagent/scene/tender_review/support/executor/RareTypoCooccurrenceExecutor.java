@@ -19,12 +19,14 @@ import java.util.stream.Collectors;
  * 罕见错误共现规则执行器。
  *
  * <p>当前版本聚焦 W-M5：
- * 在同一比对范围内，如果不同投标人的文件中出现了完全相同的罕见错别字（如“应急响映”），
- * 则判定为“罕见错误共现”。</p>
+ * 在同一比对范围内，如果不同投标人的文件中出现了完全相同的罕见错别字（如"应急响映"），
+ * 则判定为"罕见错误共现"。</p>
  *
  * <p>约定上游将错别字信息抽取为 `fieldType=typo` 的字段：
  * `normalizedKey` 标识纠正后的词（可选），
  * `normalizedValue` 存放发现的错别字原文。</p>
+ *
+ * <p>反误报逻辑：排除常见商业用语（如"地址"、"位置"）被误判为错别字。</p>
  *
  * @author liangjiajian
  */
@@ -43,6 +45,10 @@ public class RareTypoCooccurrenceExecutor implements TenderRuleExecutor {
     private static final String PRIORITY = "VERY_HIGH";
     /** 规则版本。 */
     private static final String VERSION = "v1";
+    /** 排除的商业用语（这些词虽是低频词，但在商业文档中属正常用语，不应判定为错别字）。 */
+    private static final Set<String> EXCLUDED_COMMERCIAL_TERMS = Set.of(
+            "地址", "位置", "网址", "坐标", "单位", "法人", "账号", "账户"
+    );
 
     @Override
     public List<RuleHit> execute(TenderReviewData data) {
@@ -94,13 +100,37 @@ public class RareTypoCooccurrenceExecutor implements TenderRuleExecutor {
         Map<String, List<Field>> leftByTypo = leftFields.stream().collect(Collectors.groupingBy(Field::getNormalizedValue));
         Map<String, List<Field>> rightByTypo = rightFields.stream().collect(Collectors.groupingBy(Field::getNormalizedValue));
 
-        Set<String> commonTypos = leftByTypo.keySet().stream().filter(rightByTypo::containsKey).collect(Collectors.toSet());
+        Set<String> commonTypos = leftByTypo.keySet().stream()
+                .filter(rightByTypo::containsKey)
+                .filter(typo -> !isExcludedCommercialTerm(typo)) // 排除商业用语误报
+                .collect(Collectors.toSet());
 
         for (String typo : commonTypos) {
             hits.add(buildHit(scope, leftDocId, rightDocId, typo, leftByTypo.get(typo), rightByTypo.get(typo)));
         }
 
         return hits;
+    }
+
+    /**
+     * 判断是否为需要排除的商业用语。
+     * "地址"等词虽然在商业文档中常见，但不应被判定为错别字。
+     */
+    private boolean isExcludedCommercialTerm(String term) {
+        if (term == null || term.isBlank()) {
+            return false;
+        }
+        // 精确匹配
+        if (EXCLUDED_COMMERCIAL_TERMS.contains(term)) {
+            return true;
+        }
+        // 包含匹配（排除"联系地址"、"公司地址"等组合词）
+        for (String excluded : EXCLUDED_COMMERCIAL_TERMS) {
+            if (term.contains(excluded)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private RuleHit buildHit(CompareScope scope, String leftDocId, String rightDocId, String typo,
@@ -114,14 +144,14 @@ public class RareTypoCooccurrenceExecutor implements TenderRuleExecutor {
         hit.setPriority(PRIORITY);
         hit.setWeight(98); // 罕见错误共现是极高权重特征
         hit.setMatchedValue("common_typo:" + typo);
-        hit.setTriggerSummary(String.format("文档 %s 与 %s 共同出现罕见错别字“%s”。低频错别字在不同投标主体中同步出现，是判定文档同源/代写的极高权重特征。",
+        hit.setTriggerSummary(String.format("文档 %s 与 %s 共同出现罕见错别字\"%s\"。低频错别字在不同投标主体中同步出现，是判定文档同源/代写的极高权重特征。",
                 leftDocId, rightDocId, typo));
 
         hit.setDocumentIds(List.of(leftDocId, rightDocId));
-        
+
         List<String> fieldIds = new ArrayList<>();
         List<RuleEvidence> evidences = new ArrayList<>();
-        
+
         for (Field f : leftFields) {
             fieldIds.add(f.getFieldId());
             evidences.add(toEvidence(f));

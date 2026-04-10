@@ -60,8 +60,10 @@ public class AgentController {
     @Operation(summary = "同步对话")
     @PostMapping("/chat")
     public Object chat(@RequestBody AgentChatReq req) {
+        // 流式请求降级为同步响应，避免流式处理复杂场景时崩溃
         if (Boolean.TRUE.equals(req.getStream())) {
-            return streamChat(req);
+            log.info("[AgentController] stream=true 请求降级为同步处理");
+            return Result.success(agentChatService.chat(req));
         }
         return Result.success(agentChatService.chat(req));
     }

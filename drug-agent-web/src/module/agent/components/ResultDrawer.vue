@@ -52,25 +52,35 @@
                 <div class="mc-sub">{{ riskSubtext }}</div>
               </div>
 
-              <!-- 相似度评分 -->
+              <!-- 综合风险评分（算法计算） -->
               <div class="metric-card score-card">
                 <div class="mc-label">
                   <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
                   </svg>
-                  融合相似度评分
+                  综合风险评分
+                  <span style="margin-left:auto;font-size:10px;background:#eff4ff;color:#165dff;padding:2px 6px;border-radius:4px;">算法计算</span>
                 </div>
                 <div class="mc-value">
-                  <span class="score-num">{{ overviewData?.score ?? result.score ?? 0 }}</span>
+                  <span class="score-num" :class="`text-risk-${scoreBreakdown.derivedLevel}`">{{ scoreBreakdown.total }}</span>
                   <span class="score-unit">/ 100</span>
                 </div>
-                <div class="score-bar-wrap">
-                  <div class="score-bar">
-                    <div
-                      class="score-bar-fill"
-                      :class="`fill-risk-${result.riskLevel || 'unknown'}`"
-                      :style="{ width: `${overviewData?.score ?? result.score ?? 0}%` }"
-                    ></div>
+                <!-- 四维度条 -->
+                <div class="score-dims">
+                  <div
+                    v-for="(val, key) in scoreBreakdown.dimensions"
+                    :key="key"
+                    class="sdim-row"
+                  >
+                    <span class="sdim-label">{{ DIMENSION_LABELS[key] }}</span>
+                    <div class="sdim-bar">
+                      <div
+                        class="sdim-fill"
+                        :class="`fill-risk-${scoreBreakdown.derivedLevel}`"
+                        :style="{ width: `${val}%` }"
+                      ></div>
+                    </div>
+                    <span class="sdim-val">{{ val }}</span>
                   </div>
                 </div>
               </div>
@@ -241,6 +251,7 @@
 import { computed } from 'vue';
 import { useAgentStore } from '../store/agentStore';
 import html2pdf from 'html2pdf.js';
+import { calcRiskScore, DIMENSION_LABELS } from '../utils/riskScoreCalculator';
 
 const store = useAgentStore();
 
@@ -254,6 +265,9 @@ const visible = computed({
 });
 
 const result = computed(() => store.currentResult);
+
+// 综合风险评分（算法计算）
+const scoreBreakdown = computed(() => calcRiskScore(result.value ?? undefined));
 
 const riskLabel = computed(() => {
   const map: Record<string, string> = {
@@ -586,20 +600,50 @@ async function handleExportPdf() {
 .mc-value {
   margin-bottom: 10px;
 }
-.score-bar-wrap {
-  margin-top: 4px;
+/* 算法维度条 */
+.score-dims {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
-.score-bar {
-  height: 6px;
+
+.sdim-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sdim-label {
+  font-size: 11px;
+  color: #86909c;
+  width: 70px;
+  flex-shrink: 0;
+}
+
+.sdim-bar {
+  flex: 1;
+  height: 5px;
   background: #f0f1f5;
   border-radius: 999px;
   overflow: hidden;
 }
-.score-bar-fill {
+
+.sdim-fill {
   height: 100%;
   border-radius: 999px;
-  transition: width 0.8s ease;
+  transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+.sdim-val {
+  font-size: 11px;
+  font-weight: 600;
+  color: #4e5969;
+  width: 20px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
 .fill-risk-high { background: linear-gradient(90deg, #f53f3f, #ff8080); }
 .fill-risk-medium { background: linear-gradient(90deg, #faad14, #ffc940); }
 .fill-risk-low { background: linear-gradient(90deg, #165dff, #5b8df6); }

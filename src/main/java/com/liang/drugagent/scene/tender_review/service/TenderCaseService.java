@@ -399,11 +399,18 @@ public class TenderCaseService {
     }
 
     private Optional<OssFile> resolveOssFile(String docId) {
-        TenderCaseDocumentEntity document = tenderCaseDocumentMapper.selectById(docId);
-        if (document != null && document.getOssFileId() != null && !document.getOssFileId().isBlank()) {
-            return Optional.ofNullable(ossFileMapper.selectById(document.getOssFileId()));
+        // 优先尝试从 tender_case_document 查找（可能表不存在，需容错）
+        try {
+            TenderCaseDocumentEntity document = tenderCaseDocumentMapper.selectById(docId);
+            if (document != null && document.getOssFileId() != null && !document.getOssFileId().isBlank()) {
+                return Optional.ofNullable(ossFileMapper.selectById(document.getOssFileId()));
+            }
+        } catch (Exception e) {
+            log.warn("[TenderCaseService] tender_case_document 表查询失败，回退到 oss_file 表直接查询, docId={}, error={}",
+                    docId, e.getMessage());
         }
 
+        // 回退：直接用 docId 查 oss_file 表
         OssFile direct = ossFileMapper.selectById(docId);
         return Optional.ofNullable(direct);
     }

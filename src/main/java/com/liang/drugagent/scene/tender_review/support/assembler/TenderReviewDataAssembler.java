@@ -40,6 +40,13 @@ public class TenderReviewDataAssembler {
     private static final Pattern SECTION_NO_PATTERN = Pattern.compile("^([0-9一二三四五六七八九十]+(?:\\.[0-9]+)*)");
     private static final Pattern BOLD_TEXT_PATTERN = Pattern.compile("\\*\\*(.*?)\\*\\*");
     private static final Pattern SPECIFIC_TYPOS_PATTERN = Pattern.compile("应急响映|串并口|协仪|堆叠架构|逻辑漏斗");
+    /** HTML 注释中的元数据提取模式。 */
+    private static final Pattern METADATA_COMMENT_PATTERN = Pattern.compile("<!--([\\s\\S]*?)-->");
+    /** 元数据字段提取模式。 */
+    private static final Pattern AUTHOR_PATTERN = Pattern.compile("(?i)Author:\\s*(.+)");
+    private static final Pattern CREATE_DATE_PATTERN = Pattern.compile("(?i)CreateDate:\\s*(.+)");
+    private static final Pattern LAST_MODIFIED_PATTERN = Pattern.compile("(?i)LastModified:\\s*(.+)");
+    private static final Pattern APPLICATION_PATTERN = Pattern.compile("(?i)Application:\\s*(.+)");
 
     private final ObjectMapper objectMapper;
 
@@ -75,11 +82,18 @@ public class TenderReviewDataAssembler {
             if (isBlank(content)) {
                 continue;
             }
+            // 提取 HTML 注释中的文件指纹元数据
+            DocumentMetadata metadata = extractDocumentMetadata(content);
             metadataDocuments.add(new MetadataDocument(
                     defaultString(parsed.getDocumentId(), "DOC-" + (metadataDocuments.size() + 1)),
                     defaultString(parsed.getFilename(), "文档-" + (metadataDocuments.size() + 1)),
                     defaultString(parsed.getFileType(), "unknown"),
-                    content
+                    content,
+                    metadata.author,
+                    metadata.createDate,
+                    metadata.lastModified,
+                    metadata.application,
+                    metadata.raw
             ));
         }
 
@@ -89,6 +103,52 @@ public class TenderReviewDataAssembler {
 
         Map<String, Object> emptyMetadata = Map.of("traceId", traceId != null ? traceId : "");
         return buildFromDocuments(metadataDocuments, emptyMetadata, traceId);
+    }
+
+    /**
+     * 从文档内容中提取 HTML 注释中的文件指纹元数据。
+     * 用于 W-M7 元数据聚集性检测。
+     */
+    private DocumentMetadata extractDocumentMetadata(String content) {
+        String author = null;
+        String createDate = null;
+        String lastModified = null;
+        String application = null;
+        String raw = null;
+
+        if (content != null) {
+            Matcher commentMatcher = METADATA_COMMENT_PATTERN.matcher(content);
+            if (commentMatcher.find()) {
+                raw = commentMatcher.group(0).trim();
+                String commentBody = commentMatcher.group(1);
+
+                Matcher authorMatcher = AUTHOR_PATTERN.matcher(commentBody);
+                if (authorMatcher.find()) {
+                    author = authorMatcher.group(1).trim();
+                }
+
+                Matcher createDateMatcher = CREATE_DATE_PATTERN.matcher(commentBody);
+                if (createDateMatcher.find()) {
+                    createDate = createDateMatcher.group(1).trim();
+                }
+
+                Matcher lastModifiedMatcher = LAST_MODIFIED_PATTERN.matcher(commentBody);
+                if (lastModifiedMatcher.find()) {
+                    lastModified = lastModifiedMatcher.group(1).trim();
+                }
+
+                Matcher applicationMatcher = APPLICATION_PATTERN.matcher(commentBody);
+                if (applicationMatcher.find()) {
+                    application = applicationMatcher.group(1).trim();
+                }
+            }
+        }
+
+        return new DocumentMetadata(author, createDate, lastModified, application, raw);
+    }
+
+    /** 文档元数据记录。 */
+    private record DocumentMetadata(String author, String createDate, String lastModified, String application, String raw) {
     }
 
     public TenderReviewData resolve(Map<String, Object> metadata, String traceId) {
@@ -128,11 +188,19 @@ public class TenderReviewDataAssembler {
             if (document == null || isBlank(document.content())) {
                 continue;
             }
+            // 从已有文档内容中提取元数据
+            DocumentMetadata extractedMetadata = extractDocumentMetadata(document.content());
             documents.add(new MetadataDocument(
                     defaultString(document.documentId(), "DOC-" + (documents.size() + 1)),
                     defaultString(document.documentName(), "文档-" + (documents.size() + 1)),
                     defaultString(document.fileType(), "markdown"),
-                    document.content()
+                    document.content(),
+                    // 文件指纹元数据（W-M7 支持）
+                    extractedMetadata.author,
+                    extractedMetadata.createDate,
+                    extractedMetadata.lastModified,
+                    extractedMetadata.application,
+                    extractedMetadata.raw
             ));
         }
         return documents;
@@ -178,6 +246,12 @@ public class TenderReviewDataAssembler {
         document.setDocumentId(metadataDocument.documentId());
         document.setDocumentName(metadataDocument.documentName());
         document.setFileType(metadataDocument.fileType());
+        // 设置文件指纹元数据（W-M7 支持）
+        document.setAuthor(metadataDocument.author());
+        document.setCreateDate(metadataDocument.createDate());
+        document.setLastModified(metadataDocument.lastModified());
+        document.setApplication(metadataDocument.application());
+        document.setMetadataRaw(metadataDocument.metadataRaw());
         return document;
     }
 
@@ -749,7 +823,18 @@ public class TenderReviewDataAssembler {
     }
 
     /** 元数据文档记录。 */
-    private record MetadataDocument(String documentId, String documentName, String fileType, String content) {
+    private record MetadataDocument(
+            String documentId,
+            String documentName,
+            String fileType,
+            String content,
+            // 文件指纹元数据（W-M7 支持）
+            String author,
+            String createDate,
+            String lastModified,
+            String application,
+            String metadataRaw
+    ) {
     }
 
     /** 文档解析结果。 */

@@ -153,7 +153,7 @@ public class AgentSceneService {
             AgentExecutionResult result = tenderReviewSceneService.execute(context, req);
 
             // 2. 生成标题
-            result.setGeneratedTitle(generateTenderReviewTitle(result));
+            result.setGeneratedTitle(generateTenderReviewTitle(context, result));
             result.setShouldUpdateTitle(true);
 
             return AgentSceneExecution.builder()
@@ -176,9 +176,32 @@ public class AgentSceneService {
     /**
      * 生成标书审查标题。
      */
-    private String generateTenderReviewTitle(AgentExecutionResult result) {
-        String riskLevel = result.getRiskLevel() != null ? result.getRiskLevel() : "未知";
-        return "标书审查-" + riskLevel;
+    private String generateTenderReviewTitle(AgentChatContext context, AgentExecutionResult result) {
+        List<String> documentNames = collectTenderDocumentNames(context, result);
+        if (!documentNames.isEmpty()) {
+            String commonProjectName = extractCommonProjectName(documentNames);
+            if (commonProjectName != null) {
+                return commonProjectName + "标书比对";
+            }
+
+            String primaryName = simplifyTenderDocumentName(documentNames.get(0));
+            if (documentNames.size() == 2) {
+                String secondaryName = simplifyTenderDocumentName(documentNames.get(1));
+                if (!primaryName.equals(secondaryName)) {
+                    return buildTitle(primaryName + "与" + secondaryName + "比对", 28);
+                }
+            }
+            if (documentNames.size() > 1) {
+                return buildTitle(primaryName + "等" + documentNames.size() + "份标书审查", 28);
+            }
+            return buildTitle(primaryName + "标书审查", 28);
+        }
+
+        String queryTitle = buildTenderQueryTitle(context != null ? context.getQuery() : null);
+        if (queryTitle != null) {
+            return queryTitle;
+        }
+        return "标书审查";
     }
 
     /**
@@ -230,6 +253,25 @@ public class AgentSceneService {
                     .confidence(0.95)
                     .requiresClarification(false)
                     .build();
+        }
+
+        // 1.3 会话上下文已有标书审查场景 -> 直接复用场景，不走弱规则澄清
+        // 解决：审查完成后用户问"这两份标书有哪些问题"等后续问题，不应触发弱规则澄清
+        if (context.getSession() != null) {
+            String sessionScene = context.getSession().getLastScene();
+            List<String> contextFileIds = context.getFileIds();
+            log.info("[AgentSceneService] 【会话上下文检查】sessionId={}, lastScene={}, fileIds.size={}",
+                    context.getSessionId(), sessionScene, contextFileIds != null ? contextFileIds.size() : 0);
+            if ("tender_review".equalsIgnoreCase(sessionScene) || "TENDER_REVIEW".equalsIgnoreCase(sessionScene)) {
+                log.info("[AgentSceneService] 【会话上下文】检测到标书审查会话，直接路由到标书审查场景");
+                return WorkflowRouteDecision.builder()
+                        .scene(SceneEnum.TENDER_REVIEW)
+                        .source("session-context")
+                        .reason("会话上下文为标书审查场景，复用场景")
+                        .confidence(0.92)
+                        .requiresClarification(false)
+                        .build();
+            }
         }
 
         // ========== 第二层：规则匹配（成本低、可控、快）==========
@@ -710,6 +752,131 @@ public class AgentSceneService {
         // 截取前20个字符作为标题
         String title = query.length() > 20 ? query.substring(0, 20) : query;
         return title;
+    }
+
+    private List<String> collectTenderDocumentNames(AgentChatContext context, AgentExecutionResult result) {
+        List<String> documentNames = new ArrayList<>();
+        if (result != null && result.getDocumentNames() != null) {
+            documentNames.addAll(result.getDocumentNames().stream()
+                    .filter(name -> name != null && !name.isBlank())
+                    .toList());
+        }
+        if (documentNames.isEmpty() && context != null && context.getUploadedFiles() != null) {
+            documentNames.addAll(context.getUploadedFiles().stream()
+                    .map(file -> file != null ? file.getFileName() : null)
+                    .filter(name -> name != null && !name.isBlank())
+                    .toList());
+        }
+        return documentNames;
+    }
+
+    private String extractCommonProjectName(List<String> documentNames) {
+        if (documentNames == null || documentNames.size() < 2) {
+            return null;
+        }
+        String commonPrefix = null;
+        for (String documentName : documentNames) {
+            String normalizedName = simplifyTenderDocumentName(documentName);
+            if (normalizedName.isBlank()) {
+                continue;
+            }
+            if (commonPrefix == null) {
+                commonPrefix = normalizedName;
+                continue;
+            }
+            commonPrefix = commonPrefix(commonPrefix, normalizedName);
+            commonPrefix = trimTrailingSeparator(commonPrefix);
+            if (commonPrefix.length() < 4) {
+                return null;
+            }
+        }
+        if (commonPrefix == null) {
+            return null;
+        }
+
+        String refinedName = commonPrefix
+                .replaceAll("(商务标|技术标|报价标|投标文件|响应文件|招标文件|副本|终稿|最终版|完整版)+$", "")
+                .replaceAll("[\\s\\-_（(]+$", "")
+                .trim();
+
+        if (refinedName.length() < 4 || isGenericTenderName(refinedName)) {
+            return null;
+        }
+        return buildTitle(refinedName, 18);
+    }
+
+    private String simplifyTenderDocumentName(String documentName) {
+        if (documentName == null || documentName.isBlank()) {
+            return "";
+        }
+        String simplifiedName = documentName.trim()
+                .replaceAll("\\.[A-Za-z0-9]{1,6}$", "")
+                .replaceAll("[_]+", " ")
+                .replaceAll("\\s+", " ")
+                .replaceAll("(（|\\()(副本|终稿|最终版|定稿)(）|\\))", "")
+                .trim();
+        return buildTitle(simplifiedName, 18);
+    }
+
+    private boolean isGenericTenderName(String name) {
+        return "投标文件".equals(name)
+                || "标书".equals(name)
+                || "商务标".equals(name)
+                || "技术标".equals(name)
+                || "招标文件".equals(name)
+                || "响应文件".equals(name);
+    }
+
+    private String commonPrefix(String first, String second) {
+        int maxLength = Math.min(first.length(), second.length());
+        int index = 0;
+        while (index < maxLength && first.charAt(index) == second.charAt(index)) {
+            index++;
+        }
+        return first.substring(0, index);
+    }
+
+    private String trimTrailingSeparator(String text) {
+        if (text == null) {
+            return "";
+        }
+        return text.replaceAll("[\\s\\-_/（(]+$", "").trim();
+    }
+
+    private String buildTenderQueryTitle(String query) {
+        if (query == null || query.isBlank()) {
+            return null;
+        }
+        String normalizedQuery = query.trim()
+                .replaceAll("^(帮我|请帮我|麻烦帮我|想请你|请你|帮忙)?(看看|分析一下|审查一下|审查|检查一下|检查)?", "")
+                .replaceAll("(这|这几|这两|这三)?份?(标书|投标文件|招标文件)", "")
+                .replaceAll("(是否|有无)?(存在)?", "")
+                .replaceAll("(围标|串标|雷同|风险)", "")
+                .replaceAll("[？?。!！,， ]+", "")
+                .trim();
+
+        if (!normalizedQuery.isBlank() && normalizedQuery.length() > 1 && !"有".equals(normalizedQuery)) {
+            return buildTitle(normalizedQuery + "标书审查", 24);
+        }
+
+        if (query.contains("围标") || query.contains("串标")) {
+            return "围串标风险审查";
+        }
+        if (query.contains("雷同")) {
+            return "标书雷同审查";
+        }
+        return "标书审查";
+    }
+
+    private String buildTitle(String title, int maxLength) {
+        if (title == null || title.isBlank()) {
+            return "新对话";
+        }
+        String normalizedTitle = title.trim().replaceAll("\\s+", " ");
+        if (normalizedTitle.length() <= maxLength) {
+            return normalizedTitle;
+        }
+        return normalizedTitle.substring(0, maxLength);
     }
 
     /**

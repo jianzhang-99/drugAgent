@@ -286,6 +286,7 @@ public class TenderSemanticCandidateService {
     /**
      * 判断 subChapter 是否为 parentChapter 的子章节。
      * 通过提取编号前缀来判断（如"3.1"是"三"的下属，或"3.1.1"是"3.1"的下属）。
+     * 支持中文数字（"一、二、三..."）与阿拉伯数字（"1、1.1..."）的对应关系。
      */
     private boolean isSubSectionOf(String subChapter, String parentChapter) {
         if (subChapter == null || parentChapter == null) {
@@ -301,7 +302,20 @@ public class TenderSemanticCandidateService {
         if (subPrefix.isEmpty() || parentPrefix.isEmpty()) {
             return false;
         }
-        return subPrefix.startsWith(parentPrefix) || parentPrefix.startsWith(subPrefix);
+        // 检查编号前缀是否匹配
+        boolean prefixMatch = subPrefix.startsWith(parentPrefix) || parentPrefix.startsWith(subPrefix);
+        if (prefixMatch) {
+            return true;
+        }
+        // 额外检查：中文数字编号与阿拉伯数字编号的对应关系
+        // 例如："三" 对应 "3"，"3.1" 是 "三" 的子章节
+        String subNormalized = normalizeChineseNumber(subPrefix);
+        String parentNormalized = normalizeChineseNumber(parentPrefix);
+        if (!subNormalized.equals(subPrefix) || !parentNormalized.equals(parentPrefix)) {
+            // 至少有一方被转换过，再次检查匹配
+            return subNormalized.startsWith(parentNormalized) || parentNormalized.startsWith(subNormalized);
+        }
+        return false;
     }
 
     /**
@@ -335,6 +349,34 @@ public class TenderSemanticCandidateService {
             return chapter.substring(0, idx);
         }
         return "";
+    }
+
+    /**
+     * 将中文数字编号转换为阿拉伯数字编号。
+     * 例如："三" -> "3"，"三.1" -> "3.1"，"第三章" -> "3"
+     */
+    private String normalizeChineseNumber(String prefix) {
+        if (prefix == null || prefix.isEmpty()) {
+            return prefix;
+        }
+        // 中文数字映射
+        Map<Character, String> chineseToDigit = Map.of(
+                '一', "1", '二', "2", '三', "3", '四', "4", '五', "5",
+                '六', "6", '七', "7", '八', "8", '九', "9", '十', "10"
+        );
+
+        StringBuilder result = new StringBuilder();
+        for (char c : prefix.toCharArray()) {
+            if (chineseToDigit.containsKey(c)) {
+                result.append(chineseToDigit.get(c));
+            } else if (c == '十') {
+                // 十需要特殊处理：十 -> 10，十X -> 1X
+                result.append("10");
+            } else {
+                result.append(c);
+            }
+        }
+        return result.toString();
     }
 
     /**

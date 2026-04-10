@@ -142,32 +142,32 @@ onMounted(() => {
   }
 });
 
-function handleSend() {
+async function handleSend() {
   const hasFiles = pendingFiles.value.length > 0;
   const hasText = inputText.value.trim().length > 0;
 
   if (hasFiles) {
-    // 有文件：先上传（query 带上文字内容），再自动 chat
-    store.uploadFiles(pendingFiles.value, hasText ? inputText.value.trim() : undefined).then((result) => {
-      pendingFiles.value = [];
-      inputText.value = '';
-      // uploadFiles 成功后 fileIds 已写入 sessionFileIds，后续 chat 自动携带
-      // 若后端返回了直接审查结果（code=0 且有 answer），这里无需额外操作
-      // 若后端只上传了文件未审查，result 为审查结果或 null
-      if (result?.answer) {
-        // 后端已直接审查，结果已在 uploadFiles 中写入消息列表
-      } else {
-        // 后端只上传了文件，需要后续 chat 触发审查
-        // 此时 sessionFileIds 已有文件ID，用户可再发文字触发审查
-        if (!hasText) {
-          MessagePlugin.info('文件已上传，可继续输入审查指令');
-        }
-      }
-    });
-  } else if (hasText) {
-    // 无文件：走普通文字 chat（自动带上 sessionFileIds 中的历史文件）
-    store.sendMessage(inputText.value.trim());
+    // 有文件：立即清空输入框和文件列表（乐观更新），再等待上传
+    const filesToUpload = [...pendingFiles.value];
+    const queryText = hasText ? inputText.value.trim() : undefined;
+    pendingFiles.value = [];
     inputText.value = '';
+
+    const result = await store.uploadFiles(filesToUpload, queryText);
+
+    if (result?.answer) {
+      // 后端已直接审查，结果已在 uploadFiles 中写入消息列表
+    } else {
+      // 后端只上传了文件，需要后续 chat 触发审查
+      if (!hasText) {
+        MessagePlugin.info('文件已上传，可继续输入审查指令');
+      }
+    }
+  } else if (hasText) {
+    // 纯文字：立即清空（乐观更新），再 await 发送触发 loading
+    const content = inputText.value.trim();
+    inputText.value = '';
+    await store.sendMessage(content);
   }
 }
 
