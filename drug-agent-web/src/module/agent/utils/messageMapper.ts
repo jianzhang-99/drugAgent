@@ -10,6 +10,7 @@ import type {
   ChatMessage,
   ResultData,
   Attachment,
+  ThinkingStep,
 } from '../types/agent';
 
 /**
@@ -28,6 +29,7 @@ export function mapResponseToMessage(
     content: resp.answer || resp.summary || '',
     createdAt: new Date().toISOString(),
     status: 'sent',
+    thinkingSteps: resp.thinkingSteps,
     raw: resp,
   };
 
@@ -55,6 +57,10 @@ export function mapChatMessageToMessage(chatMsg: ChatMessage): Message {
   const metadata = chatMsg.metadata as DrugAgentResp | undefined;
   if (metadata && (metadata.report || metadata.riskLevel || metadata.score !== undefined)) {
     message.result = mapToResultData(metadata);
+  }
+  // 从 metadata 恢复思考步骤
+  if (metadata?.thinkingSteps && metadata.thinkingSteps.length > 0) {
+    message.thinkingSteps = metadata.thinkingSteps as ThinkingStep[];
   }
   return message;
 }
@@ -165,5 +171,20 @@ export function createClarifyMessage(question: string): Message {
     content: question,
     createdAt: new Date().toISOString(),
     status: 'sent',
+  };
+}
+
+/**
+ * 创建处理中消息（带思考步骤）
+ */
+export function createProcessingMessage(thinkingSteps: ThinkingStep[]): Message {
+  return {
+    id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    role: 'assistant',
+    type: 'assistant_processing',
+    content: '正在分析中，请稍候...',
+    createdAt: new Date().toISOString(),
+    status: 'sending',
+    thinkingSteps: thinkingSteps,
   };
 }

@@ -34,6 +34,7 @@ public class WorkflowResult {
     private List<EvidenceItem> evidenceList = new ArrayList<>();
     private List<EvidenceGroup> evidenceGroups = new ArrayList<>();
     private List<String> steps = new ArrayList<>();
+    private List<ThinkingStep> thinkingSteps = new ArrayList<>();
     /**
      * 分析覆盖度信息，记录各 LLM 分析器的执行状态。
      * key: 分析器名称（如 W-P1、W-P2 等）

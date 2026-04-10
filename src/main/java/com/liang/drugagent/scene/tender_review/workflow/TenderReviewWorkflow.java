@@ -30,12 +30,12 @@ import org.springframework.beans.factory.annotation.Value;
 import com.liang.drugagent.shared.llm.LlmRequest;
 import com.liang.drugagent.shared.llm.LlmResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -221,6 +221,7 @@ public class TenderReviewWorkflow {
                 SceneEnum.TENDER_REVIEW,
                 reportGenerationService.buildAnswer(report)
         );
+        result.setSummary(report.getOverview() != null ? report.getOverview().getSummary() : null);
         result.setRiskLevel(fusionResult.getRiskLevel());
         result.setScore(fusionResult.getScore() != null ? fusionResult.getScore() : 0);
         result.setSteps(List.of("场景路由", "结构化加载", "规则命中分析", "LLM语义分析", "误报豁免", "风险融合", "证据组装", "报告生成"));
@@ -384,6 +385,10 @@ public class TenderReviewWorkflow {
                             .role("user")
                             .content(userMessage)
                             .build()))
+                    .temperature(0.2f)
+                    .responseFormat("json_schema:" + objectMapper.writeValueAsString(
+                            TenderReviewValidatePrompt.getResponseFormat()))
+                    .thinkingEnabled(false)
                     .stream(false)
                     .build();
 
@@ -409,10 +414,30 @@ public class TenderReviewWorkflow {
                 result.setAnswer(validationResult.get("answer").asText());
             }
 
+            if (result.getReport() != null) {
+                if (validationResult.has("managementSummary") && validationResult.get("managementSummary").isArray()) {
+                    List<String> managementSummary = new ArrayList<>();
+                    validationResult.get("managementSummary").forEach(item -> managementSummary.add(item.asText()));
+                    result.getReport().setManagementSummary(managementSummary);
+                }
+
+                if (validationResult.has("suggestedActions") && validationResult.get("suggestedActions").isArray()) {
+                    List<String> suggestedActions = new ArrayList<>();
+                    validationResult.get("suggestedActions").forEach(item -> suggestedActions.add(item.asText()));
+                    result.getReport().setRecommendedActions(suggestedActions);
+                }
+            }
+
             if (!passed && validationResult.has("warnings")) {
                 List<String> warnings = new java.util.ArrayList<>();
                 validationResult.get("warnings").forEach(w -> warnings.add(w.asText()));
                 log.warn("[TenderReviewWorkflow] L4 校验未通过，warnings: {}", warnings);
+                if (result.getReport() != null) {
+                    if (result.getReport().getExplanations() == null) {
+                        result.getReport().setExplanations(new LinkedHashMap<>());
+                    }
+                    result.getReport().getExplanations().put("output_validation_warning", String.join("；", warnings));
+                }
             }
 
             log.info("[TenderReviewWorkflow] L4 校验完成，passed={}", passed);

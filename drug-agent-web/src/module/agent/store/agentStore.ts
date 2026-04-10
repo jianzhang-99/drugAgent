@@ -13,6 +13,7 @@ import type {
   ChatSession,
   ModelInfo,
   ChatRequest,
+  ThinkingStep,
 } from '../types/agent';
 import * as agentApi from '../api/agentApi';
 import {
@@ -22,6 +23,7 @@ import {
   createErrorMessage,
   createUploadingMessage,
   createAssistantMessage,
+  createProcessingMessage,
 } from '../utils/messageMapper';
 
 export const useAgentStore = defineStore('agent', () => {
@@ -63,6 +65,12 @@ export const useAgentStore = defineStore('agent', () => {
 
   /** 当前上传的文件列表 */
   const pendingFiles = ref<Attachment[]>([]);
+
+  /** 进行中的思考步骤（实时更新） */
+  const thinkingStepsInProgress = ref<ThinkingStep[]>([]);
+
+  /** 当前处理状态 */
+  const processingStatus = ref<'idle' | 'uploading' | 'processing' | 'done'>('idle');
 
   /** 可用模型列表 */
   const availableModels = ref<ModelInfo[]>([]);
@@ -397,6 +405,23 @@ export const useAgentStore = defineStore('agent', () => {
   }
 
   /**
+   * 初始化标书审查思考步骤
+   */
+  function initTenderReviewThinkingSteps() {
+    thinkingStepsInProgress.value = [
+      { code: 'route', title: '场景识别', type: 'ROUTE', status: 'COMPLETED', order: 1, detail: '检测到上传文件，自动进入标书审查场景' },
+      { code: 'validate_data', title: '数据校验', type: 'EXECUTION', status: 'PROCESSING', order: 2, detail: '检查文件完整性和格式...' },
+      { code: 'prepare_data', title: '文档解析', type: 'EXECUTION', status: 'INFO', order: 3, detail: '解析标书文本与结构化字段...' },
+      { code: 'rule_analysis', title: '规则命中分析', type: 'EXECUTION', status: 'INFO', order: 4, detail: '执行确定性规则，筛出相似特征...' },
+      { code: 'semantic_analysis', title: 'LLM语义分析', type: 'EXECUTION', status: 'INFO', order: 5, detail: '对语义相似片段做补强分析...' },
+      { code: 'apply_exemption', title: '误报豁免', type: 'EXECUTION', status: 'INFO', order: 6, detail: '对可能的误报场景进行降权处理...' },
+      { code: 'risk_fusion', title: '风险融合', type: 'EXECUTION', status: 'INFO', order: 7, detail: '融合规则命中与语义分析结果...' },
+      { code: 'assemble_evidence', title: '证据组装', type: 'EXECUTION', status: 'INFO', order: 8, detail: '组织命中规则对应的证据链...' },
+      { code: 'generate_report', title: '报告生成', type: 'FINALIZE', status: 'INFO', order: 9, detail: '生成最终审查报告...' },
+    ];
+  }
+
+  /**
    * 上传文件
    */
   async function uploadFiles(
@@ -411,6 +436,10 @@ export const useAgentStore = defineStore('agent', () => {
     if (!activeSessionId.value || files.length === 0) return;
 
     uploading.value = true;
+    processingStatus.value = 'uploading';
+
+    // 初始化思考步骤
+    initTenderReviewThinkingSteps();
 
     // 添加上传中消息
     const uploadingMsg = createUploadingMessage(
@@ -422,6 +451,10 @@ export const useAgentStore = defineStore('agent', () => {
       }))
     );
     addMessage(uploadingMsg);
+
+    // 添加处理中消息（带思考步骤）
+    const processingMsg = createProcessingMessage([...thinkingStepsInProgress.value]);
+    addMessage(processingMsg);
 
     try {
       const res = await agentApi.submit(
@@ -435,10 +468,11 @@ export const useAgentStore = defineStore('agent', () => {
       );
 
       if (res.data.code === 200 || res.data.code === 0) {
-        // 移除上传中消息
+        // 移除上传中消息和处理中消息
         removeMessage(uploadingMsg.id);
+        removeMessage(processingMsg.id);
 
-        // 添加助手消息
+        // 添加助手消息（后端返回的思考步骤会替换前端的占位步骤）
         const aiMsg = mapResponseToMessage(res.data.data);
         addMessage(aiMsg);
 
@@ -474,13 +508,19 @@ export const useAgentStore = defineStore('agent', () => {
     } catch (error: unknown) {
       console.error('上传文件失败:', error);
       removeMessage(uploadingMsg.id);
+      removeMessage(processingMsg.id);
       const errorMsg = createErrorMessage(
         error instanceof Error ? error.message : '网络错误，请稍后重试'
       );
       addMessage(errorMsg);
     } finally {
       uploading.value = false;
+      processingStatus.value = 'idle';
       pendingFiles.value = [];
+      // 清空进行中的思考步骤
+      setTimeout(() => {
+        thinkingStepsInProgress.value = [];
+      }, 3000);
     }
     return null;
   }

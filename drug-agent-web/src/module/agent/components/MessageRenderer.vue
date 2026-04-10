@@ -22,6 +22,11 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
       </div>
       <div class="message-body">
+        <!-- 思考步骤（可折叠） -->
+        <ThinkingSteps
+          v-if="message.thinkingSteps && message.thinkingSteps.length > 0"
+          :steps="message.thinkingSteps"
+        />
         <div class="message-content">
           {{ message.content }}
           <span v-if="store.streaming && store.streamingMessageId === message.id" class="typing-cursor">|</span>
@@ -29,6 +34,24 @@
         <div class="message-time agent-time" v-if="message.createdAt">
           <span>内容由横渡智能体生成 · {{ formatTime(message.createdAt) }}</span>
           <button type="button" class="copy-btn" @click="handleCopy(message.content)">复制</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-else-if="message.type === 'assistant_processing'" class="processing-message">
+      <div class="avatar agent-avatar">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+      </div>
+      <div class="message-body">
+        <!-- 思考步骤 -->
+        <ThinkingSteps
+          v-if="message.thinkingSteps && message.thinkingSteps.length > 0"
+          :steps="message.thinkingSteps"
+          :default-expanded="true"
+        />
+        <div class="message-content processing-content">
+          <t-loading />
+          <span>{{ message.content }}</span>
         </div>
       </div>
     </div>
@@ -46,6 +69,11 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
       </div>
       <div class="message-body">
+        <!-- 思考步骤（可折叠） -->
+        <ThinkingSteps
+          v-if="message.thinkingSteps && message.thinkingSteps.length > 0"
+          :steps="message.thinkingSteps"
+        />
         <div class="message-content">
           <ResultCard :data="message.result" />
         </div>
@@ -70,6 +98,11 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
       </div>
       <div class="message-body">
+        <!-- 思考步骤（可折叠） -->
+        <ThinkingSteps
+          v-if="message.thinkingSteps && message.thinkingSteps.length > 0"
+          :steps="message.thinkingSteps"
+        />
         <div class="message-content">
           {{ message.content }}
           <span v-if="store.streaming && store.streamingMessageId === message.id" class="typing-cursor">|</span>
@@ -86,6 +119,7 @@
 <script setup lang="ts">
 import type { Message } from '../types/agent';
 import ResultCard from './ResultCard.vue';
+import ThinkingSteps from './ThinkingSteps.vue';
 import { ElMessage } from 'element-plus';
 import { useAgentStore } from '../store/agentStore';
 
@@ -267,6 +301,29 @@ async function handleCopy(text: string) {
   color: #5b7380;
   border-radius: 18px;
   border: 1px solid rgba(19, 49, 59, 0.08);
+}
+
+.processing-message {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.processing-message .message-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.processing-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: 18px;
+  font-size: 15px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
 }
 
 .message-time {

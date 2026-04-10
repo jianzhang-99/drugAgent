@@ -19,8 +19,39 @@ const buildId = (prefix: string) =>
 
 const sampleReport = {
   title: '医院智慧监管平台项目标书审查报告',
-  overview:
-    '系统从技术方案雷同、关键字段交叉复用、商务条款一致性三个维度完成审查，发现存在较明显的同源编写痕迹。',
+  overview: {
+    documentCount: 2,
+    rawHitCount: 11,
+    effectiveHitCount: 9,
+    exemptionCount: 0,
+    evidenceGroupCount: 3,
+    evidenceItemCount: 6,
+    score: 84,
+    riskLevel: 'high',
+    summary: '系统从技术方案雷同、关键字段交叉复用、商务条款一致性三个维度完成审查，发现存在较明显的同源编写痕迹。',
+  },
+  riskItems: [
+    {
+      riskType: 'collusion',
+      riskLevel: 'high',
+      title: '技术方案存在大段结构同源',
+      summary: '两份投标文件在实施步骤、章节顺序与关键术语上高度一致，疑似来源于同一模板或协同编写。',
+      reasonCodes: ['W-P1', 'W-P2'],
+      evidenceTitles: ['技术方案第四章'],
+      recommendations: ['优先核查投标主体之间的工商关联与授权链路'],
+    },
+    {
+      riskType: 'collusion',
+      riskLevel: 'medium',
+      title: '联系方式和团队信息存在交叉复用',
+      summary: '关键联系人手机号尾号和项目经理履历表述高度接近，建议人工复核企业关联关系。',
+      reasonCodes: ['W-M3'],
+      evidenceTitles: ['商务响应表联系人信息'],
+      recommendations: ['复核技术方案原始编辑来源和交付模板'],
+    },
+  ],
+  managementSummary: ['建议进入人工复核流程并保留证据链'],
+  recommendedActions: ['查看结构化风险详情', '导出审查报告', '发起人工复核任务'],
   findings: [
     {
       id: 'finding_1',

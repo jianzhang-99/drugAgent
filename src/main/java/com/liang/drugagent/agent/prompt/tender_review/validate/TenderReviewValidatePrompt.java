@@ -1,5 +1,11 @@
 package com.liang.drugagent.agent.prompt.tender_review.validate;
 
+import com.liang.drugagent.shared.llm.JsonSchemaUtils;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 /**
  * 标书审查结果校验 Prompt。
  *
@@ -48,7 +54,8 @@ public class TenderReviewValidatePrompt {
             3. 检查结构化数据与文本描述是否一致
             4. 生成规范的 summary（一句话结论）
             5. 生成规范的 answer（用户可读的审查结论）
-            6. 识别并报告潜在问题（warnings）
+            6. 生成适合页面直接展示的管理摘要与建议动作
+            7. 识别并报告潜在问题（warnings）
 
             # 合规性检查要点
             - 禁止在 answer 中直接认定"这是围标/串标"
@@ -58,13 +65,11 @@ public class TenderReviewValidatePrompt {
             - 证据应与结论对应，避免无证据支撑的推断
 
             # 输出格式要求
-            必须返回纯 JSON 格式：
-            {
-              "passed": true或false,
-              "summary": "一句话结论",
-              "answer": "用户可读的审查结论（Markdown格式）",
-              "warnings": ["问题1", "问题2"] // 如果有警告则列出，无则为空数组
-            }
+            - 必须返回纯 JSON 格式
+            - 必须严格遵守调用方提供的 JSON Schema
+            - 不能输出 markdown 代码块包裹
+            - managementSummary 为 2~4 条面向管理者的摘要
+            - suggestedActions 为 3~5 条可执行建议
 
             # 评分与风险等级标准
             - riskLevel 取值：HIGH | MEDIUM | LOW
@@ -83,6 +88,7 @@ public class TenderReviewValidatePrompt {
             - 只输出 JSON，不要输出 markdown 代码块标记
             - 如果 passed 为 false，answer 应说明问题而非直接展示
             - warnings 数组应为空 [] 而不是 null
+            - 必须在 answer 中包含 json 结构对应的结论，不要遗漏关键信息
             """;
 
     /**
@@ -110,14 +116,42 @@ public class TenderReviewValidatePrompt {
     /**
      * 获取校验输出的 JSON Schema（用于结构化输出）。
      */
-    public static String getJsonSchema() {
-        return """
-                {
-                  "passed": "BOOLEAN, 校验是否通过",
-                  "summary": "STRING, 一句话结论",
-                  "answer": "STRING, 用户可读的审查结论（Markdown格式）",
-                  "warnings": "ARRAY, 问题警告列表，无则为空数组"
-                }
-                """;
+    public static Map<String, Object> getJsonSchema() {
+        Map<String, Map<String, Object>> properties = new LinkedHashMap<>();
+        properties.put("passed", JsonSchemaUtils.booleanProperty("校验是否通过"));
+        properties.put("summary", JsonSchemaUtils.stringProperty("一句话结论"));
+        properties.put("answer", JsonSchemaUtils.stringProperty("用户可读的审查结论，Markdown 格式"));
+        properties.put("managementSummary", JsonSchemaUtils.arrayProperty(
+                "面向管理者的摘要列表，2到4条",
+                Map.of("type", "string", "description", "单条管理摘要")
+        ));
+        properties.put("suggestedActions", JsonSchemaUtils.arrayProperty(
+                "后续建议动作列表，3到5条",
+                Map.of("type", "string", "description", "单条建议动作")
+        ));
+        properties.put("warnings", JsonSchemaUtils.arrayProperty(
+                "问题警告列表，无则为空数组",
+                Map.of("type", "string", "description", "单条警告")
+        ));
+        return JsonSchemaUtils.buildSchema(
+                "TenderReviewValidationResult",
+                "标书审查最终输出校验结果",
+                properties,
+                List.of("passed", "summary", "answer", "managementSummary", "suggestedActions", "warnings")
+        );
+    }
+
+    /**
+     * 获取百炼 response_format 所需的完整 json_schema 配置。
+     */
+    public static Map<String, Object> getResponseFormat() {
+        return Map.of(
+                "type", "json_schema",
+                "json_schema", Map.of(
+                        "name", "tender_review_validation_result",
+                        "strict", true,
+                        "schema", getJsonSchema()
+                )
+        );
     }
 }

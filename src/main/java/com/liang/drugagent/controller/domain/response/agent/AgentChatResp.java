@@ -3,6 +3,7 @@ package com.liang.drugagent.controller.domain.response.agent;
 import com.liang.drugagent.shared.model.EvidenceItem;
 import com.liang.drugagent.shared.model.EvidenceGroup;
 import com.liang.drugagent.shared.model.ReviewReport;
+import com.liang.drugagent.shared.model.ThinkingStep;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -85,6 +86,9 @@ public class AgentChatResp {
 
     /** 执行步骤列表 */
     private List<String> steps = new ArrayList<>();
+
+    /** 前端可展示的思考过程步骤 */
+    private List<ThinkingStep> thinkingSteps = new ArrayList<>();
 
     /** 结构化数据 */
     private Map<String, Object> structuredData;

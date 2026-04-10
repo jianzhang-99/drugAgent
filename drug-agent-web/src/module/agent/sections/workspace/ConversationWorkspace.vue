@@ -53,13 +53,23 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
           </div>
           <div class="thinking-card">
-             <div class="pulsing-halo">
-               <div class="pulse-core"></div>
-             </div>
-             <div class="thinking-text">
-               <div class="thinking-main">智能体调度与推理中...</div>
-               <div class="thinking-sub">正在调用文档解析引擎并组装知识上下文</div>
-             </div>
+            <div class="pulsing-halo">
+              <div class="pulse-core"></div>
+            </div>
+            <div class="thinking-text">
+              <div class="thinking-main">
+                智能体调度与推理中<span class="dot-anim"><span>.</span><span>.</span><span>.</span></span>
+              </div>
+              <div class="thinking-steps-hint">
+                <span class="hint-item">&#x2713; 场景识别</span>
+                <span class="hint-sep">&rarr;</span>
+                <span class="hint-item hint-active">文档解析</span>
+                <span class="hint-sep">&rarr;</span>
+                <span class="hint-item">规则命中</span>
+                <span class="hint-sep">&rarr;</span>
+                <span class="hint-item">报告生成</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -378,6 +388,44 @@ async function handleQuickAction(prompt: string) {
 .thinking-sub {
   color: #64748b;
   font-size: 12px;
+}
+
+/* 打点动画 */
+.dot-anim span {
+  display: inline-block;
+  animation: dot-bounce 1.4s infinite both;
+}
+.dot-anim span:nth-child(2) { animation-delay: 0.2s; }
+.dot-anim span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.3; }
+  40% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* 流水线步骤提示 */
+.thinking-steps-hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.hint-item {
+  font-size: 11px;
+  color: #94a3b8;
+  transition: color 0.3s;
+}
+
+.hint-item.hint-active {
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.hint-sep {
+  font-size: 11px;
+  color: #cbd5e1;
 }
 
 .composer-dock {

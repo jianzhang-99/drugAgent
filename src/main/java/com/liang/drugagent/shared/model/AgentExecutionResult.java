@@ -89,6 +89,11 @@ public class AgentExecutionResult {
     private List<String> steps = new ArrayList<>();
 
     /**
+     * 前端可展示的思考过程步骤。
+     */
+    private List<ThinkingStep> thinkingSteps = new ArrayList<>();
+
+    /**
      * 错误信息（如果执行失败）。
      */
     private String errorMessage;
@@ -153,12 +158,17 @@ public class AgentExecutionResult {
         result.setSuccess(true);
         result.setScene(workflowResult.getScene());
         result.setAnswer(workflowResult.getAnswer());
+        result.setSummary(workflowResult.getSummary());
         result.setRiskLevel(workflowResult.getRiskLevel());
         result.setScore(workflowResult.getScore());
         result.setReport(workflowResult.getReport());
         result.setEvidenceList(workflowResult.getEvidenceList());
         result.setEvidenceGroups(workflowResult.getEvidenceGroups());
         result.setSteps(workflowResult.getSteps());
+        result.setThinkingSteps(workflowResult.getThinkingSteps());
+        if (workflowResult.getReport() != null) {
+            result.setCaseId(workflowResult.getReport().getCaseId());
+        }
         result.setNeedsFallback(false);
         return result;
     }

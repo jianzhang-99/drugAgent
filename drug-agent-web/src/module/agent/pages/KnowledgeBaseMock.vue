@@ -27,22 +27,8 @@
         在这里上传法规文件、管理制度或标准模板。横渡智能体会自动阅读并记忆这些文件。在后续的标书审查与合同预审中，它将严格按照此处的标准进行比对。
       </p>
 
-      <!-- Tab 切换 -->
-      <div class="kb-tabs">
-        <button
-          v-for="tab in tabs"
-          :key="tab.id"
-          type="button"
-          :class="['tab-btn', { active: activeTab === tab.id }]"
-          @click="activeTab = tab.id"
-        >
-          <span v-html="tab.icon"></span>
-          {{ tab.label }}
-        </button>
-      </div>
-
       <!-- ===== 文件管理 ===== -->
-      <div v-if="activeTab === 'files'" class="tab-content">
+      <div>
         <!-- 上传区域 -->
         <div
           class="upload-zone"
@@ -144,94 +130,8 @@
               <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><polyline points="14 2 14 8 20 8"/></svg>
             </div>
             <div class="empty-text">{{ searchKeyword ? '没有找到匹配的文件' : '暂无合规依据文件，请上传文件开始构建知识库' }}</div>
-          </div>
         </div>
       </div>
-
-      <!-- ===== 智能问答 ===== -->
-      <div v-if="activeTab === 'qa'" class="tab-content">
-        <div class="qa-container">
-          <!-- 问答区域 -->
-          <div class="qa-panel">
-            <div class="qa-input-row">
-              <textarea
-                v-model="questionText"
-                class="qa-textarea"
-                placeholder="请输入关于合规知识的问题，例如：药品采购中有哪些禁止行为？"
-                rows="3"
-                @keydown.enter.ctrl="handleAsk"
-                @keydown.enter.meta="handleAsk"
-              ></textarea>
-              <button
-                type="button"
-                class="qa-send-btn"
-                :disabled="isAsking || !questionText.trim()"
-                @click="handleAsk"
-              >
-                <template v-if="isAsking">
-                  <div class="btn-spinner"></div>
-                  分析中...
-                </template>
-                <template v-else>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                  提问
-                </template>
-              </button>
-            </div>
-            <div class="qa-hint">按 Ctrl+Enter 或 ⌘+Enter 发送</div>
-          </div>
-
-          <!-- 回答结果 -->
-          <div v-if="lastAnswer || lastCitations.length > 0" class="qa-result">
-            <!-- 回答内容 -->
-            <div v-if="lastAnswer" class="qa-answer">
-              <div class="result-label">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-                智能体回答
-              </div>
-              <div class="answer-text">{{ lastAnswer }}</div>
-            </div>
-
-            <!-- 引用来源 -->
-            <div v-if="lastCitations.length > 0" class="qa-citations">
-              <div class="result-label">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
-                参考依据 <span class="citation-count">({{ lastCitations.length }})</span>
-              </div>
-              <div
-                v-for="(citation, idx) in lastCitations"
-                :key="idx"
-                class="citation-item"
-              >
-                <div class="citation-header">
-                  <span class="citation-num">[{{ idx + 1 }}]</span>
-                  <span class="citation-title">{{ citation.sourceTitle }}</span>
-                  <span v-if="citation.score" class="citation-score">相关度 {{ (citation.score * 100).toFixed(0) }}%</span>
-                </div>
-                <div class="citation-snippet">{{ citation.snippet }}</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 空状态 -->
-          <div v-else class="qa-empty">
-            <div class="qa-empty-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
-            </div>
-            <div class="qa-empty-text">请在上方输入合规相关问题</div>
-            <div class="qa-empty-examples">
-              <button
-                v-for="example in qaExamples"
-                :key="example"
-                type="button"
-                class="example-chip"
-                @click="questionText = example"
-              >
-                {{ example }}
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -248,41 +148,15 @@
 import { ref, computed, h, onMounted } from 'vue';
 import { MessagePlugin } from 'tdesign-vue-next';
 import * as knowledgeApi from '../api/knowledgeApi';
-import type { OssFile, KnowledgeCitation } from '../api/knowledgeApi';
+import type { OssFile } from '../api/knowledgeApi';
 
 const isDragOver = ref(false);
 const fileInputRef = ref<HTMLInputElement>();
 const searchKeyword = ref('');
 const isUploading = ref(false);
-const isAsking = ref(false);
 
 // 固定 orgId，生产环境应从登录态获取
 const ORG_ID = 'default-org';
-
-const tabs = [
-  {
-    id: 'files',
-    label: '文件管理',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><polyline points="14 2 14 8 20 8"/></svg>',
-  },
-  {
-    id: 'qa',
-    label: '智能问答',
-    icon: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>',
-  },
-];
-const activeTab = ref('files');
-
-// 问答
-const questionText = ref('');
-const lastAnswer = ref('');
-const lastCitations = ref<KnowledgeCitation[]>([]);
-
-const qaExamples = [
-  '药品采购中有哪些禁止行为？',
-  '围标串标的认定标准是什么？',
-  '医疗器械采购需要哪些资质？',
-];
 
 // Toast 通知
 const toast = ref<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>({
@@ -401,36 +275,6 @@ async function handleDeleteFile(file: OssFile) {
     }
   } catch {
     MessagePlugin.error('删除失败，请稍后重试');
-  }
-}
-
-// ===== 问答 =====
-async function handleAsk() {
-  const q = questionText.value.trim();
-  if (!q || isAsking.value) return;
-
-  isAsking.value = true;
-  lastAnswer.value = '';
-  lastCitations.value = [];
-
-  try {
-    const res = await knowledgeApi.askKnowledge({
-      question: q,
-      orgId: ORG_ID,
-      topK: 5,
-    });
-
-    if (res.data.code === 200 || res.data.code === 0) {
-      const data = res.data.data;
-      lastAnswer.value = data?.answer || '根据现有知识库未找到相关信息。';
-      lastCitations.value = data?.citations || [];
-    } else {
-      MessagePlugin.error('问答失败: ' + res.data.message);
-    }
-  } catch {
-    MessagePlugin.error('问答请求失败，请稍后重试');
-  } finally {
-    isAsking.value = false;
   }
 }
 
@@ -619,52 +463,6 @@ onMounted(() => {
   color: #64748b;
   font-size: 15px;
   line-height: 1.7;
-}
-
-/* ========== Tab ========== */
-.kb-tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 28px;
-  border-bottom: 2px solid #f1f5f9;
-  padding-bottom: 0;
-}
-
-.tab-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 20px;
-  border: none;
-  background: transparent;
-  color: #64748b;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  border-radius: 8px 8px 0 0;
-  transition: all 0.2s;
-}
-
-.tab-btn:hover {
-  color: #3b82f6;
-  background: #f8fafd;
-}
-
-.tab-btn.active {
-  color: #3b82f6;
-  border-bottom-color: #3b82f6;
-  background: #f0f5ff;
-}
-
-.tab-content {
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ========== 上传区域 ========== */
@@ -1016,241 +814,6 @@ onMounted(() => {
   text-align: center;
 }
 
-/* ========== 问答 ========== */
-.qa-container {
-  max-width: 860px;
-}
-
-.qa-panel {
-  background: #f8fafd;
-  border: 1px solid #e6edf5;
-  border-radius: 16px;
-  padding: 24px;
-  margin-bottom: 24px;
-}
-
-.qa-input-row {
-  display: flex;
-  gap: 14px;
-  align-items: flex-end;
-}
-
-.qa-textarea {
-  flex: 1;
-  padding: 14px 16px;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  font-size: 15px;
-  color: #1e293b;
-  background: #fff;
-  outline: none;
-  resize: none;
-  line-height: 1.6;
-  transition: all 0.2s;
-  font-family: inherit;
-}
-
-.qa-textarea:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.qa-textarea::placeholder {
-  color: #b0bec5;
-}
-
-.qa-send-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 24px;
-  border: none;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #3b82f6, #6366f1);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-  min-width: 100px;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.qa-send-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
-}
-
-.qa-send-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.btn-spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-
-.qa-hint {
-  margin-top: 8px;
-  font-size: 12px;
-  color: #b0bec5;
-  text-align: right;
-}
-
-/* 结果 */
-.qa-result {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  animation: fadeIn 0.3s ease;
-}
-
-.result-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 12px;
-}
-
-.qa-answer {
-  background: linear-gradient(135deg, #f0f5ff, #fafbfe);
-  border: 1px solid #dbeafe;
-  border-radius: 14px;
-  padding: 20px 24px;
-}
-
-.answer-text {
-  font-size: 15px;
-  line-height: 1.8;
-  color: #1e293b;
-  white-space: pre-wrap;
-}
-
-.qa-citations {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.citation-count {
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: 0;
-}
-
-.citation-item {
-  background: #fff;
-  border: 1px solid #f1f5f9;
-  border-radius: 10px;
-  padding: 14px 18px;
-  transition: box-shadow 0.2s;
-}
-
-.citation-item:hover {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-
-.citation-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.citation-num {
-  font-size: 12px;
-  font-weight: 700;
-  color: #3b82f6;
-  background: #dbeafe;
-  padding: 2px 8px;
-  border-radius: 4px;
-}
-
-.citation-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #1e293b;
-  flex: 1;
-}
-
-.citation-score {
-  font-size: 11px;
-  color: #94a3b8;
-  background: #f8fafc;
-  padding: 2px 8px;
-  border-radius: 4px;
-}
-
-.citation-snippet {
-  font-size: 13px;
-  color: #475569;
-  line-height: 1.6;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-}
-
-/* 问答空状态 */
-.qa-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 32px;
-  text-align: center;
-}
-
-.qa-empty-icon {
-  color: #dbeafe;
-  margin-bottom: 16px;
-}
-
-.qa-empty-text {
-  font-size: 15px;
-  color: #94a3b8;
-  margin-bottom: 20px;
-}
-
-.qa-empty-examples {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: center;
-}
-
-.example-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 8px 16px;
-  border: 1px solid #e2e8f0;
-  border-radius: 999px;
-  background: #fff;
-  color: #475569;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.example-chip:hover {
-  border-color: #3b82f6;
-  color: #3b82f6;
-  background: #f0f5ff;
-}
-
 /* Toast */
 .toast-content {
   display: flex;
@@ -1302,14 +865,6 @@ onMounted(() => {
 
   .col-action {
     justify-content: flex-end;
-  }
-
-  .qa-input-row {
-    flex-direction: column;
-  }
-
-  .qa-send-btn {
-    width: 100%;
   }
 }
 </style>

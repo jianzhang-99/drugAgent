@@ -5,13 +5,16 @@ import com.alibaba.dashscope.aigc.generation.GenerationParam;
 import com.alibaba.dashscope.aigc.generation.GenerationResult;
 import com.alibaba.dashscope.aigc.generation.GenerationOutput;
 import com.alibaba.dashscope.common.Message;
-import com.alibaba.dashscope.common.ResponseFormat;
 import com.alibaba.dashscope.tools.FunctionDefinition;
 import com.alibaba.dashscope.tools.ToolCallBase;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import io.reactivex.Flowable;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -84,6 +87,7 @@ public class DashScopeLlmClient implements LlmClient {
             if (request.getTools() != null && !request.getTools().isEmpty()) {
                 List<FunctionDefinition> tools = buildTools(request.getTools());
                 paramBuilder.tools(tools);
+                paramBuilder.resultFormat(GenerationParam.ResultFormat.MESSAGE);
             }
 
             // 设置温度
@@ -99,6 +103,11 @@ public class DashScopeLlmClient implements LlmClient {
             // 设置响应格式
             if (request.getResponseFormat() != null && !request.getResponseFormat().isBlank()) {
                 setResponseFormat(paramBuilder, request.getResponseFormat());
+            }
+
+            // 结构化输出场景需关闭思考模式，避免百炼报错
+            if (Boolean.FALSE.equals(request.getThinkingEnabled())) {
+                paramBuilder.parameter("enable_thinking", false);
             }
 
             GenerationParam param = paramBuilder.build();
@@ -136,21 +145,42 @@ public class DashScopeLlmClient implements LlmClient {
         JsonObject jsonObject = new JsonObject();
         if (map != null) {
             for (Map.Entry<String, Object> entry : map.entrySet()) {
-                Object value = entry.getValue();
-                if (value instanceof String) {
-                    jsonObject.addProperty(entry.getKey(), (String) value);
-                } else if (value instanceof Number) {
-                    jsonObject.addProperty(entry.getKey(), (Number) value);
-                } else if (value instanceof Boolean) {
-                    jsonObject.addProperty(entry.getKey(), (Boolean) value);
-                } else if (value instanceof Map) {
-                    jsonObject.add(entry.getKey(), convertToJsonObject((Map<String, Object>) value));
-                } else if (value instanceof List) {
-                    jsonObject.add(entry.getKey(), com.google.gson.JsonArray.class.cast(value));
-                }
+                jsonObject.add(entry.getKey(), convertToJsonElement(entry.getValue()));
             }
         }
         return jsonObject;
+    }
+
+    @SuppressWarnings("unchecked")
+    private JsonElement convertToJsonElement(Object value) {
+        if (value == null) {
+            return JsonNull.INSTANCE;
+        }
+        if (value instanceof String stringValue) {
+            return new com.google.gson.JsonPrimitive(stringValue);
+        }
+        if (value instanceof Number numberValue) {
+            return new com.google.gson.JsonPrimitive(numberValue);
+        }
+        if (value instanceof Boolean booleanValue) {
+            return new com.google.gson.JsonPrimitive(booleanValue);
+        }
+        if (value instanceof Map<?, ?> mapValue) {
+            return convertToJsonObject((Map<String, Object>) mapValue);
+        }
+        if (value instanceof List<?> listValue) {
+            JsonArray jsonArray = new JsonArray();
+            for (Object item : listValue) {
+                jsonArray.add(convertToJsonElement(item));
+            }
+            return jsonArray;
+        }
+        try {
+            return JsonParser.parseString(objectMapper.writeValueAsString(value));
+        } catch (JsonProcessingException e) {
+            log.warn("对象转 JsonElement 失败: {}", e.getMessage());
+            return JsonNull.INSTANCE;
+        }
     }
 
     private List<Message> buildMessages(LlmRequest request) {
@@ -201,20 +231,22 @@ public class DashScopeLlmClient implements LlmClient {
     }
 
     private void setResponseFormat(GenerationParam.GenerationParamBuilder paramBuilder, String responseFormat) {
-        // responseFormat 格式：json_object 或 json_schema:{schema}
+        // responseFormat 格式：json_object 或 json_schema:{response_format_json}
         if ("json_object".equalsIgnoreCase(responseFormat)) {
-            paramBuilder.responseFormat(ResponseFormat.builder()
-                    .type("json_object")
-                    .build());
+            paramBuilder.resultFormat(GenerationParam.ResultFormat.MESSAGE);
+            paramBuilder.parameter("response_format", Map.of("type", "json_object"));
         } else if (responseFormat.startsWith("json_schema:")) {
-            // json_schema:{name}:{schema_json}
             String schemaContent = responseFormat.substring("json_schema:".length());
             try {
-                Map<String, Object> schema = objectMapper.readValue(schemaContent, Map.class);
-                JsonObject jsonSchema = convertToJsonObject(schema);
-                paramBuilder.responseFormat(ResponseFormat.builder()
-                        .type("json_schema")
-                        .build());
+                Map<String, Object> format = objectMapper.readValue(schemaContent, Map.class);
+                if (!format.containsKey("type")) {
+                    format = Map.of(
+                            "type", "json_schema",
+                            "json_schema", format
+                    );
+                }
+                paramBuilder.resultFormat(GenerationParam.ResultFormat.MESSAGE);
+                paramBuilder.parameter("response_format", format);
             } catch (JsonProcessingException e) {
                 log.warn("解析 JSON Schema 失败: {}", e.getMessage());
             }

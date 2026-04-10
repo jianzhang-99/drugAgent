@@ -12,6 +12,22 @@ export interface Session {
   messages?: Message[];
 }
 
+// ThinkingStep - 对应后端 ThinkingStep.java
+export interface ThinkingStep {
+  /** 步骤编码，如 route / prepare_data / rule_analysis */
+  code: string;
+  /** 步骤标题 */
+  title: string;
+  /** 步骤说明 */
+  detail?: string;
+  /** 步骤类型：ROUTE / EXECUTION / CLARIFICATION / ERROR / FINALIZE */
+  type: string;
+  /** 步骤状态：COMPLETED / FAILED / INFO / PROCESSING */
+  status: string;
+  /** 展示顺序，从 1 开始 */
+  order: number;
+}
+
 // Message
 export interface Message {
   id: string;
@@ -22,6 +38,7 @@ export interface Message {
   status?: MessageStatus;
   attachments?: Attachment[];
   result?: ResultData;
+  thinkingSteps?: ThinkingStep[];
   raw?: any;
 }
 
@@ -30,6 +47,7 @@ export type MessageType =
   | 'assistant_text'
   | 'assistant_clarify'
   | 'assistant_result_card'
+  | 'assistant_processing'
   | 'system_error'
   | 'uploading';
 
@@ -72,9 +90,60 @@ export interface Evidence {
   description?: string;
 }
 
-export interface ReviewReport {
+// 后端 EvidenceItem
+export interface EvidenceItem {
+  id?: string;
+  type?: string;
+  content?: string;
+  source?: string;
+  page?: number;
+  similarity?: number;
+  description?: string;
+}
+
+// 后端 EvidenceGroup
+export interface EvidenceGroup {
+  id?: string;
+  type?: string;
+  evidenceList?: EvidenceItem[];
+  similarity?: number;
+}
+
+// 后端 RiskItem
+export interface RiskItem {
+  riskType?: string;
+  riskLevel?: string;
   title?: string;
-  overview?: string;
+  summary?: string;
+  reasonCodes?: string[];
+  evidenceTitles?: string[];
+  recommendations?: string[];
+}
+
+// 后端 Overview
+export interface ReviewReportOverview {
+  documentCount?: number;
+  rawHitCount?: number;
+  effectiveHitCount?: number;
+  exemptionCount?: number;
+  evidenceGroupCount?: number;
+  evidenceItemCount?: number;
+  score?: number;
+  riskLevel?: string;
+  summary?: string;
+}
+
+export interface ReviewReport {
+  caseId?: string;
+  scene?: string;
+  generatedAt?: string;
+  markdownContent?: string;
+  overview?: ReviewReportOverview;
+  riskItems?: RiskItem[];
+  managementSummary?: string[];
+  recommendedActions?: string[];
+  explanations?: Record<string, string>;
+  title?: string;
   findings?: Finding[];
   conclusion?: string;
   recommendations?: string[];
@@ -142,6 +211,8 @@ export interface DrugAgentResp {
   evidenceList?: Evidence[];
   evidenceGroups?: EvidenceGroup[];
   steps?: string[];
+  /** 结构化思考步骤列表，由后端 AgentResponseService 构建 */
+  thinkingSteps?: ThinkingStep[];
   structuredData?: Record<string, any>;
   requiresClarification?: boolean;
   clarificationQuestion?: string;

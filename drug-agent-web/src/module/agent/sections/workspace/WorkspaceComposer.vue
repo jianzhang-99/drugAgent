@@ -1,6 +1,13 @@
 <template>
   <div class="composer-shell">
-    <UploadPanel v-if="showUploadPanel" @close="showUploadPanel = false" />
+    <input 
+      type="file" 
+      ref="fileInputRef" 
+      style="display: none" 
+      multiple 
+      accept=".pdf,.doc,.docx,.docx,.md,.txt" 
+      @change="handleFileSelect" 
+    />
 
     <!-- 拖拽覆盖层 -->
     <div v-if="isDragOver" class="drop-overlay">
@@ -19,11 +26,18 @@
     >
       <!-- 文件 chip 列表 -->
       <div v-if="pendingFiles.length > 0" class="pending-files">
-        <div v-for="(file, index) in pendingFiles" :key="index" class="file-chip">
-          <t-icon name="file-pdf" size="14px" />
-          <span class="chip-name">{{ file.name }}</span>
-          <button class="chip-remove" type="button" @click.stop="removePendingFile(index)">
-            <t-icon name="close" size="12px" />
+        <div v-for="(file, index) in pendingFiles" :key="index" class="file-chip-v2">
+          <div class="file-icon-box">
+             <t-icon v-if="isPdf(file.name)" name="file-pdf" size="24px" />
+             <t-icon v-else-if="isWord(file.name)" name="file-word" size="24px" />
+             <t-icon v-else name="file-code" size="24px" />
+          </div>
+          <div class="file-info-box">
+            <div class="file-name">{{ file.name }}</div>
+            <div class="file-type">{{ getFileDesc(file.name) }}</div>
+          </div>
+          <button class="chip-remove-btn" type="button" @click.stop="removePendingFile(index)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg>
           </button>
         </div>
       </div>
@@ -46,55 +60,50 @@
       <!-- 下半部分：操作栏 -->
       <div class="composer-footer">
         <div class="composer-tools">
-          <button class="tool-btn" type="button" @click="showUploadPanel = true">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <span>上传材料</span>
+          <button class="tool-icon-btn" type="button" title="上传附件" @click="triggerFileInput">
+            <t-icon name="add" size="22px" />
           </button>
 
-          <button class="tool-btn" type="button" @click="handleKnowledgeClick">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-            <span>引用知识</span>
+          <button class="tool-icon-btn" type="button" title="引用知识" @click="handleKnowledgeClick">
+            <t-icon name="internet" size="20px" />
           </button>
-
-          <button
-            class="tool-btn"
-            type="button"
-            :disabled="store.speechRecognizing"
-            @click="handleSpeechClick"
-          >
-            <svg v-if="!store.speechRecognizing" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-            <t-loading v-if="store.speechRecognizing" size="small" />
-            <span>{{ store.speechRecognizing ? '识别中' : '语音输入' }}</span>
-          </button>
-
-          <!-- 拖拽提示（无文件时显示） -->
-          <span v-if="pendingFiles.length === 0" class="drag-tip">
-            或直接拖拽文件到此处
-          </span>
-        </div>
-
-        <div class="composer-actions">
+          
           <t-select
             v-model="store.currentModel"
             :options="modelOptions"
             size="small"
-            style="width: 140px; margin-right: 12px"
+            class="model-select"
             placeholder="选择模型"
           >
             <template #valueDisplay="{ value }">
-              <span style="font-size: 13px">{{ value === 'minimax' ? 'MiniMax' : (value === 'dashscope' ? '阿里云百炼' : value) }}</span>
+              <span style="font-size: 13px; font-weight: 500;">
+                <t-icon name="logo-chrome-filled" style="margin-right:4px;" />
+                {{ value === 'minimax' ? 'MiniMax' : (value === 'dashscope' ? '阿里云百炼' : value) }}
+              </span>
             </template>
           </t-select>
+        </div>
+
+        <div class="composer-actions">
+          <button
+            class="tool-icon-btn"
+            type="button"
+            :disabled="store.speechRecognizing"
+            @click="handleSpeechClick"
+            style="margin-right: 8px;"
+          >
+            <t-icon v-if="!store.speechRecognizing" name="microphone" size="22px" />
+            <t-loading v-else size="small" />
+          </button>
 
           <button
-            class="send-btn"
+            class="send-btn-circle"
             :class="{ active: canSend && !store.sending && !store.uploading }"
             :disabled="!canSend || store.sending || store.uploading"
             @click="handleSend"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-            <span>{{ store.uploading ? '上传中' : '发送任务' }}</span>
-            <t-loading v-if="store.sending || store.uploading" size="small" inherit-color style="margin-left: 4px" />
+            <t-loading v-if="store.sending || store.uploading" size="small" inherit-color />
+            <t-icon v-else name="arrow-up" size="24px" />
           </button>
         </div>
       </div>
@@ -109,15 +118,14 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
 import { useAgentStore } from '../../store/agentStore';
-import UploadPanel from '../../components/UploadPanel.vue';
 import { MessagePlugin } from 'tdesign-vue-next';
 import { speechRecognize } from '../../api/agentApi';
 
 const store = useAgentStore();
 const inputText = ref('');
-const showUploadPanel = ref(false);
 const isDragOver = ref(false);
 const pendingFiles = ref<File[]>([]);
+const fileInputRef = ref<HTMLInputElement | null>(null);
 
 const modelOptions = computed(() => {
   return store.availableModels.map(m => ({ label: m.name, value: m.model }));
@@ -287,6 +295,46 @@ function handleDrop(e: DragEvent) {
 function removePendingFile(index: number) {
   pendingFiles.value.splice(index, 1);
 }
+
+function triggerFileInput() {
+  fileInputRef.value?.click();
+}
+
+function handleFileSelect(e: Event) {
+  const target = e.target as HTMLInputElement;
+  const files = Array.from(target.files || []);
+  if (files.length === 0) return;
+  const validFiles = files.filter((f) =>
+    /\.(pdf|doc|docx|md|txt)$/i.test(f.name)
+  );
+  if (validFiles.length === 0) {
+    MessagePlugin.warning('仅支持 PDF、Word、Markdown、TXT 格式');
+  } else {
+    validFiles.forEach((file) => {
+      if (!pendingFiles.value.some((f) => f.name === file.name)) {
+        pendingFiles.value.push(file);
+      }
+    });
+  }
+  if (target) target.value = '';
+}
+
+function isPdf(filename: string) {
+  return /\.pdf$/i.test(filename);
+}
+
+function isWord(filename: string) {
+  return /\.(doc|docx)$/i.test(filename);
+}
+
+function getFileDesc(filename: string) {
+  if (isPdf(filename)) return 'PDF 文档';
+  if (isWord(filename)) return 'Word 文档';
+  if (/\.ts$/i.test(filename)) return 'TypeScript 文件';
+  if (/\.txt$/i.test(filename)) return '文本文件';
+  if (/\.md$/i.test(filename)) return 'Markdown 文档';
+  return '文档';
+}
 </script>
 
 <style scoped>
@@ -341,59 +389,100 @@ function removePendingFile(index: number) {
   font-weight: 600;
 }
 
-/* 文件 chip */
+/* 文件 chip V2 */
 .pending-files {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  padding: 10px 12px 0;
+  gap: 12px;
+  padding: 12px 16px 4px;
 }
 
-.file-chip {
-  display: inline-flex;
+.file-chip-v2 {
+  position: relative;
+  display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 20px;
-  color: #1d4ed8;
-  font-size: 13px;
-  max-width: 220px;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f7f8fa;
+  border: 1px solid #e1e5ec;
+  border-radius: 8px;
+  max-width: 200px;
+  transition: background 0.2s;
 }
 
-.chip-name {
+.file-chip-v2:hover {
+  background: #f1f3f6;
+}
+
+.file-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: #ffffff;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  color: #4b5563;
+}
+
+.file-info-box {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-width: 120px;
+}
+
+.file-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.chip-remove {
+.file-type {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.chip-remove-btn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #ffffff;
   border: none;
-  background: transparent;
-  color: #60a5fa;
-  cursor: pointer;
+  color: #9ca3af;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
   padding: 0;
   display: flex;
   align-items: center;
-  transition: color 0.2s;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: color 0.2s, background 0.2s;
 }
 
-.chip-remove:hover {
-  color: #2563eb;
+.chip-remove-btn:hover {
+  color: #ef4444;
+  background: #fee2e2;
 }
 
 /* 输入区 */
 .composer-input-wrapper {
-  padding: 8px 6px;
+  padding: 8px 10px;
 }
 
 :deep(.t-textarea__inner) {
   border: none !important;
   box-shadow: none !important;
-  padding: 8px 12px;
+  padding: 4px 6px;
   resize: none;
-  color: #334155;
+  color: #1f2937;
   font-size: 15px;
   line-height: 1.6;
   background: transparent !important;
@@ -405,14 +494,12 @@ function removePendingFile(index: number) {
 }
 
 :deep(.t-textarea__inner::placeholder) {
-  color: #94a3b8;
+  color: #a1a1aa;
 }
 
 /* 分割线 */
 .composer-divider {
-  height: 1px;
-  background-color: #f1f5f9;
-  margin: 0 12px;
+  display: none; /* 去掉分割线更接近截图 */
 }
 
 /* 底部操作区 */
@@ -420,40 +507,50 @@ function removePendingFile(index: number) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px 10px;
+  padding: 4px 16px 12px;
 }
 
 .composer-tools {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
-.tool-btn {
+.tool-icon-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
   background: transparent;
   border: none;
   color: #64748b;
-  font-size: 14px;
-  font-weight: 500;
   cursor: pointer;
-  padding: 6px 8px;
-  border-radius: 6px;
-  transition: all 0.2s;
+  border-radius: 50%;
+  transition: background 0.2s, color 0.2s;
 }
 
-.tool-btn:hover {
+.tool-icon-btn:hover {
   background: #f1f5f9;
-  color: #1e293b;
+  color: #334155;
 }
 
-.drag-tip {
-  font-size: 12px;
-  color: #94a3b8;
-  font-style: italic;
+.model-select {
+  width: 135px;
 }
+
+:deep(.model-select .t-input) {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #64748b;
+}
+
+:deep(.model-select .t-input:hover) {
+  background: #f1f5f9 !important;
+  border-radius: 6px;
+}
+
 
 /* 发送按钮 */
 .composer-actions {
@@ -461,34 +558,31 @@ function removePendingFile(index: number) {
   align-items: center;
 }
 
-.send-btn {
+.send-btn-circle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 0 20px;
+  width: 36px;
   height: 36px;
-  border-radius: 6px;
+  border-radius: 50%;
   border: none;
-  background: #cbd5e1;
+  background: #e2e8f0;
   color: #ffffff;
-  font-size: 14px;
-  font-weight: 600;
   cursor: not-allowed;
   transition: all 0.2s;
 }
 
-.send-btn.active {
-  background: #60a5fa;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(96, 165, 250, 0.3);
-}
-
-.send-btn.active:hover {
+.send-btn-circle.active {
   background: #3b82f6;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
-.send-btn.active:active {
+.send-btn-circle.active:hover {
+  background: #2563eb;
+}
+
+.send-btn-circle.active:active {
   transform: translateY(1px);
 }
 

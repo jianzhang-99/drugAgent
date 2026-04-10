@@ -40,7 +40,7 @@ public final class JsonSchemaUtils {
                 "type", "object",
                 "properties", buildProperties(properties),
                 "required", required != null ? required : List.of(),
-                "additionalProperties", Map.of("type", "object")
+                "additionalProperties", false
         );
     }
 
