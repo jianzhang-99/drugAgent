@@ -22,7 +22,10 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
       </div>
       <div class="message-body">
-        <div class="message-content">{{ message.content }}</div>
+        <div class="message-content">
+          {{ message.content }}
+          <span v-if="store.streaming && store.streamingMessageId === message.id" class="typing-cursor">|</span>
+        </div>
         <div class="message-time agent-time" v-if="message.createdAt">
           <span>内容由横渡智能体生成 · {{ formatTime(message.createdAt) }}</span>
           <button type="button" class="copy-btn" @click="handleCopy(message.content)">复制</button>
@@ -67,7 +70,10 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
       </div>
       <div class="message-body">
-        <div class="message-content">{{ message.content }}</div>
+        <div class="message-content">
+          {{ message.content }}
+          <span v-if="store.streaming && store.streamingMessageId === message.id" class="typing-cursor">|</span>
+        </div>
         <div class="message-time agent-time" v-if="message.createdAt">
           <span>内容由横渡智能体生成 · {{ formatTime(message.createdAt) }}</span>
           <button type="button" class="copy-btn" @click="handleCopy(message.content)">复制</button>
@@ -81,8 +87,10 @@
 import type { Message } from '../types/agent';
 import ResultCard from './ResultCard.vue';
 import { ElMessage } from 'element-plus';
+import { useAgentStore } from '../store/agentStore';
 
 defineProps<{ message: Message }>();
+const store = useAgentStore();
 
 function formatTime(isoStr?: string) {
   if (!isoStr) return '';
@@ -293,5 +301,17 @@ async function handleCopy(text: string) {
 .copy-btn:hover {
   color: #2563eb;
   text-decoration: underline;
+}
+
+.typing-cursor {
+  display: inline-block;
+  animation: blink 1s step-end infinite;
+  color: #3b82f6;
+  font-weight: bold;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 </style>

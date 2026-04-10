@@ -68,20 +68,8 @@ public class AgentController {
 
     @Operation(summary = "流式对话")
     @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<ServerSentEvent<String>> streamChat(@RequestBody AgentChatReq req) {
-        SceneEnum scene = SceneEnum.fromHint(req.getSceneHint());
-        SceneEnum effectiveScene = scene != null ? scene : SceneEnum.DEFAULT;
-        String sessionId = req.getSessionId() != null ? req.getSessionId() : "stream-" + System.currentTimeMillis();
-
-        return llmChatService.streamChatWithScene(req.getQuery(), effectiveScene, sessionId, req.getModel())
-                .map(chunk -> ServerSentEvent.<String>builder()
-                        .event("message")
-                        .data(chunk)
-                        .build())
-                .concatWithValues(ServerSentEvent.<String>builder()
-                        .event("done")
-                        .data("[DONE]")
-                        .build());
+    public Flux<ServerSentEvent<AgentChatResp>> streamChat(@RequestBody AgentChatReq req) {
+        return agentChatService.streamChat(req);
     }
 
     @Operation(summary = "文件上传对话（multipart/form-data）")

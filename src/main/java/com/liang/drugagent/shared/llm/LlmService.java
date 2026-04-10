@@ -34,6 +34,9 @@ public class LlmService {
     @Value("${llm.report-provider:DASHSCOPE}")
     private LlmProviderType reportProvider;
 
+    @Value("${llm.minimax-enabled:false}")
+    private boolean minimaxEnabled;
+
     public LlmService(List<LlmClient> clients) {
         this.clientMap = clients.stream()
                 .collect(Collectors.toMap(
@@ -87,30 +90,33 @@ public class LlmService {
      * 路由场景专用（可配置切换provider）
      */
     public LlmResponse chatForRouting(LlmRequest request) {
-        request.setProvider(routingProvider);
-        ensureModel(request, routingProvider);
-        log.info("LLM路由请求 - provider: {}", routingProvider);
-        return getClient(routingProvider).chat(request);
+        LlmProviderType provider = normalizeProvider(routingProvider);
+        request.setProvider(provider);
+        ensureModel(request, provider);
+        log.info("LLM路由请求 - provider: {}", provider);
+        return getClient(provider).chat(request);
     }
 
     /**
      * 报告场景专用（可配置切换provider）
      */
     public LlmResponse chatForReport(LlmRequest request) {
-        request.setProvider(reportProvider);
-        ensureModel(request, reportProvider);
-        log.info("LLM报告请求 - provider: {}", reportProvider);
-        return getClient(reportProvider).chat(request);
+        LlmProviderType provider = normalizeProvider(reportProvider);
+        request.setProvider(provider);
+        ensureModel(request, provider);
+        log.info("LLM报告请求 - provider: {}", provider);
+        return getClient(provider).chat(request);
     }
 
     /**
      * 通用问答专用（可配置切换provider）
      */
     public LlmResponse chatForChat(LlmRequest request) {
-        request.setProvider(chatProvider);
-        ensureModel(request, chatProvider);
-        log.info("LLM对话请求 - provider: {}", chatProvider);
-        return getClient(chatProvider).chat(request);
+        LlmProviderType provider = normalizeProvider(chatProvider);
+        request.setProvider(provider);
+        ensureModel(request, provider);
+        log.info("LLM对话请求 - provider: {}", provider);
+        return getClient(provider).chat(request);
     }
 
     /**
@@ -118,9 +124,9 @@ public class LlmService {
      */
     private LlmProviderType resolveProvider(LlmRequest request) {
         if (request.getProvider() != null) {
-            return request.getProvider();
+            return normalizeProvider(request.getProvider());
         }
-        return defaultProvider;
+        return normalizeProvider(defaultProvider);
     }
 
     /**
@@ -128,7 +134,7 @@ public class LlmService {
      */
     private void ensureModel(LlmRequest request, LlmProviderType provider) {
         if (request.getModel() == null || request.getModel().isBlank()) {
-            String defaultModel = LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7-highspeed" : "qwen3.5-plus";
+            String defaultModel = LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7-highspeed" : "qwen-plus";
             request.setModel(defaultModel);
         }
     }
@@ -139,5 +145,16 @@ public class LlmService {
             throw new IllegalArgumentException("未找到 Provider [" + provider + "] 对应的 LLM Client");
         }
         return client;
+    }
+
+    private LlmProviderType normalizeProvider(LlmProviderType provider) {
+        if (provider == null) {
+            return LlmProviderType.DASHSCOPE;
+        }
+        if (!minimaxEnabled && LlmProviderType.MINIMAX.equals(provider)) {
+            log.warn("MiniMax 当前已被临时屏蔽，自动切换到 DashScope");
+            return LlmProviderType.DASHSCOPE;
+        }
+        return provider;
     }
 }

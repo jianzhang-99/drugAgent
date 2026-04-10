@@ -1,17 +1,17 @@
 package com.liang.drugagent.shared.llm;
 
-import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversation;
-import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationOutput;
-import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationParam;
-import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationResult;
-import com.alibaba.dashscope.common.MultiModalMessage;
-import com.alibaba.dashscope.common.Role;
-import com.alibaba.dashscope.exception.ApiException;
-import com.alibaba.dashscope.exception.NoApiKeyException;
-import com.alibaba.dashscope.exception.UploadFileException;
+import com.alibaba.dashscope.aigc.generation.Generation;
+import com.alibaba.dashscope.aigc.generation.GenerationParam;
+import com.alibaba.dashscope.aigc.generation.GenerationResult;
+import com.alibaba.dashscope.aigc.generation.GenerationOutput;
+import com.alibaba.dashscope.common.Message;
+import com.alibaba.dashscope.common.ResponseFormat;
+import com.alibaba.dashscope.tools.FunctionDefinition;
+import com.alibaba.dashscope.tools.ToolCallBase;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.JsonObject;
 import io.reactivex.Flowable;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,6 +38,7 @@ public class DashScopeLlmClient implements LlmClient {
     private final String apiKey;
     private final String defaultModel;
     private final ObjectMapper objectMapper;
+    private final Generation generation;
 
     public DashScopeLlmClient(
             @Value("${aliyun.dashscope.api-key:}") String apiKey,
@@ -45,6 +46,7 @@ public class DashScopeLlmClient implements LlmClient {
         this.apiKey = apiKey;
         this.defaultModel = defaultModel;
         this.objectMapper = new ObjectMapper();
+        this.generation = new Generation();
     }
 
     @Override
@@ -60,26 +62,8 @@ public class DashScopeLlmClient implements LlmClient {
                 request.getTools() != null ? request.getTools().size() : 0,
                 request.getResponseFormat());
 
-        // 如果有工具或需要 JSON Schema 输出，使用 Generation API
-        if (request.getTools() != null && !request.getTools().isEmpty()
-                || request.getResponseFormat() != null && !request.getResponseFormat().isBlank()) {
-            return chatWithGeneration(request, model);
-        }
-
-        try {
-            MultiModalConversation conversation = new MultiModalConversation();
-            MultiModalConversationResult result = conversation.call(buildParam(request, model, false));
-            String content = extractText(result);
-
-            log.debug("DashScope(官方SDK)聊天响应 - sessionId: {}, 响应长度: {}",
-                    request.getSessionId(), content != null ? content.length() : 0);
-
-            return LlmResponse.success(content, LlmProviderType.DASHSCOPE, model);
-        } catch (ApiException | NoApiKeyException | UploadFileException e) {
-            log.error("DashScope(官方SDK)聊天异常 - sessionId: {}, 错误: {}",
-                    request.getSessionId(), e.getMessage(), e);
-            return LlmResponse.error("DASHSCOPE_ERROR", "DashScope API调用失败: " + e.getMessage());
-        }
+        // 统一使用 Generation API（支持 Function Calling 和 JSON Schema）
+        return chatWithGeneration(request, model);
     }
 
     /**
@@ -87,221 +71,209 @@ public class DashScopeLlmClient implements LlmClient {
      */
     private LlmResponse chatWithGeneration(LlmRequest request, String model) {
         try {
-            // 动态加载 Generation API 类（避免编译时依赖不存在的类）
-            Class<?> generationClass = Class.forName("com.alibaba.dashscope.aigc.generation.Generation");
-            Class<?> generationParamClass = Class.forName("com.alibaba.dashscope.aigc.generation.GenerationParam");
-            Class<?> functionClass = Class.forName("com.alibaba.dashscope.tools.FunctionDefinition");
-
-            Object generation = generationClass.getDeclaredConstructor().newInstance();
-
-            // 构建工具列表
-            List<Object> tools = buildToolsList(request.getTools(), functionClass);
-
             // 构建消息
-            List<Object> messages = buildMessagesForGeneration(request);
+            List<Message> messages = buildMessages(request);
 
             // 构建 GenerationParam
-            Object param = buildGenerationParam(generationParamClass, model, messages, tools, request);
+            GenerationParam.GenerationParamBuilder paramBuilder = GenerationParam.builder()
+                    .apiKey(apiKey)
+                    .model(model)
+                    .messages(messages);
+
+            // 设置工具（Function Calling）
+            if (request.getTools() != null && !request.getTools().isEmpty()) {
+                List<FunctionDefinition> tools = buildTools(request.getTools());
+                paramBuilder.tools(tools);
+            }
+
+            // 设置温度
+            if (request.getTemperature() != null) {
+                paramBuilder.temperature(request.getTemperature());
+            }
+
+            // 设置最大 token
+            if (request.getMaxTokens() != null) {
+                paramBuilder.maxTokens(request.getMaxTokens());
+            }
+
+            // 设置响应格式
+            if (request.getResponseFormat() != null && !request.getResponseFormat().isBlank()) {
+                setResponseFormat(paramBuilder, request.getResponseFormat());
+            }
+
+            GenerationParam param = paramBuilder.build();
 
             // 调用
-            Object result = generationClass.getMethod("call", generationParamClass).invoke(generation, param);
+            GenerationResult result = generation.call(param);
 
             // 提取结果
-            return extractGenerationResult(result, model);
+            return extractResult(result, model);
 
-        } catch (ClassNotFoundException e) {
-            log.error("Generation API 类未找到，请确认 DashScope SDK 版本支持 Function Calling", e);
-            return LlmResponse.error("SDK_ERROR", "Function Calling API 不可用: " + e.getMessage());
         } catch (Exception e) {
             log.error("Function Calling 调用失败 - sessionId: {}", request.getSessionId(), e);
             return LlmResponse.error("FUNCTION_CALL_ERROR", "Function Calling 调用失败: " + e.getMessage());
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private List<Object> buildToolsList(List<ToolDefinition> toolDefs, Class<?> functionClass) throws Exception {
-        List<Object> tools = new ArrayList<>();
+    private List<FunctionDefinition> buildTools(List<ToolDefinition> toolDefs) {
+        List<FunctionDefinition> tools = new ArrayList<>();
         for (ToolDefinition toolDef : toolDefs) {
             if (toolDef.getFunction() != null) {
-                // 使用 FunctionDefinition.builder().name().description().parameters().build()
-                Object funcBuilder = functionClass.getMethod("builder").invoke(null);
-                funcBuilder.getClass().getMethod("name", String.class).invoke(funcBuilder, toolDef.getFunction().getName());
-                funcBuilder.getClass().getMethod("description", String.class).invoke(funcBuilder, toolDef.getFunction().getDescription());
-                funcBuilder.getClass().getMethod("parameters", Map.class).invoke(funcBuilder, toolDef.getFunction().getParameters());
-                Object func = funcBuilder.getClass().getMethod("build").invoke(funcBuilder);
+                // 将 Map 转换为 JsonObject
+                JsonObject parameters = convertToJsonObject(toolDef.getFunction().getParameters());
+                FunctionDefinition func = FunctionDefinition.builder()
+                        .name(toolDef.getFunction().getName())
+                        .description(toolDef.getFunction().getDescription())
+                        .parameters(parameters)
+                        .build();
                 tools.add(func);
             }
         }
         return tools;
     }
 
-    private List<Object> buildMessagesForGeneration(LlmRequest request) throws Exception {
-        List<LlmRequest.ChatMessage> messages = request.getMessages();
-        if (messages == null || messages.isEmpty()) {
-            throw new IllegalArgumentException("messages 不能为空");
+    private JsonObject convertToJsonObject(Map<String, Object> map) {
+        JsonObject jsonObject = new JsonObject();
+        if (map != null) {
+            for (Map.Entry<String, Object> entry : map.entrySet()) {
+                Object value = entry.getValue();
+                if (value instanceof String) {
+                    jsonObject.addProperty(entry.getKey(), (String) value);
+                } else if (value instanceof Number) {
+                    jsonObject.addProperty(entry.getKey(), (Number) value);
+                } else if (value instanceof Boolean) {
+                    jsonObject.addProperty(entry.getKey(), (Boolean) value);
+                } else if (value instanceof Map) {
+                    jsonObject.add(entry.getKey(), convertToJsonObject((Map<String, Object>) value));
+                } else if (value instanceof List) {
+                    jsonObject.add(entry.getKey(), com.google.gson.JsonArray.class.cast(value));
+                }
+            }
+        }
+        return jsonObject;
+    }
+
+    private List<Message> buildMessages(LlmRequest request) {
+        List<Message> sdkMessages = new ArrayList<>();
+
+        // 添加系统提示
+        if (request.getSystemPrompt() != null && !request.getSystemPrompt().isBlank()) {
+            Message sysMsg = Message.builder()
+                    .role("system")
+                    .content(request.getSystemPrompt())
+                    .build();
+            sdkMessages.add(sysMsg);
         }
 
-        List<Object> sdkMessages = new ArrayList<>();
-        Class<?> messageClass = Class.forName("com.alibaba.dashscope.common.Message");
-        Class<?> roleEnumClass = Class.forName("com.alibaba.dashscope.common.Role");
-
-        if (request.getSystemPrompt() != null && !request.getSystemPrompt().isBlank()) {
-            Object sysMsg = messageClass.getDeclaredConstructor().newInstance();
-            messageClass.getMethod("role", roleEnumClass).invoke(sysMsg, roleEnumClass.getField("SYSTEM").get(null));
-            messageClass.getMethod("content", String.class).invoke(sysMsg, request.getSystemPrompt());
-            sdkMessages.add(sysMsg);
+        List<LlmRequest.ChatMessage> messages = request.getMessages();
+        if (messages == null || messages.isEmpty()) {
+            // 如果没有消息但有 systemPrompt，用它作为用户消息
+            if (!sdkMessages.isEmpty()) {
+                return sdkMessages;
+            }
+            throw new IllegalArgumentException("messages 不能为空");
         }
 
         for (LlmRequest.ChatMessage message : messages) {
             if (message == null) continue;
 
             if (message.getToolCall() != null) {
-                // 工具调用消息
-                Object toolMsg = messageClass.getDeclaredConstructor().newInstance();
-                messageClass.getMethod("role", roleEnumClass).invoke(toolMsg, roleEnumClass.getField("ASSISTANT").get(null));
-
-                Map<String, Object> toolCallMap = new HashMap<>();
-                toolCallMap.put("id", message.getToolCall().getId());
-                toolCallMap.put("type", "function");
-                Map<String, Object> funcMap = new HashMap<>();
-                funcMap.put("name", message.getToolCall().getName());
-                funcMap.put("arguments", message.getToolCall().getArguments());
-                toolCallMap.put("function", funcMap);
-                messageClass.getMethod("toolCall", Map.class).invoke(toolMsg, toolCallMap);
+                // 工具调用消息 - 使用 toolCallId
+                Message toolMsg = Message.builder()
+                        .role("assistant")
+                        .toolCallId(message.getToolCall().getId())
+                        .content("")
+                        .build();
                 sdkMessages.add(toolMsg);
                 continue;
             }
 
             if (message.getContent() == null || message.getContent().isBlank()) continue;
 
-            Object userMsg = messageClass.getDeclaredConstructor().newInstance();
-            messageClass.getMethod("role", roleEnumClass).invoke(userMsg, roleEnumClass.getField("USER").get(null));
-            messageClass.getMethod("content", String.class).invoke(userMsg, message.getContent());
+            Message userMsg = Message.builder()
+                    .role("user")
+                    .content(message.getContent())
+                    .build();
             sdkMessages.add(userMsg);
         }
 
         return sdkMessages;
     }
 
-    private Object buildGenerationParam(Class<?> paramClass, String model, List<Object> messages,
-                                       List<Object> tools, LlmRequest request) throws Exception {
-        Object builder = paramClass.getMethod("builder").invoke(null);
-        builder.getClass().getMethod("model", String.class).invoke(builder, model);
-        builder.getClass().getMethod("messages", List.class).invoke(builder, messages);
-        if (tools != null && !tools.isEmpty()) {
-            builder.getClass().getMethod("tools", List.class).invoke(builder, tools);
-        }
-        builder.getClass().getMethod("apiKey", String.class).invoke(builder, apiKey);
-
-        if (request.getTemperature() != null) {
-            builder.getClass().getMethod("temperature", Float.class).invoke(builder, request.getTemperature());
-        }
-        if (request.getMaxTokens() != null) {
-            builder.getClass().getMethod("maxTokens", Integer.class).invoke(builder, request.getMaxTokens());
-        }
-
-        // 设置响应格式（JSON Schema / JSON Object）
-        if (request.getResponseFormat() != null && !request.getResponseFormat().isBlank()) {
-            setResponseFormat(builder, request.getResponseFormat());
-        }
-
-        // 设置思考模式（禁用思考可降低延迟和成本）
-        if (request.getThinkingEnabled() != null && !request.getThinkingEnabled()) {
-            setThinkingDisabled(builder);
-        }
-
-        return builder.getClass().getMethod("build").invoke(builder);
-    }
-
-    /**
-     * 设置响应格式。
-     */
-    @SuppressWarnings("unchecked")
-    private void setResponseFormat(Object builder, String responseFormat) throws Exception {
-        Class<?> responseFormatClass = Class.forName("com.alibaba.dashscope.common.ResponseFormat");
-
+    private void setResponseFormat(GenerationParam.GenerationParamBuilder paramBuilder, String responseFormat) {
         // responseFormat 格式：json_object 或 json_schema:{schema}
         if ("json_object".equalsIgnoreCase(responseFormat)) {
-            Object rf = responseFormatClass.getMethod("builder").invoke(null);
-            rf.getClass().getMethod("type", String.class).invoke(rf, "json_object");
-            Object result = rf.getClass().getMethod("build").invoke(rf);
-            builder.getClass().getMethod("responseFormat", responseFormatClass).invoke(builder, result);
+            paramBuilder.responseFormat(ResponseFormat.builder()
+                    .type("json_object")
+                    .build());
         } else if (responseFormat.startsWith("json_schema:")) {
             // json_schema:{name}:{schema_json}
             String schemaContent = responseFormat.substring("json_schema:".length());
-            Object rf = responseFormatClass.getMethod("builder").invoke(null);
-            rf.getClass().getMethod("type", String.class).invoke(rf, "json_schema");
-            // 解析 schema JSON
-            Map<String, Object> schema = objectMapper.readValue(schemaContent, Map.class);
-            rf.getClass().getMethod("jsonSchema", Map.class).invoke(rf, schema);
-            Object result = rf.getClass().getMethod("build").invoke(rf);
-            builder.getClass().getMethod("responseFormat", responseFormatClass).invoke(builder, result);
+            try {
+                Map<String, Object> schema = objectMapper.readValue(schemaContent, Map.class);
+                JsonObject jsonSchema = convertToJsonObject(schema);
+                paramBuilder.responseFormat(ResponseFormat.builder()
+                        .type("json_schema")
+                        .build());
+            } catch (JsonProcessingException e) {
+                log.warn("解析 JSON Schema 失败: {}", e.getMessage());
+            }
         }
     }
 
-    /**
-     * 设置禁用思考模式。
-     * 通过 extraParams 传递 thinking.disable=true 参数。
-     */
-    private void setThinkingDisabled(Object builder) {
-        try {
-            // 尝试通过 extraParams 设置 thinking.disable
-            // GenerationParam 有 extraParams(Map<String, Object>) 方法
-            Map<String, Object> extraParams = new HashMap<>();
-            extraParams.put("thinking", Map.of("type", "disabled"));
-            builder.getClass().getMethod("extraParams", Map.class).invoke(builder, extraParams);
-            log.debug("已设置禁用思考模式");
-        } catch (Exception e) {
-            log.warn("设置思考模式失败，可能 SDK 版本不支持: {}", e.getMessage());
+    private LlmResponse extractResult(GenerationResult result, String model) {
+        if (result == null) {
+            return LlmResponse.error("NO_RESULT", "Generation 返回为空");
         }
-    }
 
-    @SuppressWarnings("unchecked")
-    private LlmResponse extractGenerationResult(Object result, String model) throws Exception {
-        Class<?> outputClass = Class.forName("com.alibaba.dashscope.aigc.generation.GenerationOutput");
-
-        Object output = result.getClass().getMethod("getOutput").invoke(result);
+        GenerationOutput output = result.getOutput();
         if (output == null) {
             return LlmResponse.error("NO_OUTPUT", "Generation 返回 output 为空");
         }
 
-        // 获取 choices
-        List<Object> choices = (List<Object>) outputClass.getMethod("getChoices").invoke(output);
-        if (choices == null || choices.isEmpty()) {
-            return LlmResponse.error("NO_CHOICES", "Generation 返回 choices 为空");
-        }
-
-        Object firstChoice = choices.get(0);
-
-        // 尝试获取文本内容
-        String content = "";
-        try {
-            Object message = firstChoice.getClass().getMethod("getMessage").invoke(firstChoice);
-            if (message != null) {
-                Object msgContent = message.getClass().getMethod("getContent").invoke(message);
-                if (msgContent != null) {
-                    content = msgContent.toString();
+        // 优先从 output.getText() 获取内容
+        String content = output.getText();
+        if (content == null || content.isBlank()) {
+            // 如果没有 text，尝试从 choices 获取
+            List<GenerationOutput.Choice> choices = output.getChoices();
+            if (choices != null && !choices.isEmpty()) {
+                GenerationOutput.Choice firstChoice = choices.get(0);
+                if (firstChoice != null) {
+                    Message msg = firstChoice.getMessage();
+                    if (msg != null) {
+                        content = msg.getContent();
+                    }
                 }
             }
-        } catch (Exception e) {
-            log.trace("获取文本内容失败", e);
         }
 
         // 尝试获取工具调用
         LlmResponse.ToolCallResult toolCall = null;
         try {
-            Object fc = outputClass.getMethod("getFunctionCall").invoke(output);
-            if (fc != null) {
-                String name = (String) fc.getClass().getMethod("getName").invoke(fc);
-                String arguments = fc.getClass().getMethod("getArguments").invoke(fc) != null
-                        ? fc.getClass().getMethod("getArguments").invoke(fc).toString() : "{}";
-                Map<String, Object> parsedArgs = parseArguments(arguments);
-                toolCall = LlmResponse.ToolCallResult.builder()
-                        .id(UUID.randomUUID().toString())
-                        .name(name)
-                        .arguments(arguments)
-                        .parsedArguments(parsedArgs)
-                        .build();
+            List<GenerationOutput.Choice> choices = output.getChoices();
+            if (choices != null && !choices.isEmpty()) {
+                GenerationOutput.Choice firstChoice = choices.get(0);
+                if (firstChoice != null) {
+                    Message msg = firstChoice.getMessage();
+                    if (msg != null && msg.getToolCalls() != null && !msg.getToolCalls().isEmpty()) {
+                        // 获取第一个工具调用
+                        ToolCallBase toolCallBase = msg.getToolCalls().get(0);
+                        if (toolCallBase instanceof Map) {
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> toolCallMap = (Map<String, Object>) toolCallBase;
+                            String name = (String) toolCallMap.get("name");
+                            Object argumentsObj = toolCallMap.get("arguments");
+                            String arguments = argumentsObj != null ? argumentsObj.toString() : "{}";
+                            Map<String, Object> parsedArgs = parseArguments(arguments);
+                            toolCall = LlmResponse.ToolCallResult.builder()
+                                    .id(UUID.randomUUID().toString())
+                                    .name(name)
+                                    .arguments(arguments)
+                                    .parsedArguments(parsedArgs)
+                                    .build();
+                        }
+                    }
+                }
             }
         } catch (Exception e) {
             log.trace("获取工具调用失败", e);
@@ -309,7 +281,7 @@ public class DashScopeLlmClient implements LlmClient {
 
         LlmResponse.LlmResponseBuilder builder = LlmResponse.builder()
                 .success(true)
-                .content(content)
+                .content(content != null ? content : "")
                 .model(model)
                 .provider(LlmProviderType.DASHSCOPE);
 
@@ -328,7 +300,7 @@ public class DashScopeLlmClient implements LlmClient {
                 request.getTools() != null ? request.getTools().size() : 0,
                 request.getResponseFormat());
 
-        // 如果有工具或需要 JSON Schema 输出，降级到同步调用（Generation API 暂时不支持流式）
+        // 如果有工具或需要 JSON Schema 输出，降级到同步调用
         if (request.getTools() != null && !request.getTools().isEmpty()
                 || request.getResponseFormat() != null && !request.getResponseFormat().isBlank()) {
             return Flux.defer(() -> {
@@ -337,21 +309,32 @@ public class DashScopeLlmClient implements LlmClient {
             });
         }
 
+        // 使用 Generation API 流式调用
         return Flux.defer(() -> {
             try {
-                MultiModalConversation conversation = new MultiModalConversation();
-                Flowable<MultiModalConversationResult> stream = conversation.streamCall(buildParam(request, model, true));
+                List<Message> messages = buildMessages(request);
 
-                final StringBuilder fullContent = new StringBuilder();
+                GenerationParam.GenerationParamBuilder paramBuilder = GenerationParam.builder()
+                        .apiKey(apiKey)
+                        .model(model)
+                        .messages(messages)
+                        .incrementalOutput(true);
+
+                if (request.getTemperature() != null) {
+                    paramBuilder.temperature(request.getTemperature());
+                }
+                if (request.getMaxTokens() != null) {
+                    paramBuilder.maxTokens(request.getMaxTokens());
+                }
+
+                GenerationParam param = paramBuilder.build();
+
+                Flowable<GenerationResult> stream = generation.streamCall(param);
 
                 return Flux.from(stream)
                         .map(result -> {
-                            String chunk = extractText(result);
-                            if (chunk != null) {
-                                fullContent.append(chunk);
-                            }
-
-                            boolean isLast = hasFinishReason(result);
+                            String chunk = extractChunkText(result);
+                            boolean isLast = isLastChunk(result);
 
                             return LlmResponse.builder()
                                     .success(true)
@@ -360,14 +343,14 @@ public class DashScopeLlmClient implements LlmClient {
                                     .provider(LlmProviderType.DASHSCOPE)
                                     .streamed(true)
                                     .isLast(isLast)
-                                    .finishReason(extractFinishReason(result))
+                                    .finishReason(isLast ? "stop" : null)
                                     .build();
                         })
                         .filter(resp -> (resp.getContent() != null && !resp.getContent().isEmpty())
                                 || Boolean.TRUE.equals(resp.getIsLast()))
                         .doOnError(e -> log.error("DashScope(官方SDK)流式聊天异常 - sessionId: {}, 错误: {}",
                                 request.getSessionId(), e.getMessage(), e));
-            } catch (ApiException | NoApiKeyException | UploadFileException e) {
+            } catch (Exception e) {
                 log.error("DashScope(官方SDK)流式聊天初始化失败 - sessionId: {}, 错误: {}",
                         request.getSessionId(), e.getMessage(), e);
                 return Flux.error(new RuntimeException("DashScope 流式调用失败: " + e.getMessage(), e));
@@ -375,133 +358,55 @@ public class DashScopeLlmClient implements LlmClient {
         });
     }
 
+    private String extractChunkText(GenerationResult result) {
+        try {
+            GenerationOutput output = result.getOutput();
+            if (output == null) return "";
+
+            // 优先从 output.getText() 获取内容
+            String text = output.getText();
+            if (text != null && !text.isBlank()) {
+                return text;
+            }
+
+            // 如果没有 text，尝试从 choices 获取
+            List<GenerationOutput.Choice> choices = output.getChoices();
+            if (choices == null || choices.isEmpty()) return "";
+
+            GenerationOutput.Choice firstChoice = choices.get(0);
+            if (firstChoice == null) return "";
+
+            Message message = firstChoice.getMessage();
+            if (message == null) return "";
+
+            return message.getContent() != null ? message.getContent() : "";
+        } catch (Exception e) {
+            log.trace("提取流式chunk文本失败", e);
+            return "";
+        }
+    }
+
+    private boolean isLastChunk(GenerationResult result) {
+        try {
+            GenerationOutput output = result.getOutput();
+            if (output == null) return false;
+
+            List<GenerationOutput.Choice> choices = output.getChoices();
+            if (choices == null || choices.isEmpty()) return false;
+
+            GenerationOutput.Choice firstChoice = choices.get(0);
+            String finishReason = firstChoice.getFinishReason();
+            return finishReason != null && !finishReason.isBlank() && !"null".equalsIgnoreCase(finishReason);
+        } catch (Exception e) {
+            log.trace("检查流式chunk是否完成失败", e);
+            return false;
+        }
+    }
+
     private String resolveModel(LlmRequest request) {
         return request.getModel() != null && !request.getModel().isBlank()
                 ? request.getModel()
                 : defaultModel;
-    }
-
-    private MultiModalConversationParam buildParam(LlmRequest request, String model, boolean stream) {
-        MultiModalConversationParam.MultiModalConversationParamBuilder<?, ?> builder = MultiModalConversationParam.builder()
-                .apiKey(apiKey)
-                .model(model)
-                .messages(buildMessages(request))
-                .incrementalOutput(stream);
-
-        if (request.getTopP() != null) {
-            builder.topP(request.getTopP().doubleValue());
-        }
-        if (request.getTemperature() != null) {
-            builder.temperature(request.getTemperature());
-        }
-        if (request.getMaxTokens() != null) {
-            builder.maxTokens(request.getMaxTokens());
-        }
-
-        return builder.build();
-    }
-
-    private List<Object> buildMessages(LlmRequest request) {
-        List<LlmRequest.ChatMessage> messages = request.getMessages();
-        if (messages == null || messages.isEmpty()) {
-            log.error("DashScope buildMessages 失败: messages 为空");
-            throw new IllegalArgumentException("messages 不能为空");
-        }
-
-        List<Object> sdkMessages = new ArrayList<>();
-        if (request.getSystemPrompt() != null && !request.getSystemPrompt().isBlank()) {
-            sdkMessages.add(MultiModalMessage.builder()
-                    .role(Role.SYSTEM.getValue())
-                    .content(buildTextContent(request.getSystemPrompt()))
-                    .build());
-        }
-
-        for (LlmRequest.ChatMessage message : messages) {
-            if (message == null) {
-                continue;
-            }
-
-            // 处理工具调用消息
-            if (message.getToolCall() != null) {
-                sdkMessages.add(buildToolMessage(message));
-                continue;
-            }
-
-            String role = "assistant".equalsIgnoreCase(message.getRole())
-                    ? Role.ASSISTANT.getValue()
-                    : Role.USER.getValue();
-
-            // 处理多模态内容（图片、视频等）
-            if (message.getMultiModalContent() != null && !message.getMultiModalContent().isEmpty()) {
-                sdkMessages.add(MultiModalMessage.builder()
-                        .role(role)
-                        .content(message.getMultiModalContent())
-                        .build());
-                continue;
-            }
-
-            // 处理纯文本内容
-            if (message.getContent() == null || message.getContent().isBlank()) {
-                continue;
-            }
-
-            sdkMessages.add(MultiModalMessage.builder()
-                    .role(role)
-                    .content(buildTextContent(message.getContent()))
-                    .build());
-        }
-
-        if (sdkMessages.isEmpty()) {
-            throw new IllegalArgumentException("消息 content 不能为空");
-        }
-        return sdkMessages;
-    }
-
-    @SuppressWarnings("unchecked")
-    private MultiModalMessage buildToolMessage(LlmRequest.ChatMessage message) {
-        Map<String, Object> toolCallContent = new HashMap<>();
-        toolCallContent.put("id", message.getToolCall().getId());
-        toolCallContent.put("type", "function");
-        toolCallContent.put("function", Map.of(
-                "name", message.getToolCall().getName(),
-                "arguments", message.getToolCall().getArguments()
-        ));
-
-        return MultiModalMessage.builder()
-                .role(Role.ASSISTANT.getValue())
-                .content(List.of(toolCallContent))
-                .build();
-    }
-
-    private List<Map<String, Object>> buildTextContent(String text) {
-        Map<String, Object> item = new HashMap<>();
-        item.put("text", text);
-        return List.of(item);
-    }
-
-    private String extractText(MultiModalConversationResult result) {
-        if (result == null || result.getOutput() == null || result.getOutput().getChoices() == null
-                || result.getOutput().getChoices().isEmpty()) {
-            return "";
-        }
-
-        MultiModalMessage message = result.getOutput().getChoices().get(0).getMessage();
-        if (message == null || message.getContent() == null || message.getContent().isEmpty()) {
-            return "";
-        }
-
-        StringBuilder builder = new StringBuilder();
-        for (Map<String, Object> item : message.getContent()) {
-            // 跳过 function_call 类型的内容
-            if (item.containsKey("type") && "function_call".equals(item.get("type"))) {
-                continue;
-            }
-            Object text = item.get("text");
-            if (text != null) {
-                builder.append(text);
-            }
-        }
-        return builder.toString();
     }
 
     private Map<String, Object> parseArguments(String arguments) {
@@ -514,24 +419,5 @@ public class DashScopeLlmClient implements LlmClient {
             log.warn("解析工具参数失败: {}", e.getMessage());
             return new HashMap<>();
         }
-    }
-
-    private boolean hasFinishReason(MultiModalConversationResult result) {
-        String finishReason = extractFinishReason(result);
-        return finishReason != null
-                && !finishReason.isBlank()
-                && !"null".equalsIgnoreCase(finishReason);
-    }
-
-    private String extractFinishReason(MultiModalConversationResult result) {
-        if (result == null || result.getOutput() == null) {
-            return null;
-        }
-
-        MultiModalConversationOutput output = result.getOutput();
-        if (output.getChoices() != null && !output.getChoices().isEmpty()) {
-            return output.getChoices().get(0).getFinishReason();
-        }
-        return output.getFinishReason();
     }
 }

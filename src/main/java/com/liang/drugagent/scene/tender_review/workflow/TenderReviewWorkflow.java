@@ -80,7 +80,7 @@ public class TenderReviewWorkflow {
     ) {}
 
     public TenderReviewWorkflow(LLMChatService LLMChatService,
-                                @Qualifier("miniMaxLlmClient") LlmClient llmClient,
+                                @Qualifier("dashScopeLlmClient") LlmClient llmClient,
                                 TenderRuleEngine tenderRuleEngine,
                                 TenderExemptionEngine tenderExemptionEngine,
                                 RiskFusionService riskFusionService,
@@ -376,8 +376,8 @@ public class TenderReviewWorkflow {
             );
 
             LlmRequest request = LlmRequest.builder()
-                    .provider(LlmProviderType.MINIMAX)
-                    .model("MiniMax-M2.7-highspeed")
+                    .provider(LlmProviderType.DASHSCOPE)
+                    .model("qwen3.5-plus")
                     .sessionId(null)
                     .systemPrompt(TenderReviewValidatePrompt.SYSTEM_PROMPT)
                     .messages(List.of(LlmRequest.ChatMessage.builder()

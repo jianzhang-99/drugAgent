@@ -13,7 +13,12 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.*;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 百炼 Context Cache 服务。
@@ -51,7 +56,12 @@ public class DashScopeContextCacheService {
     /**
      * 本地缓存的上下文缓存（sessionId -> cacheId）
      */
-    private final Map<String, String> sessionCacheMap = new HashMap<>();
+    private final Map<String, String> sessionCacheMap = new ConcurrentHashMap<>();
+
+    /**
+     * 记录每个 session 当前缓存对应的 prompt 指纹，避免复用过期的 RAG/摘要上下文。
+     */
+    private final Map<String, String> sessionPromptFingerprintMap = new ConcurrentHashMap<>();
 
     public DashScopeContextCacheService(
             @Value("${aliyun.dashscope.api-key:}") String apiKey,
@@ -141,12 +151,24 @@ public class DashScopeContextCacheService {
      * @return LLM 响应
      */
     public LlmResponse chatWithSessionCache(LlmRequest request, String sessionId) {
+        String promptFingerprint = fingerprint(request.getSystemPrompt());
         String cacheId = getCacheId(sessionId);
+        String cachedFingerprint = sessionPromptFingerprintMap.get(sessionId);
 
-        if (cacheId == null && request.getSystemPrompt() != null) {
-            // 没有缓存且有 System Prompt，创建新缓存
-            ContextCacheConfig config = createCache(request.getSystemPrompt(), sessionId);
-            cacheId = config.getCacheId();
+        if (cacheId == null || !Objects.equals(promptFingerprint, cachedFingerprint)) {
+            if (cacheId != null && !Objects.equals(promptFingerprint, cachedFingerprint)) {
+                log.info("[ContextCache] 检测到 prompt 已变化，刷新缓存 - sessionId={}", sessionId);
+                deleteCache(cacheId);
+            }
+
+            if (request.getSystemPrompt() != null) {
+                // 没有缓存或 prompt 已变化，创建新缓存
+                ContextCacheConfig config = createCache(request.getSystemPrompt(), sessionId);
+                cacheId = config.getCacheId();
+                if (cacheId != null) {
+                    sessionPromptFingerprintMap.put(sessionId, promptFingerprint);
+                }
+            }
         }
 
         if (cacheId == null) {
@@ -169,6 +191,10 @@ public class DashScopeContextCacheService {
 
         try {
             String url = baseUrl + "/api/v1/contexts/caches/" + cacheId;
+            java.util.List<String> relatedSessionIds = sessionCacheMap.entrySet().stream()
+                    .filter(entry -> cacheId.equals(entry.getValue()))
+                    .map(Map.Entry::getKey)
+                    .toList();
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
@@ -181,6 +207,7 @@ public class DashScopeContextCacheService {
 
             // 从 sessionCacheMap 中移除关联
             sessionCacheMap.entrySet().removeIf(entry -> entry.getValue().equals(cacheId));
+            relatedSessionIds.forEach(sessionPromptFingerprintMap::remove);
 
             return response.statusCode() >= 200 && response.statusCode() < 300;
 
@@ -385,5 +412,23 @@ public class DashScopeContextCacheService {
         }
 
         return builder.build();
+    }
+
+    private String fingerprint(String content) {
+        if (content == null || content.isBlank()) {
+            return null;
+        }
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(content.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+        } catch (Exception e) {
+            log.warn("[ContextCache] 生成 prompt 指纹失败，降级使用原文长度标识: {}", e.getMessage());
+            return "len:" + content.length();
+        }
     }
 }

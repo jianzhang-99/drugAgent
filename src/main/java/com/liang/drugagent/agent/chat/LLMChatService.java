@@ -10,6 +10,7 @@ import com.liang.drugagent.shared.llm.LlmProviderType;
 import com.liang.drugagent.shared.llm.LlmRequest;
 import com.liang.drugagent.shared.llm.ModelInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -58,6 +59,9 @@ public class LLMChatService {
     );
 
     private final List<LlmClient> llmClients;
+
+    @Value("${llm.minimax-enabled:false}")
+    private boolean minimaxEnabled;
 
     public LLMChatService(List<LlmClient> llmClients) {
         this.llmClients = llmClients;
@@ -118,31 +122,96 @@ public class LLMChatService {
 
     /**
      * 根据模型标识和provider解析最终使用的模型名称。
-     * 当模型标识为空时，使用provider对应的默认模型。
+     * 当模型标识为空，或者是provider的configKey时，使用provider对应的默认模型。
      */
     private String resolveEffectiveModel(String model, LlmProviderType provider) {
-        if (model != null && !model.isBlank()) {
-            return model;
+        String normalizedModel = normalizeModel(model);
+        if (normalizedModel != null) {
+            if (isProviderConfigKey(normalizedModel)) {
+                return defaultModelFor(provider);
+            }
+            return normalizedModel;
         }
-        return LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7-highspeed" : "qwen3.5-plus";
+        return defaultModelFor(provider);
     }
 
     /**
      * 根据模型标识选择对应的 LLM Client
      */
     private LlmClient selectClient(String model) {
-        if (model == null || model.isBlank()) {
+        String normalizedModel = normalizeModel(model);
+        if (normalizedModel == null) {
             return llmClients.stream()
-                    .filter(c -> c.supports(LlmProviderType.MINIMAX))
+                    .filter(c -> c.supports(LlmProviderType.DASHSCOPE))
                     .findFirst()
-                    .orElseThrow(() -> new IllegalStateException("未找到可用的 MiniMax LLM Client"));
+                    .orElseThrow(() -> new IllegalStateException("未找到可用的 DashScope LLM Client"));
         }
 
-        LlmProviderType providerType = LlmProviderType.fromConfigKey(model);
+        LlmProviderType providerType = resolveProviderType(normalizedModel);
         return llmClients.stream()
                 .filter(c -> c.supports(providerType))
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException("未找到可用的 LLM Client: " + model));
+                .orElseThrow(() -> new IllegalStateException("未找到可用的 LLM Client: " + normalizedModel));
+    }
+
+    private LlmProviderType resolveProviderType(String model) {
+        if (isProviderConfigKey(model)) {
+            return normalizeProviderType(LlmProviderType.fromConfigKey(model));
+        }
+        if (looksLikeDashScopeModel(model)) {
+            return LlmProviderType.DASHSCOPE;
+        }
+        if (looksLikeMiniMaxModel(model)) {
+            return normalizeProviderType(LlmProviderType.MINIMAX);
+        }
+        return LlmProviderType.DASHSCOPE;
+    }
+
+    private boolean isProviderConfigKey(String model) {
+        if (model == null || model.isBlank()) {
+            return false;
+        }
+        for (LlmProviderType type : LlmProviderType.values()) {
+            if (type.getConfigKey().equalsIgnoreCase(model)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean looksLikeDashScopeModel(String model) {
+        String lower = model.toLowerCase();
+        return lower.startsWith("qwen")
+                || lower.startsWith("tongyi")
+                || lower.startsWith("qwq")
+                || lower.startsWith("qvq")
+                || lower.startsWith("text-embedding");
+    }
+
+    private boolean looksLikeMiniMaxModel(String model) {
+        String lower = model.toLowerCase();
+        return lower.startsWith("minimax")
+                || lower.startsWith("abab");
+    }
+
+    private String defaultModelFor(LlmProviderType provider) {
+        return LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7-highspeed" : "qwen3.5-plus";
+    }
+
+    private LlmProviderType normalizeProviderType(LlmProviderType providerType) {
+        if (!minimaxEnabled && LlmProviderType.MINIMAX.equals(providerType)) {
+            log.warn("MiniMax 当前已被临时屏蔽，模型请求自动切换到 DashScope");
+            return LlmProviderType.DASHSCOPE;
+        }
+        return providerType;
+    }
+
+    private String normalizeModel(String model) {
+        if (model == null) {
+            return null;
+        }
+        String trimmed = model.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private String resolveSystemPrompt(SceneEnum scene) {
@@ -167,6 +236,9 @@ public class LLMChatService {
 
         List<ModelInfo> result = new ArrayList<>();
         for (LlmProviderType providerType : LlmProviderType.values()) {
+            if (!minimaxEnabled && LlmProviderType.MINIMAX.equals(providerType)) {
+                continue;
+            }
             LlmClient client = uniqueClients.get(providerType);
             boolean isAvailable = client != null && client.isAvailable();
 

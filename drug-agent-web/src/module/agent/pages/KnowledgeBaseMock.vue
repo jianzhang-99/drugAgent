@@ -585,8 +585,6 @@ onMounted(() => {
   flex: 1;
   padding: 40px 48px 60px;
   overflow-y: auto;
-  max-width: 1200px;
-  margin: 0 auto;
   width: 100%;
 }
 

@@ -216,13 +216,13 @@ public class AgentChatService {
                 log.info("[AgentChatService] 流式对话执行: sessionId={}, traceId={}, historyCount={}",
                         sessionId, context.getTraceId(), recentMessages.size());
 
-                // 4. 调用 AgentSceneService 执行场景判断
-                AgentSceneService.AgentSceneExecution execution = agentSceneService.decideAndExecute(context, req);
+                // 4. 执行场景路由判断
+                WorkflowRouteDecision decision = agentSceneService.decideRoute(context, req);
 
-                // 5. 复杂场景降级为同步
-                if (execution.isNeedsClarification() || execution.getDecision() == null
-                        || execution.getDecision().getScene() != SceneEnum.DEFAULT) {
-                    log.info("[AgentChatService] 流式检测到非DEFAULT场景，降级为同步");
+                // 5. 复杂场景或需要澄清，降级为同步
+                if (decision == null || decision.isRequiresClarification() || decision.getScene() != SceneEnum.DEFAULT) {
+                    log.info("[AgentChatService] 流式检测到非DEFAULT场景或需要澄清，降级为同步");
+                    AgentSceneService.AgentSceneExecution execution = agentSceneService.decideAndExecute(context, req);
                     AgentChatResp resp = agentResponseService.buildResponse(context,
                             execution.getDecision(), execution.getExecutionResult());
                     sink.next(ServerSentEvent.<AgentChatResp>builder()
@@ -233,9 +233,45 @@ public class AgentChatService {
                     return;
                 }
 
-                // 6. 流式返回 LLM 响应
+                // 6. 开启真流式返回 LLM 响应
                 final String finalSessionId = sessionId;
-                streamLlmResponse(execution, req, sink, finalSessionId);
+                Flux<String> tokenStream = agentSceneService.streamGeneralChat(context);
+                StringBuilder fullAnswer = new StringBuilder();
+
+                tokenStream.subscribe(token -> {
+                    if (token != null && !token.isEmpty()) {
+                        fullAnswer.append(token);
+                        AgentChatResp resp = AgentChatResp.builder()
+                                .sessionId(finalSessionId)
+                                .traceId(req.getSessionId())
+                                .scene(SceneEnum.DEFAULT.name())
+                                .answer(token)
+                                .streamed(true)
+                                .build();
+                        sink.next(ServerSentEvent.<AgentChatResp>builder().event("message").data(resp).build());
+                    }
+                }, error -> {
+                    log.error("[AgentChatService] 流式传输失败", error);
+                    sink.error(error);
+                }, () -> {
+                    // 发送完成信号
+                    sink.next(ServerSentEvent.<AgentChatResp>builder()
+                            .event("done")
+                            .data(AgentChatResp.builder()
+                                    .sessionId(finalSessionId)
+                                    .scene(SceneEnum.DEFAULT.name())
+                                    .answer("")
+                                    .streamed(true)
+                                    .build())
+                            .build());
+
+                    // 保存助手消息，落库
+                    agentMessageService.saveAssistantMessage(finalSessionId, fullAnswer.toString(), null, "assistant_text");
+                    agentSessionService.touchSession(finalSessionId, SceneEnum.DEFAULT.name());
+                    agentSessionService.increaseMessageCount(finalSessionId, 2);
+
+                    sink.complete();
+                });
 
             } catch (Exception e) {
                 log.error("[AgentChatService] 流式对话异常: {}", e.getMessage(), e);
@@ -245,59 +281,8 @@ public class AgentChatService {
     }
 
     /**
-     * 流式返回 LLM 响应。
+     * 废弃的模拟推流逻辑已删除。
      */
-    private void streamLlmResponse(AgentSceneService.AgentSceneExecution execution,
-                                   AgentChatReq req,
-                                   FluxSink<ServerSentEvent<AgentChatResp>> sink,
-                                   String sessionId) {
-        AgentExecutionResult result = execution.getExecutionResult();
-        String answer = result.getAnswer();
-
-        if (answer == null || answer.isBlank()) {
-            // 没有文本内容，直接结束
-            sink.complete();
-            return;
-        }
-
-        // 分块发送文本（简单的逐字流，实际可优化）
-        int chunkSize = 10; // 每块字符数
-        for (int i = 0; i < answer.length(); i += chunkSize) {
-            int end = Math.min(i + chunkSize, answer.length());
-            String chunk = answer.substring(i, end);
-
-            AgentChatResp resp = AgentChatResp.builder()
-                    .sessionId(sessionId)
-                    .traceId(req.getSessionId())
-                    .scene(SceneEnum.DEFAULT.name())
-                    .answer(chunk)
-                    .streamed(true)
-                    .build();
-
-            sink.next(ServerSentEvent.<AgentChatResp>builder()
-                    .event("message")
-                    .data(resp)
-                    .build());
-        }
-
-        // 发送完成信号
-        sink.next(ServerSentEvent.<AgentChatResp>builder()
-                .event("done")
-                .data(AgentChatResp.builder()
-                        .sessionId(sessionId)
-                        .scene(SceneEnum.DEFAULT.name())
-                        .answer("")
-                        .streamed(true)
-                        .build())
-                .build());
-
-        // 保存助手消息
-        agentMessageService.saveAssistantMessage(sessionId, answer, null, "assistant_text");
-        agentSessionService.touchSession(sessionId, SceneEnum.DEFAULT.name());
-        agentSessionService.increaseMessageCount(sessionId, 2);
-
-        sink.complete();
-    }
 
     /**
      * 构建澄清响应。

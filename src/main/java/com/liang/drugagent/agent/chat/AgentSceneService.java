@@ -1,10 +1,12 @@
 package com.liang.drugagent.agent.chat;
 
+import com.liang.drugagent.agent.common.entity.ChatMessage;
 import com.liang.drugagent.agent.prompt.shared.base.SharedBasePrompt;
 import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
 import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
 import com.liang.drugagent.scene.SceneEnum;
+import com.liang.drugagent.shared.contextcache.DashScopeContextCacheService;
 import com.liang.drugagent.scene.tender_review.facade.TenderReviewSceneService;
 import com.liang.drugagent.shared.model.AgentExecutionResult;
 import com.liang.drugagent.shared.llm.LlmProviderType;
@@ -18,8 +20,10 @@ import com.liang.drugagent.shared.tool.KnowledgeRetrievalTool;
 import com.liang.drugagent.shared.intent.IntentDetectionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,6 +57,19 @@ public class AgentSceneService {
     private final TenderReviewSceneService tenderReviewSceneService;
     private final KnowledgeRetrievalTool knowledgeRetrievalTool;
     private final IntentDetectionService intentDetectionService;
+    private final DashScopeContextCacheService dashScopeContextCacheService;
+
+    @Value("${aliyun.dashscope.context-cache.enabled:true}")
+    private boolean dashScopeContextCacheEnabled;
+
+    @Value("${aliyun.dashscope.context-cache.min-system-prompt-length:1200}")
+    private int dashScopeContextCacheMinSystemPromptLength;
+
+    @Value("${agent.general-chat.history-window-size:8}")
+    private int generalChatHistoryWindowSize;
+
+    @Value("${llm.minimax-enabled:false}")
+    private boolean minimaxEnabled;
 
     /**
      * 执行对话并返回结果。
@@ -185,7 +202,7 @@ public class AgentSceneService {
      * <p>只有当【显式信号 + 规则匹配】都无法判断，且请求看起来像业务请求时，
      * 才使用 LLM 做兜底判断。但这种情况应该很少。
      */
-    private WorkflowRouteDecision decideRoute(AgentChatContext context, AgentChatReq req) {
+    public WorkflowRouteDecision decideRoute(AgentChatContext context, AgentChatReq req) {
         String query = context.getQuery();
 
         // ========== 第一层：显式信号（最强，无需 LLM）==========
@@ -441,8 +458,7 @@ public class AgentSceneService {
 
             // 4. 调用 LLM 获取回答
             long answerStartTime = System.currentTimeMillis();
-            GeneralChatResult chatResult = generalChatWithTitle(query, context.getSessionId(),
-                    context.getModel(), systemPrompt);
+            GeneralChatResult chatResult = generalChatWithTitle(context, systemPrompt);
             long finalAnswerCostMs = System.currentTimeMillis() - answerStartTime;
 
             long totalCostMs = System.currentTimeMillis() - totalStartTime;
@@ -481,6 +497,60 @@ public class AgentSceneService {
     }
 
     /**
+     * 真流式通用对话入口（绕过同步 Execution 框架，直接返回 Flux）。
+     */
+    public Flux<String> streamGeneralChat(AgentChatContext context) {
+        log.info("[AgentSceneService] 分发到真流式通用对话");
+
+        try {
+            // 1. 知识检索增强
+            String orgId = extractOrgId(context);
+            RagOutcome ragOutcome = knowledgeRetrievalTool.search(context.getQuery(), orgId, null, null, null);
+            boolean useRagContext = "ANSWERED".equals(ragOutcome.getDecision())
+                    && ragOutcome.getEvidenceList() != null
+                    && !ragOutcome.getEvidenceList().isEmpty();
+
+            // 2. 构建增强后的 system prompt
+            String systemPrompt = buildEnhancedSystemPrompt(ragOutcome, useRagContext);
+
+            // 3. 构建请求
+            String query = context.getQuery();
+            String sessionId = context.getSessionId();
+            String model = context.getModel();
+            LlmProviderType provider = resolveProviderType(model);
+            String effectiveModel = resolveEffectiveModel(model, provider);
+            
+            String effectiveSystemPrompt = systemPrompt;
+            List<LlmRequest.ChatMessage> messages = List.of(LlmRequest.ChatMessage.builder()
+                    .role("user")
+                    .content(query)
+                    .build());
+
+            if (LlmProviderType.DASHSCOPE.equals(provider)) {
+                effectiveSystemPrompt = buildGeneralChatSystemPrompt(context, systemPrompt);
+                messages = buildGeneralChatMessages(context, query);
+            }
+
+            LlmRequest request = LlmRequest.builder()
+                    .provider(provider)
+                    .model(effectiveModel)
+                    .sessionId(sessionId)
+                    .systemPrompt(effectiveSystemPrompt)
+                    .messages(messages)
+                    .stream(true)
+                    .build();
+
+            // 4. 调用 LLM 真流式
+            return llmService.streamChat(request)
+                    .map(r -> r.getContent() != null ? r.getContent() : "");
+
+        } catch (Exception e) {
+            log.error("[AgentSceneService] 真流式通用对话预处理失败: {}", e.getMessage(), e);
+            return Flux.just("处理失败，请稍后重试: " + e.getMessage());
+        }
+    }
+
+    /**
      * 通用对话结果（含回答和标题）。
      */
     private record GeneralChatResult(String answer, String title) {}
@@ -488,31 +558,40 @@ public class AgentSceneService {
     /**
      * 通用对话处理（同时生成标题）。
      */
-    private GeneralChatResult generalChatWithTitle(String query, String sessionId, String model) {
-        return generalChatWithTitle(query, sessionId, model, SharedBasePrompt.GENERAL_CHAT);
+    private GeneralChatResult generalChatWithTitle(AgentChatContext context) {
+        return generalChatWithTitle(context, SharedBasePrompt.GENERAL_CHAT);
     }
 
     /**
      * 通用对话处理（同时生成标题，支持自定义 system prompt）。
      */
-    private GeneralChatResult generalChatWithTitle(String query, String sessionId, String model,
-                                                    String systemPrompt) {
+    private GeneralChatResult generalChatWithTitle(AgentChatContext context, String systemPrompt) {
         try {
-            LlmProviderType provider = LlmProviderType.fromConfigKey(model);
+            String query = context.getQuery();
+            String sessionId = context.getSessionId();
+            String model = context.getModel();
+            LlmProviderType provider = resolveProviderType(model);
             // 根据 provider 解析正确的模型名（前端传的是 provider 标识，不是模型名）
             String effectiveModel = resolveEffectiveModel(model, provider);
+            String effectiveSystemPrompt = systemPrompt;
+            List<LlmRequest.ChatMessage> messages = List.of(LlmRequest.ChatMessage.builder()
+                    .role("user")
+                    .content(query)
+                    .build());
+
+            if (LlmProviderType.DASHSCOPE.equals(provider)) {
+                effectiveSystemPrompt = buildGeneralChatSystemPrompt(context, systemPrompt);
+                messages = buildGeneralChatMessages(context, query);
+            }
 
             LlmRequest request = LlmRequest.builder()
                     .provider(provider)
                     .model(effectiveModel)
                     .sessionId(sessionId)
-                    .systemPrompt(systemPrompt)
-                    .messages(List.of(LlmRequest.ChatMessage.builder()
-                            .role("user")
-                            .content(query)
-                            .build()))
+                    .systemPrompt(effectiveSystemPrompt)
+                    .messages(messages)
                     .build();
-            LlmResponse llmResponse = llmService.chat(request);
+            LlmResponse llmResponse = callGeneralChatModel(request, provider, effectiveSystemPrompt);
             if (!Boolean.TRUE.equals(llmResponse.getSuccess()) || llmResponse.getContent() == null) {
                 log.error("[AgentSceneService] 通用对话失败: provider={}, success={}, errorMessage={}",
                         provider, llmResponse.getSuccess(), llmResponse.getErrorMessage());
@@ -528,6 +607,97 @@ public class AgentSceneService {
         } catch (Exception e) {
             throw new RuntimeException("通用对话失败: " + e.getMessage(), e);
         }
+    }
+
+    private LlmResponse callGeneralChatModel(LlmRequest request, LlmProviderType provider, String systemPrompt) {
+        if (LlmProviderType.DASHSCOPE.equals(provider)
+                && dashScopeContextCacheEnabled
+                && systemPrompt != null
+                && systemPrompt.length() >= dashScopeContextCacheMinSystemPromptLength) {
+            LlmResponse cachedResponse = dashScopeContextCacheService.chatWithSessionCache(request, request.getSessionId());
+            if (cachedResponse != null && Boolean.TRUE.equals(cachedResponse.getSuccess())) {
+                log.info("[AgentSceneService] 通用对话命中 DashScope Context Cache - sessionId={}", request.getSessionId());
+                return cachedResponse;
+            }
+            log.warn("[AgentSceneService] DashScope Context Cache 未命中或调用失败，降级到普通对话 - sessionId={}",
+                    request.getSessionId());
+        }
+        return llmService.chat(request);
+    }
+
+    private String buildGeneralChatSystemPrompt(AgentChatContext context, String baseSystemPrompt) {
+        if (context.getRecentSummary() == null || context.getRecentSummary().isBlank()) {
+            return baseSystemPrompt;
+        }
+
+        StringBuilder promptBuilder = new StringBuilder(baseSystemPrompt);
+        promptBuilder.append("\n\n【最近会话摘要】\n");
+        promptBuilder.append(context.getRecentSummary());
+        promptBuilder.append("\n请在回复时参考上述摘要，保持与当前会话连续，但不要虚构未提及的事实。");
+        return promptBuilder.toString();
+    }
+
+    private List<LlmRequest.ChatMessage> buildGeneralChatMessages(AgentChatContext context, String query) {
+        List<LlmRequest.ChatMessage> messages = new ArrayList<>();
+        List<ChatMessage> historyMessages = context.getHistoryMessages();
+
+        if (historyMessages != null && !historyMessages.isEmpty()) {
+            int startIndex = Math.max(0, historyMessages.size() - generalChatHistoryWindowSize);
+            for (int i = startIndex; i < historyMessages.size(); i++) {
+                ChatMessage historyMessage = historyMessages.get(i);
+                if (historyMessage == null
+                        || historyMessage.getContent() == null
+                        || historyMessage.getContent().isBlank()
+                        || "assistant_result_card".equalsIgnoreCase(historyMessage.getType())) {
+                    continue;
+                }
+
+                String role = resolveHistoryRole(historyMessage.getRole());
+                if (role == null) {
+                    continue;
+                }
+
+                messages.add(LlmRequest.ChatMessage.builder()
+                        .role(role)
+                        .content(historyMessage.getContent())
+                        .build());
+            }
+        }
+
+        if (shouldAppendCurrentQuery(messages, query)) {
+            messages.add(LlmRequest.ChatMessage.builder()
+                    .role("user")
+                    .content(query)
+                    .build());
+        }
+
+        return messages;
+    }
+
+    private boolean shouldAppendCurrentQuery(List<LlmRequest.ChatMessage> messages, String query) {
+        if (query == null || query.isBlank()) {
+            return false;
+        }
+        if (messages.isEmpty()) {
+            return true;
+        }
+
+        LlmRequest.ChatMessage lastMessage = messages.get(messages.size() - 1);
+        return !"user".equalsIgnoreCase(lastMessage.getRole())
+                || !query.trim().equals(lastMessage.getContent() != null ? lastMessage.getContent().trim() : null);
+    }
+
+    private String resolveHistoryRole(String role) {
+        if (role == null || role.isBlank()) {
+            return null;
+        }
+        if ("assistant".equalsIgnoreCase(role)) {
+            return "assistant";
+        }
+        if ("user".equalsIgnoreCase(role)) {
+            return "user";
+        }
+        return null;
     }
 
     /**
@@ -598,20 +768,78 @@ public class AgentSceneService {
      * 根据模型标识和 provider 解析最终使用的模型名称。
      */
     private String resolveEffectiveModel(String model, LlmProviderType provider) {
-        // 如果模型名是有效的 provider 标识（minimax/dashscope），则根据 provider 设置默认模型
-        if (model != null && !model.isBlank()) {
-            // 检查是否是 provider 标识符
-            for (LlmProviderType pt : LlmProviderType.values()) {
-                if (pt.getConfigKey().equalsIgnoreCase(model)) {
-                    // 是 provider 标识，需要解析为对应的模型名
-                    return LlmProviderType.MINIMAX.equals(pt) ? "MiniMax-M2.7-highspeed" : "qwen3.5-plus";
-                }
+        String normalizedModel = normalizeModel(model);
+        if (normalizedModel != null) {
+            if (isProviderConfigKey(normalizedModel)) {
+                return defaultModelFor(provider);
             }
-            // 不是 provider 标识，可能是实际的模型名，直接返回
-            return model;
+            return normalizedModel;
         }
-        // 没有模型名，使用 provider 默认
-        return LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7-highspeed" : "qwen3.5-plus";
+        return defaultModelFor(provider);
+    }
+
+    private LlmProviderType resolveProviderType(String model) {
+        String normalizedModel = normalizeModel(model);
+        if (normalizedModel == null) {
+            return LlmProviderType.DASHSCOPE;
+        }
+        if (isProviderConfigKey(normalizedModel)) {
+            return normalizeProviderType(LlmProviderType.fromConfigKey(normalizedModel));
+        }
+        if (looksLikeDashScopeModel(normalizedModel)) {
+            return LlmProviderType.DASHSCOPE;
+        }
+        if (looksLikeMiniMaxModel(normalizedModel)) {
+            return normalizeProviderType(LlmProviderType.MINIMAX);
+        }
+        return LlmProviderType.DASHSCOPE;
+    }
+
+    private boolean isProviderConfigKey(String model) {
+        if (model == null || model.isBlank()) {
+            return false;
+        }
+        for (LlmProviderType type : LlmProviderType.values()) {
+            if (type.getConfigKey().equalsIgnoreCase(model)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean looksLikeDashScopeModel(String model) {
+        String lower = model.toLowerCase();
+        return lower.startsWith("qwen")
+                || lower.startsWith("tongyi")
+                || lower.startsWith("qwq")
+                || lower.startsWith("qvq")
+                || lower.startsWith("text-embedding");
+    }
+
+    private boolean looksLikeMiniMaxModel(String model) {
+        String lower = model.toLowerCase();
+        return lower.startsWith("minimax")
+                || lower.startsWith("abab");
+    }
+
+    private String defaultModelFor(LlmProviderType provider) {
+        return LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7-highspeed" : "qwen-plus";
+    }
+
+    private LlmProviderType normalizeProviderType(LlmProviderType providerType) {
+        if (!minimaxEnabled && LlmProviderType.MINIMAX.equals(providerType)) {
+            log.warn("[AgentSceneService] MiniMax 当前已被临时屏蔽，自动切换到 DashScope");
+            return LlmProviderType.DASHSCOPE;
+        }
+        return providerType;
+    }
+
+    private String normalizeModel(String model) {
+        if (model == null) {
+            return null;
+        }
+        String trimmed = model.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     // ==================== 内部类 ====================

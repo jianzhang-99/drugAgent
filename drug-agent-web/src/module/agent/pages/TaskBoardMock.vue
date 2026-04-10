@@ -1,71 +1,94 @@
 <template>
-  <div class="task-board-page">
-    <div class="page-header">
-      <h2>全局任务看板</h2>
-      <p>统一管理您提交的所有异步审查任务、后台分析进度及历史记录。</p>
-    </div>
-
-    <div class="board-content">
-      <div class="table-toolbar">
-        <t-input
-          v-model="searchKeyword"
-          placeholder="搜索任务名称或编号..."
-          style="width: 280px"
-          clearable
-        >
-          <template #prefix-icon>
-            <t-icon name="search" />
-          </template>
-        </t-input>
-        <t-button theme="primary" variant="outline">
-          <template #icon><t-icon name="refresh" /></template>
-          刷新状态
-        </t-button>
+  <div class="tb-page">
+    <!-- 顶部栏 -->
+    <header class="tb-topbar">
+      <div class="topbar-left">
+        <span class="topbar-title-text">全局任务看板</span>
       </div>
+      <div class="topbar-right">
+        <div class="topbar-pill">
+          <span class="pill-wave">∿</span>
+          <span>{{ mockData.length }} 个异步任务</span>
+        </div>
+        <div class="topbar-avatar">HD</div>
+      </div>
+    </header>
 
-      <t-table
-        :data="filteredTasks"
-        :columns="columns"
-        row-key="id"
-        class="task-table"
-        hover
-        :pagination="pagination"
-      >
-        <template #status="{ row }">
-          <t-tag v-if="row.status === 'success'" theme="success" variant="light-outline">
-            <template #icon><t-icon name="check-circle" /></template>
-            已完成
-          </t-tag>
-          <t-tag v-else-if="row.status === 'running'" theme="primary" variant="light-outline">
-            <template #icon><t-loading size="14px" style="margin-right: 4px;" /></template>
-            执行中 ({{ row.progress }}%)
-          </t-tag>
-          <t-tag v-else-if="row.status === 'failed'" theme="danger" variant="light-outline">
-            <template #icon><t-icon name="close-circle" /></template>
-            异常中断
-          </t-tag>
-          <t-tag v-else theme="default" variant="light-outline">
-            等待中
-          </t-tag>
-        </template>
+    <!-- 主内容 -->
+    <div class="tb-body">
+      <!-- 标题与说明 -->
+      <div class="tb-headline">
+        <div class="headline-icon tb-icon-bg">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        </div>
+        <h1 class="headline-title">全局任务看板</h1>
+      </div>
+      <p class="tb-desc">
+        统一管理您提交的所有异步审查任务、后台分析进度及历史记录。
+      </p>
 
-        <template #action="{ row }">
-          <t-button
-            variant="text"
-            theme="primary"
-            :disabled="row.status !== 'success'"
+      <div class="board-content">
+        <div class="table-toolbar">
+          <t-input
+            v-model="searchKeyword"
+            placeholder="搜索任务名称或编号..."
+            style="width: 280px"
+            clearable
           >
-            查看报告
+            <template #prefix-icon>
+              <t-icon name="search" />
+            </template>
+          </t-input>
+          <t-button theme="primary" variant="outline">
+            <template #icon><t-icon name="refresh" /></template>
+            刷新状态
           </t-button>
-          <t-button
-            variant="text"
-            theme="danger"
-            v-if="row.status === 'failed' || row.status === 'running'"
-          >
-            {{ row.status === 'running' ? '终止' : '重试' }}
-          </t-button>
-        </template>
-      </t-table>
+        </div>
+
+        <t-table
+          :data="filteredTasks"
+          :columns="columns"
+          row-key="id"
+          class="task-table"
+          hover
+          :pagination="pagination"
+        >
+          <template #status="{ row }">
+            <t-tag v-if="row.status === 'success'" theme="success" variant="light-outline">
+              <template #icon><t-icon name="check-circle" /></template>
+              已完成
+            </t-tag>
+            <t-tag v-else-if="row.status === 'running'" theme="primary" variant="light-outline">
+              <template #icon><t-loading size="14px" style="margin-right: 4px;" /></template>
+              执行中 ({{ row.progress }}%)
+            </t-tag>
+            <t-tag v-else-if="row.status === 'failed'" theme="danger" variant="light-outline">
+              <template #icon><t-icon name="close-circle" /></template>
+              异常中断
+            </t-tag>
+            <t-tag v-else theme="default" variant="light-outline">
+              等待中
+            </t-tag>
+          </template>
+
+          <template #action="{ row }">
+            <t-button
+              variant="text"
+              theme="primary"
+              :disabled="row.status !== 'success'"
+            >
+              查看报告
+            </t-button>
+            <t-button
+              variant="text"
+              theme="danger"
+              v-if="row.status === 'failed' || row.status === 'running'"
+            >
+              {{ row.status === 'running' ? '终止' : '重试' }}
+            </t-button>
+          </template>
+        </t-table>
+      </div>
     </div>
   </div>
 </template>
@@ -142,28 +165,118 @@ const filteredTasks = computed(() => {
 </script>
 
 <style scoped>
-.task-board-page {
-  padding: 32px 42px;
+.tb-page {
+  display: flex;
+  flex-direction: column;
   height: 100%;
+  min-height: 100vh;
+  background: #fff;
+}
+
+/* ========== 顶部栏 ========== */
+.tb-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 74px;
+  padding: 0 32px;
+  border-bottom: 1px solid #e6edf5;
+  background: rgba(255, 255, 255, 0.9);
+  flex-shrink: 0;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topbar-title-text {
+  color: #7d90aa;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.topbar-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  background: #f6f8fc;
+  color: #344863;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.pill-wave {
+  color: #4f6df5;
+}
+
+.topbar-avatar {
+  display: flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #10b981, #0ea5e9);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* ========== 主体 ========== */
+.tb-body {
+  flex: 1;
+  padding: 40px 48px 60px;
+  overflow-y: auto;
+  width: 100%;
   display: flex;
   flex-direction: column;
 }
 
-.page-header {
-  margin-bottom: 24px;
+.tb-headline {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
 }
 
-.page-header h2 {
-  font-size: 24px;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0 0 8px;
+.headline-icon {
+  display: flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  color: #fff;
+  flex-shrink: 0;
 }
 
-.page-header p {
-  color: #64748b;
-  font-size: 14px;
+/* 使用看板特有的渐变绿配色，与侧边栏图标一致 */
+.tb-icon-bg {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.headline-title {
   margin: 0;
+  font-size: 28px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.tb-desc {
+  margin: 0 0 24px;
+  color: #64748b;
+  font-size: 15px;
+  line-height: 1.7;
 }
 
 .board-content {
@@ -174,6 +287,7 @@ const filteredTasks = computed(() => {
   padding: 20px;
   display: flex;
   flex-direction: column;
+  margin-top: 12px;
 }
 
 .table-toolbar {

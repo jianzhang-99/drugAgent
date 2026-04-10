@@ -48,18 +48,7 @@
           <MessageRenderer :message="msg" />
         </div>
 
-        <div v-if="store.streaming" class="message-row role-assistant">
-          <div class="avatar agent-avatar">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
-          </div>
-          <div class="message-body">
-            <div class="message-content assistant-content">
-              {{ store.streamingContent }}<span class="typing-cursor">|</span>
-            </div>
-          </div>
-        </div>
-
-        <div v-else-if="store.sending" class="message-row role-assistant">
+        <div v-if="store.sending && !store.streaming" class="message-row role-assistant">
           <div class="avatar agent-avatar">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
           </div>
@@ -477,17 +466,5 @@ async function handleQuickAction(prompt: string) {
   border-bottom-left-radius: 6px;
   border: 1px solid #e2e8f0;
   box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.04);
-}
-
-.typing-cursor {
-  display: inline-block;
-  animation: blink 1s step-end infinite;
-  color: #3b82f6;
-  font-weight: bold;
-}
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
 }
 </style>
