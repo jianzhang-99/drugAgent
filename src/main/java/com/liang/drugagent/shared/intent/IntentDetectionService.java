@@ -83,7 +83,7 @@ public class IntentDetectionService {
      * 构建意图检测的system prompt。
      */
     private String buildIntentSystemPrompt() {
-        return "你是一个意图分类专家。你的任务是根据用户输入判断用户想要进行的业务操作。\n\n" +
+        return "你是CD一个意图分类专家。你的任务是根据用户输入判断用户想要进行的业务操作。\n\n" +
                 "请从以下场景中选择一个最匹配的：\n" +
                 "1. TENDER_REVIEW（标书审查）- 用户想要审查标书、检测围标串标风险、比对标书内容等\n" +
                 "2. CONTRACT_PRECHECK（合同预审）- 用户想要审查合同条款、检测合同风险、核对合同合规性等\n" +

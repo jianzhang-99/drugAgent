@@ -10,8 +10,10 @@ import com.liang.drugagent.agent.common.entity.ChatSession;
 import com.liang.drugagent.controller.domain.request.agent.*;
 import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
 import com.liang.drugagent.scene.SceneEnum;
+import com.liang.drugagent.scene.tender_review.facade.TenderReviewSceneService;
 import com.liang.drugagent.shared.llm.LlmProviderType;
 import com.liang.drugagent.shared.llm.ModelInfo;
+import com.liang.drugagent.shared.model.ThinkingStepProgress;
 import com.liang.drugagent.shared.model.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -47,6 +49,7 @@ public class AgentController {
     private final AgentSessionService agentSessionService;
     private final AgentMessageService agentMessageService;
     private final LLMChatService llmChatService;
+    private final TenderReviewSceneService tenderReviewSceneService;
     private final ObjectMapper objectMapper;
 
     // ==================== 对话接口 ====================
@@ -109,6 +112,43 @@ public class AgentController {
     public Result<AgentChatResp> submitJson(@RequestBody AgentChatReq req) {
         log.info("[AgentController] 收到JSON格式提交请求");
         return Result.success(agentChatService.chat(req));
+    }
+
+    /**
+     * 流式文件上传对话（SSE 实时推送思考步骤进度）。
+     */
+    @Operation(summary = "流式文件上传对话（SSE）")
+    @PostMapping(value = "/submit/stream", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<ThinkingStepProgress>> submitStream(
+            @RequestParam(value = "req", required = false) String reqJson,
+            @RequestParam(value = "files", required = false) MultipartFile[] files) {
+        try {
+            log.info("[AgentController] 收到流式文件上传请求, reqJson长度={}, fileCount={}",
+                    reqJson != null ? reqJson.length() : 0, files != null ? files.length : 0);
+            if (reqJson == null || reqJson.isBlank()) {
+                log.error("[AgentController] req 参数为空");
+                return Flux.error(new IllegalArgumentException("req 参数不能为空"));
+            }
+            AgentChatReq req = objectMapper.readValue(reqJson, AgentChatReq.class);
+            if (req.getQuery() == null || req.getQuery().isBlank()) {
+                log.error("[AgentController] query 参数为空");
+                return Flux.error(new IllegalArgumentException("query 不能为空"));
+            }
+            if (files != null && files.length > 0) {
+                req.setFiles(files);
+            }
+            // 构建上下文
+            com.liang.drugagent.controller.domain.AgentChatContext context =
+                    com.liang.drugagent.controller.domain.AgentChatContext.from(req);
+            // 流式执行并映射为 ServerSentEvent
+            return tenderReviewSceneService.streamExecute(context, req)
+                    .map(progress -> ServerSentEvent.<ThinkingStepProgress>builder()
+                            .data(progress)
+                            .build());
+        } catch (Exception e) {
+            log.error("[AgentController] 流式文件上传请求处理失败: {}", e.getMessage(), e);
+            return Flux.error(e);
+        }
     }
 
     // ==================== 会话管理接口 ====================

@@ -22,6 +22,9 @@ import com.liang.drugagent.agent.prompt.tender_review.validate.TenderReviewValid
 import com.liang.drugagent.scene.tender_review.support.assembler.TenderReviewDataAssembler;
 import com.liang.drugagent.shared.model.EvidenceItem;
 import com.liang.drugagent.shared.model.ReviewReport;
+import com.liang.drugagent.shared.model.ThinkingStep;
+import com.liang.drugagent.shared.model.ThinkingStepEmitter;
+import com.liang.drugagent.shared.model.ThinkingStepProgress;
 import com.liang.drugagent.shared.model.WorkflowResult;
 import com.liang.drugagent.shared.llm.LlmClient;
 import com.liang.drugagent.shared.llm.LlmProviderType;
@@ -138,18 +141,357 @@ public class TenderReviewWorkflow {
      * @return 工作流执行结果
      */
     public WorkflowResult execute(AgentChatContext context) {
+        return executeWithProgress(context, ThinkingStepEmitter.noop());
+    }
+
+    /**
+     * 带进度回调的标书审查工作流执行。
+     *
+     * <p>完整流程包括：
+     * <ol>
+     *   <li>从上下文中读取标书审查数据</li>
+     *   <li>执行规则命中分析</li>
+     *   <li>应用免责判定</li>
+     *   <li>风险融合计算</li>
+     *   <li>证据组装</li>
+     *   <li>生成审查报告</li>
+     * </ol>
+     *
+     * <p>每个阶段完成时会通过 emitter 推送进度更新事件。
+     *
+     * @param context Agent 上下文
+     * @param emitter 进度发射器，用于推送思考步骤更新
+     * @return 工作流执行结果
+     */
+    public WorkflowResult executeWithProgress(AgentChatContext context, ThinkingStepEmitter emitter) {
+        // 初始化思考步骤列表
+        List<ThinkingStep> completedSteps = new ArrayList<>();
+
+        // 阶段1：数据加载
+        ThinkingStep step1 = ThinkingStep.builder()
+                .code("data_loading")
+                .title("结构化加载")
+                .detail("正在解析和加载标书文档数据")
+                .type("EXECUTION")
+                .status("IN_PROGRESS")
+                .order(1)
+                .build();
+        emitter.emit(ThinkingStepProgress.builder()
+                .currentCode(step1.getCode())
+                .currentTitle(step1.getTitle())
+                .currentStatus(step1.getStatus())
+                .currentDetail(step1.getDetail())
+                .currentStep(step1)
+                .completedSteps(List.of())
+                .finalResult(false)
+                .build());
+
         TenderReviewData tenderReviewData = readTenderReviewData(context);
         if (tenderReviewData == null) {
             return buildInsufficientDataErrorResult(null);
         }
 
-        // 文档数量校验：标书审查至少需要2份文档
         int docCount = tenderReviewData.getDocuments() == null ? 0 : tenderReviewData.getDocuments().size();
         if (docCount < 2) {
             return buildInsufficientDataErrorResult(docCount);
         }
 
-        return executeRuleFlow(tenderReviewData);
+        // 阶段1完成
+        step1.setStatus("COMPLETED");
+        step1.setDetail("已完成加载 " + docCount + " 份标书文档");
+        completedSteps.add(step1);
+        emitter.emit(ThinkingStepProgress.builder()
+                .currentCode(step1.getCode())
+                .currentTitle(step1.getTitle())
+                .currentStatus(step1.getStatus())
+                .currentDetail(step1.getDetail())
+                .currentStep(step1)
+                .completedSteps(completedSteps)
+                .finalResult(false)
+                .build());
+
+        // 阶段2：规则命中分析
+        ThinkingStep step2 = ThinkingStep.builder()
+                .code("rule_analysis")
+                .title("规则命中分析")
+                .detail("正在执行确定性规则检测")
+                .type("EXECUTION")
+                .status("IN_PROGRESS")
+                .order(2)
+                .build();
+        emitter.emit(ThinkingStepProgress.builder()
+                .currentCode(step2.getCode())
+                .currentTitle(step2.getTitle())
+                .currentStatus(step2.getStatus())
+                .currentDetail(step2.getDetail())
+                .currentStep(step2)
+                .completedSteps(completedSteps)
+                .finalResult(false)
+                .build());
+
+        List<RuleHit> allHits = tenderRuleEngine.execute(tenderReviewData);
+
+        // 阶段2完成
+        step2.setStatus("COMPLETED");
+        step2.setDetail("确定性规则检测完成，发现 " + allHits.size() + " 个命中");
+        completedSteps.add(step2);
+        emitter.emit(ThinkingStepProgress.builder()
+                .currentCode(step2.getCode())
+                .currentTitle(step2.getTitle())
+                .currentStatus(step2.getStatus())
+                .currentDetail(step2.getDetail())
+                .currentStep(step2)
+                .completedSteps(completedSteps)
+                .finalResult(false)
+                .build());
+
+        // 阶段3：LLM语义分析
+        ThinkingStep step3 = ThinkingStep.builder()
+                .code("semantic_analysis")
+                .title("LLM语义分析")
+                .detail("正在执行6个语义分析器（技术方案、实施方案、服务承诺、风险识别、团队重叠、商务条款）")
+                .type("EXECUTION")
+                .status("IN_PROGRESS")
+                .order(3)
+                .build();
+        emitter.emit(ThinkingStepProgress.builder()
+                .currentCode(step3.getCode())
+                .currentTitle(step3.getTitle())
+                .currentStatus(step3.getStatus())
+                .currentDetail(step3.getDetail())
+                .currentStep(step3)
+                .completedSteps(completedSteps)
+                .finalResult(false)
+                .build());
+
+        SemanticAnalysisResult semanticResult = executeSemanticAnalyzers(tenderReviewData);
+        allHits.addAll(semanticResult.hits());
+        Map<String, String> analyzerStatus = semanticResult.analyzerStatus();
+
+        // 阶段3完成
+        long successCount = analyzerStatus.values().stream().filter("SUCCESS"::equals).count();
+        long failedCount = analyzerStatus.values().stream().filter(s -> "FAILED".equals(s) || "TIMEOUT".equals(s)).count();
+        step3.setStatus("COMPLETED");
+        step3.setDetail("LLM语义分析完成，成功 " + successCount + " 个，失败/超时 " + failedCount + " 个");
+        completedSteps.add(step3);
+        emitter.emit(ThinkingStepProgress.builder()
+                .currentCode(step3.getCode())
+                .currentTitle(step3.getTitle())
+                .currentStatus(step3.getStatus())
+                .currentDetail(step3.getDetail())
+                .currentStep(step3)
+                .completedSteps(completedSteps)
+                .finalResult(false)
+                .build());
+
+        // 阶段4：误报豁免
+        ThinkingStep step4 = ThinkingStep.builder()
+                .code("exemption")
+                .title("误报豁免")
+                .detail("正在应用免责判定引擎")
+                .type("EXECUTION")
+                .status("IN_PROGRESS")
+                .order(4)
+                .build();
+        emitter.emit(ThinkingStepProgress.builder()
+                .currentCode(step4.getCode())
+                .currentTitle(step4.getTitle())
+                .currentStatus(step4.getStatus())
+                .currentDetail(step4.getDetail())
+                .currentStep(step4)
+                .completedSteps(completedSteps)
+                .finalResult(false)
+                .build());
+
+        var exemptionResult = tenderExemptionEngine.apply(allHits, tenderReviewData);
+
+        step4.setStatus("COMPLETED");
+        step4.setDetail("误报豁免完成，" + exemptionResult.effectiveHits().size() + " 个有效命中，" + exemptionResult.exemptionHits().size() + " 个豁免");
+        completedSteps.add(step4);
+        emitter.emit(ThinkingStepProgress.builder()
+                .currentCode(step4.getCode())
+                .currentTitle(step4.getTitle())
+                .currentStatus(step4.getStatus())
+                .currentDetail(step4.getDetail())
+                .currentStep(step4)
+                .completedSteps(completedSteps)
+                .finalResult(false)
+                .build());
+
+        // 阶段5：风险融合
+        ThinkingStep step5 = ThinkingStep.builder()
+                .code("risk_fusion")
+                .title("风险融合")
+                .detail("正在计算综合风险评分")
+                .type("EXECUTION")
+                .status("IN_PROGRESS")
+                .order(5)
+                .build();
+        emitter.emit(ThinkingStepProgress.builder()
+                .currentCode(step5.getCode())
+                .currentTitle(step5.getTitle())
+                .currentStatus(step5.getStatus())
+                .currentDetail(step5.getDetail())
+                .currentStep(step5)
+                .completedSteps(completedSteps)
+                .finalResult(false)
+                .build());
+
+        RiskFusionResult fusionResult = riskFusionService.fuse(
+                tenderReviewData,
+                exemptionResult.effectiveHits(),
+                exemptionResult.exemptionHits()
+        );
+
+        step5.setStatus("COMPLETED");
+        step5.setDetail("风险融合完成，综合风险等级：" + fusionResult.getRiskLevel() + "，评分：" + fusionResult.getScore());
+        completedSteps.add(step5);
+        emitter.emit(ThinkingStepProgress.builder()
+                .currentCode(step5.getCode())
+                .currentTitle(step5.getTitle())
+                .currentStatus(step5.getStatus())
+                .currentDetail(step5.getDetail())
+                .currentStep(step5)
+                .completedSteps(completedSteps)
+                .finalResult(false)
+                .build());
+
+        // 阶段6：证据组装
+        ThinkingStep step6 = ThinkingStep.builder()
+                .code("evidence_assembly")
+                .title("证据组装")
+                .detail("正在组装风险证据链")
+                .type("EXECUTION")
+                .status("IN_PROGRESS")
+                .order(6)
+                .build();
+        emitter.emit(ThinkingStepProgress.builder()
+                .currentCode(step6.getCode())
+                .currentTitle(step6.getTitle())
+                .currentStatus(step6.getStatus())
+                .currentDetail(step6.getDetail())
+                .currentStep(step6)
+                .completedSteps(completedSteps)
+                .finalResult(false)
+                .build());
+
+        var evidenceAssemblyResult = evidenceAssemblerService.assemble(
+                exemptionResult.effectiveHits(),
+                exemptionResult.exemptionHits(),
+                fusionResult
+        );
+
+        step6.setStatus("COMPLETED");
+        step6.setDetail("证据组装完成，共 " + evidenceAssemblyResult.getFlatItems().size() + " 条证据");
+        completedSteps.add(step6);
+        emitter.emit(ThinkingStepProgress.builder()
+                .currentCode(step6.getCode())
+                .currentTitle(step6.getTitle())
+                .currentStatus(step6.getStatus())
+                .currentDetail(step6.getDetail())
+                .currentStep(step6)
+                .completedSteps(completedSteps)
+                .finalResult(false)
+                .build());
+
+        // 阶段7：报告生成
+        ThinkingStep step7 = ThinkingStep.builder()
+                .code("report_generation")
+                .title("报告生成")
+                .detail("正在生成审查报告")
+                .type("EXECUTION")
+                .status("IN_PROGRESS")
+                .order(7)
+                .build();
+        emitter.emit(ThinkingStepProgress.builder()
+                .currentCode(step7.getCode())
+                .currentTitle(step7.getTitle())
+                .currentStatus(step7.getStatus())
+                .currentDetail(step7.getDetail())
+                .currentStep(step7)
+                .completedSteps(completedSteps)
+                .finalResult(false)
+                .build());
+
+        ReviewReport report = reportGenerationService.generate(
+                tenderReviewData,
+                allHits,
+                exemptionResult.effectiveHits(),
+                exemptionResult.exemptionHits(),
+                fusionResult,
+                evidenceAssemblyResult
+        );
+
+        WorkflowResult result = WorkflowResult.of(
+                SceneEnum.TENDER_REVIEW,
+                reportGenerationService.buildAnswer(report)
+        );
+        result.setSummary(report.getOverview() != null ? report.getOverview().getSummary() : null);
+        result.setRiskLevel(fusionResult.getRiskLevel());
+        result.setScore(fusionResult.getScore() != null ? fusionResult.getScore() : 0);
+        result.setSteps(List.of("场景路由", "结构化加载", "规则命中分析", "LLM语义分析", "误报豁免", "风险融合", "证据组装", "报告生成"));
+        result.setReport(report);
+        result.setEvidenceList(evidenceAssemblyResult.getFlatItems());
+        result.setEvidenceGroups(evidenceAssemblyResult.getGroups());
+        result.setAnalyzerStatus(analyzerStatus);
+
+        // 如果超过一半的 LLM 分析器失败，在报告中增加警告说明
+        if (failedCount > 3) {
+            String warning = "警告：LLM语义分析器有 " + failedCount + " 个执行失败，可能导致部分风险未被检测到，建议人工复核。";
+            log.warn("[TenderReviewWorkflow] {}", warning);
+            if (report.getExplanations() != null) {
+                report.getExplanations().put("analyzer_warning", warning);
+            }
+        }
+
+        // L4 校验
+        if (l4ValidationEnabled) {
+            ThinkingStep stepL4 = ThinkingStep.builder()
+                    .code("l4_validation")
+                    .title("L4输出校验")
+                    .detail("正在进行输出合规性校验")
+                    .type("EXECUTION")
+                    .status("IN_PROGRESS")
+                    .order(8)
+                    .build();
+            emitter.emit(ThinkingStepProgress.builder()
+                    .currentCode(stepL4.getCode())
+                    .currentTitle(stepL4.getTitle())
+                    .currentStatus(stepL4.getStatus())
+                    .currentDetail(stepL4.getDetail())
+                    .currentStep(stepL4)
+                    .completedSteps(completedSteps)
+                    .finalResult(false)
+                    .build());
+
+            validateAndNormalizeResult(result);
+
+            stepL4.setStatus("COMPLETED");
+            stepL4.setDetail("L4输出校验完成");
+            completedSteps.add(stepL4);
+        }
+
+        // 所有阶段完成
+        step7.setStatus("COMPLETED");
+        step7.setDetail("审查报告生成完成");
+        completedSteps.add(step7);
+
+        // 设置思考步骤到结果
+        result.setThinkingSteps(new ArrayList<>(completedSteps));
+
+        // 发送最终结果
+        emitter.emit(ThinkingStepProgress.builder()
+                .currentCode(step7.getCode())
+                .currentTitle(step7.getTitle())
+                .currentStatus(step7.getStatus())
+                .currentDetail(step7.getDetail())
+                .currentStep(step7)
+                .completedSteps(completedSteps)
+                .finalResult(true)
+                .result(result)
+                .build());
+
+        return result;
     }
 
     /**

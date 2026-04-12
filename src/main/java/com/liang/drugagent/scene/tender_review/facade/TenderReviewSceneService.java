@@ -7,13 +7,20 @@ import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
 import com.liang.drugagent.scene.tender_review.preparation.TenderReviewPreparationService;
 import com.liang.drugagent.scene.tender_review.workflow.TenderReviewWorkflow;
 import com.liang.drugagent.shared.model.AgentExecutionResult;
+import com.liang.drugagent.shared.model.ThinkingStepEmitter;
+import com.liang.drugagent.shared.model.ThinkingStepProgress;
 import com.liang.drugagent.shared.model.WorkflowResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Sinks;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * 标书审查场景服务 facade。
@@ -125,6 +132,80 @@ public class TenderReviewSceneService {
                     "标书审查执行失败: " + e.getMessage()
             );
         }
+    }
+
+    /**
+     * 流式执行标书审查，通过 SSE 推送每一步思考进度。
+     *
+     * <p>适用于前端需要实时展示思考过程的场景。
+     *
+     * @param context Agent 上下文
+     * @param req     对话请求
+     * @return 思考步骤进度流
+     */
+    public Flux<ThinkingStepProgress> streamExecute(AgentChatContext context, AgentChatReq req) {
+        log.info("[TenderReviewSceneService] 开始流式执行标书审查, sessionId={}",
+                context.getSessionId());
+
+        // 1. 准备标书审查数据（同步）
+        TenderReviewData data = preparationService.prepare(context, req);
+
+        // 2. 校验数据是否满足最低要求
+        if (!preparationService.hasEnoughDocuments(data)) {
+            String specificError = (String) context.getMetadata().get("preparationError");
+            String errorMsg = specificError != null && !specificError.isBlank()
+                    ? specificError
+                    : "当前可用于审查的标书文件不足。请先上传至少2份标书文件，我再继续为你审查围标风险。";
+            log.warn("[TenderReviewSceneService] 标书数据不足，无法进行审查");
+
+            // 返回错误流
+            ThinkingStepProgress errorProgress = ThinkingStepProgress.builder()
+                    .currentCode("error")
+                    .currentTitle("数据不足")
+                    .currentStatus("FAILED")
+                    .currentDetail(errorMsg)
+                    .finalResult(true)
+                    .build();
+            return Flux.just(errorProgress);
+        }
+
+        // 3. 将数据设置到上下文中
+        context.getMetadata().put("tenderReviewData", data);
+
+        log.info("[TenderReviewSceneService] 数据准备完成, docCount={}，开始执行 Workflow",
+                data.getDocuments().size());
+
+        // 4. 创建 Sinks 用于发射进度事件
+        Sinks.Many<ThinkingStepProgress> sink = Sinks.many().unicast().onBackpressureBuffer();
+
+        // 5. 在独立线程中执行工作流，实时推送进度
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        executor.submit(() -> {
+            try {
+                tenderReviewWorkflow.executeWithProgress(context, new ThinkingStepEmitter() {
+                    @Override
+                    public void emit(ThinkingStepProgress progress) {
+                        Sinks.EmitResult result = sink.tryEmitNext(progress);
+                        if (result.isFailure()) {
+                            log.warn("[TenderReviewSceneService] 进度推送失败: {}", result);
+                        }
+                    }
+
+                    @Override
+                    public boolean isCancelled() {
+                        return sink.currentSubscriberCount() == 0;
+                    }
+                });
+            } catch (Exception e) {
+                log.error("[TenderReviewSceneService] 流式执行异常: {}", e.getMessage(), e);
+                sink.tryEmitError(e);
+            } finally {
+                executor.shutdown();
+            }
+        });
+
+        // 6. 返回流
+        return sink.asFlux();
     }
 
     /**
