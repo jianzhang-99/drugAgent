@@ -262,6 +262,51 @@ class TenderReviewPreparationServiceTest {
         assertNull(result);
     }
 
+    @Test
+    void shouldSetReadablePreparationErrorWhenNoFiles() {
+        AgentChatReq req = AgentChatReq.builder().build();
+
+        AgentChatContext context = AgentChatContext.fromToolRequest(
+                "session-123",
+                "帮我审查一份标书可以吗",
+                null,
+                null,
+                new HashMap<>()
+        );
+
+        TenderReviewData result = preparationService.prepare(context, req);
+
+        assertNull(result);
+        assertEquals("当前还没有检测到可审查的标书文件。请先上传至少2份标书文件，我再继续为你审查围标风险。",
+                context.getMetadata().get("preparationError"));
+    }
+
+    @Test
+    void shouldSetReadablePreparationErrorWhenOnlyOneFileUploaded() {
+        MockMultipartFile file1 = new MockMultipartFile(
+                "file1", "tender1.md", "text/markdown",
+                "# 投标书".getBytes(StandardCharsets.UTF_8)
+        );
+
+        AgentChatReq req = AgentChatReq.builder()
+                .files(new MockMultipartFile[]{file1})
+                .build();
+
+        AgentChatContext context = AgentChatContext.fromToolRequest(
+                "session-123",
+                "query",
+                null,
+                null,
+                new HashMap<>()
+        );
+
+        TenderReviewData result = preparationService.prepare(context, req);
+
+        assertNull(result);
+        assertEquals("当前还没有检测到可审查的标书文件。请先上传至少2份标书文件，我再继续为你审查围标风险。",
+                context.getMetadata().get("preparationError"));
+    }
+
     private TenderReviewData createValidTenderReviewData() {
         TenderReviewData data = new TenderReviewData();
 

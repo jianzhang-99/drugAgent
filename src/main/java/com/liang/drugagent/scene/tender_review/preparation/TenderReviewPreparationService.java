@@ -97,6 +97,7 @@ public class TenderReviewPreparationService {
         }
 
         // 数据不足
+        ensurePreparationError(context, req);
         log.warn("[TenderReviewPreparationService] 标书数据不足，无法进行审查");
         return null;
     }
@@ -149,7 +150,7 @@ public class TenderReviewPreparationService {
 
         // 边界检查：文件数少于2份
         if (totalFileCount < 2) {
-            String errorMsg = String.format("上传文件不足，至少需要2份标书文件，本次只上传了%d份", totalFileCount);
+            String errorMsg = String.format("想帮你审查围标风险，但需要至少2份标书才能比对分析。本次只上传了%d份，请补充后再试。", totalFileCount);
             log.warn("[TenderReviewPreparationService] {}", errorMsg);
             context.getMetadata().put("preparationError", errorMsg);
             return null;
@@ -159,9 +160,9 @@ public class TenderReviewPreparationService {
         if (validFileCount == 0 && (emptyFileCount > 0 || unreadableFileCount > 0)) {
             String errorMsg;
             if (emptyFileCount == totalFileCount) {
-                errorMsg = "所有上传的文件均为空文件，请重新上传非空的标书文件";
+                errorMsg = "所有上传的文件似乎都是空的，可以试着重新上传包含内容的标书文件。";
             } else {
-                errorMsg = String.format("上传的%d个文件均无法读取，请确保文件格式正确且可读", totalFileCount);
+                errorMsg = String.format("上传的文件似乎无法正常读取，请检查文件是否完整、格式是否受支持（支持Word、PDF等常见格式）。");
             }
             log.warn("[TenderReviewPreparationService] {}", errorMsg);
             context.getMetadata().put("preparationError", errorMsg);
@@ -170,7 +171,7 @@ public class TenderReviewPreparationService {
 
         // 边界检查：有效文件不足2份
         if (validFileCount < 2) {
-            String errorMsg = String.format("有效标书文件不足，需要至少2份，本次有效文件：%d份（空文件：%d份，无法读取：%d份）",
+            String errorMsg = String.format("想帮你审查围标风险，但需要至少2份有效标书才能比对。本次有效文件：%d份（空文件：%d份，无法读取：%d份），请补充后再试。",
                     validFileCount, emptyFileCount, unreadableFileCount);
             log.warn("[TenderReviewPreparationService] {}", errorMsg);
             context.getMetadata().put("preparationError", errorMsg);
@@ -186,7 +187,7 @@ public class TenderReviewPreparationService {
 
         // 边界检查：解析失败数>=2 或 成功数<2
         if (parseResult.getSuccessCount() < 2) {
-            String errorMsg = String.format("标书文件解析失败，成功解析：%d份，解析失败：%d份。需要至少2份成功解析的标书文件。",
+            String errorMsg = String.format("标书文件解析遇到问题，成功解析：%d份，解析失败：%d份。围标风险审查需要至少2份成功解析的标书，请检查文件格式是否受支持。",
                     parseResult.getSuccessCount(), parseResult.getFailureCount());
             if (parseResult.getErrors() != null && !parseResult.getErrors().isEmpty()) {
                 log.warn("[TenderReviewPreparationService] 解析错误详情: {}", parseResult.getErrors());
@@ -224,6 +225,13 @@ public class TenderReviewPreparationService {
     private TenderReviewData buildFromFileIds(AgentChatContext context, AgentChatReq req) {
         List<String> fileIds = resolveFileIds(context, req);
         if (fileIds == null || fileIds.size() < 2) {
+            if (fileIds == null || fileIds.isEmpty()) {
+                setPreparationError(context,
+                        "还没检测到可审查的标书文件。想帮你审查围标风险，只需要上传至少2份标书就能开始。");
+            } else {
+                setPreparationError(context,
+                        "目前只检测到 " + fileIds.size() + " 份标书文件，围标风险审查至少需要2份才能比对分析，请补充上传。");
+            }
             log.info("[TenderReviewPreparationService] fileIds 不足，跳过文件构建方式");
             return null;
         }
@@ -347,6 +355,30 @@ public class TenderReviewPreparationService {
 
         log.warn("[TenderReviewPreparationService] resolveFileIds 所有来源均为空，无法获取文件ID");
         return null;
+    }
+
+    private void ensurePreparationError(AgentChatContext context, AgentChatReq req) {
+        Object existingError = context.getMetadata().get("preparationError");
+        if (existingError instanceof String error && !error.isBlank()) {
+            return;
+        }
+
+        List<String> fileIds = resolveFileIds(context, req);
+        if (hasUploadedFiles(req)) {
+            setPreparationError(context, "已收到上传请求，但有效标书文件不足2份。想帮你完成围标风险审查，请确保上传至少2份标书后再试。");
+            return;
+        }
+        if (fileIds == null || fileIds.isEmpty()) {
+            setPreparationError(context,
+                    "还没检测到可审查的标书文件。想帮你审查围标风险，只需要上传至少2份标书就能开始。");
+            return;
+        }
+        setPreparationError(context,
+                "目前只检测到 " + fileIds.size() + " 份标书文件，围标风险审查至少需要2份才能比对分析，请补充上传。");
+    }
+
+    private void setPreparationError(AgentChatContext context, String errorMsg) {
+        context.getMetadata().put("preparationError", errorMsg);
     }
 
     /**

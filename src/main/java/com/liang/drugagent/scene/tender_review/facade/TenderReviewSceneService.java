@@ -80,15 +80,11 @@ public class TenderReviewSceneService {
                 String specificError = (String) context.getMetadata().get("preparationError");
                 if (specificError != null && !specificError.isBlank()) {
                     log.warn("[TenderReviewSceneService] 标书数据准备失败: {}", specificError);
-                    return AgentExecutionResult.failure(
-                            SceneEnum.TENDER_REVIEW,
-                            specificError
-                    );
+                    return buildInsufficientTenderResult(specificError);
                 }
                 log.warn("[TenderReviewSceneService] 标书数据不足，无法进行审查");
-                return AgentExecutionResult.failure(
-                        SceneEnum.TENDER_REVIEW,
-                        "至少需要两份标书文件才能进行围标审查，请确认已上传足够的文件"
+                return buildInsufficientTenderResult(
+                        "当前可用于审查的标书文件不足。请先上传至少2份标书文件，我再继续为你审查围标风险。"
                 );
             }
 
@@ -138,5 +134,15 @@ public class TenderReviewSceneService {
      */
     public SceneEnum getSceneType() {
         return SceneEnum.TENDER_REVIEW;
+    }
+
+    private AgentExecutionResult buildInsufficientTenderResult(String message) {
+        return AgentExecutionResult.builder()
+                .success(false)
+                .scene(SceneEnum.TENDER_REVIEW)
+                .errorMessage(message)
+                .clarificationQuestion(message)
+                .needsFallback(true)
+                .build();
     }
 }
