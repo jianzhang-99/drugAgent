@@ -228,21 +228,39 @@ public class AgentSceneService {
     public WorkflowRouteDecision decideRoute(AgentChatContext context, AgentChatReq req) {
         String query = context.getQuery();
 
-        // ========== 第一层：显式信号（最强，无需 LLM）==========
-
-        // 1.1 有新上传文件 -> 强命中进标书审查
-        if (hasUploadedFiles(req)) {
-            log.info("[AgentSceneService] 【显式信号】检测到上传文件，直接进标书审查");
+        // ========== 第 0 层：明显通用问题（最高优先级，无需 LLM）==========
+        // 即使有文件引用或 session 上下文，只要是明显通用问题就直接拦截
+        if (isObviouslyGeneralQuery(query)) {
+            log.info("[AgentSceneService] 【通用问题拦截】检测到明显通用问题，直接走 DEFAULT");
             return WorkflowRouteDecision.builder()
-                    .scene(SceneEnum.TENDER_REVIEW)
-                    .source("explicit-file")
-                    .reason("检测到上传文件，强制路由到标书审查")
+                    .scene(SceneEnum.DEFAULT)
+                    .source("obvious-general")
+                    .reason("明显通用问题，不分发到业务场景")
                     .confidence(1.0)
                     .requiresClarification(false)
                     .build();
         }
 
-        // 1.2 sceneHint 明确指定场景 -> 强命中
+        // ========== 第一层：显式信号（最强，无需 LLM）==========
+
+        // 1.1 有新上传文件 -> 强命中进标书审查
+        if (hasNewUploadedFiles(req)) {
+            log.info("[AgentSceneService] 【显式信号】检测到新上传文件，直接进标书审查");
+            return WorkflowRouteDecision.builder()
+                    .scene(SceneEnum.TENDER_REVIEW)
+                    .source("explicit-file")
+                    .reason("检测到新上传文件，强制路由到标书审查")
+                    .confidence(1.0)
+                    .requiresClarification(false)
+                    .build();
+        }
+
+        // 1.2 有历史文件ID引用 -> 交给后续规则判断，不强制路由
+        if (hasFileIdReference(req)) {
+            log.info("[AgentSceneService] 【显式信号】有历史文件ID引用，交给后续规则判断");
+        }
+
+        // 1.3 sceneHint 明确指定场景 -> 强命中
         SceneEnum hintScene = resolveSceneHint(req);
         if (hintScene != null && hintScene != SceneEnum.DEFAULT && hintScene != SceneEnum.UNKNOWN) {
             log.info("[AgentSceneService] 【显式信号】sceneHint 指定场景: {}", hintScene);
@@ -255,8 +273,8 @@ public class AgentSceneService {
                     .build();
         }
 
-        // 1.3 会话上下文已有标书审查场景 -> 直接复用场景，不走弱规则澄清
-        // 解决：审查完成后用户问"这两份标书有哪些问题"等后续问题，不应触发弱规则澄清
+        // 1.4 会话上下文已有标书审查场景 -> 直接复用场景，不走弱规则澄清
+        // 注意：通用问题已在第 0 层拦截，不会到达此处
         if (context.getSession() != null) {
             String sessionScene = context.getSession().getLastScene();
             List<String> contextFileIds = context.getFileIds();
@@ -331,6 +349,36 @@ public class AgentSceneService {
                 .confidence(0.5)
                 .requiresClarification(false)
                 .build();
+    }
+
+    /**
+     * 判断是否为明显的通用对话问题，与业务场景无关。
+     *
+     * <p>用于在 session-context 场景复用时过滤掉"你是什么模型""你能做什么"等与业务无关的通用问题，
+     * 避免这类问题被误路由到标书审查场景。</p>
+     */
+    private boolean isObviouslyGeneralQuery(String query) {
+        if (query == null || query.isBlank()) {
+            return false;
+        }
+        String lowerQuery = query.toLowerCase().trim();
+        // 明显的模型/能力咨询
+        if (containsAny(lowerQuery, "你是什么模型", "你叫什么", "你是谁", "你能做什么",
+                "你有什么功能", "你是哪个", "用的什么模型", "什么大模型",
+                "介绍一下你自己", "你会什么", "你能干什么", "你是ai", "你是claude",
+                "你是gpt", "你是qwen", "你是通义", "你是文心",
+                "你还能做什么", "还能做什么", "能做些什么", "有什么能力", "你的功能", "有哪些功能")) {
+            return true;
+        }
+
+        // 兼容用户省略主语的常见说法，例如“是什么模型”“用的是啥模型”
+        if (lowerQuery.contains("模型")) {
+            return containsAny(lowerQuery, "是什么模型", "啥模型", "什么模型", "哪个模型",
+                    "模型是什么", "模型是啥", "用什么模型", "用的是啥模型", "用的是哪个模型",
+                    "背后是什么模型", "基于什么模型", "底层模型", "大模型是什么");
+        }
+
+        return false;
     }
 
     /**
@@ -453,18 +501,17 @@ public class AgentSceneService {
     }
 
     /**
-     * 检查请求中是否包含上传文件。
+     * 检查请求中是否有新上传文件（MultipartFile）。
      */
-    private boolean hasUploadedFiles(AgentChatReq req) {
-        // 检查 MultipartFile[] 是否有文件
-        if (req.getFiles() != null && req.getFiles().length > 0) {
-            return true;
-        }
-        // 检查 fileIds 列表是否有文件ID
-        if (req.getFileIds() != null && !req.getFileIds().isEmpty()) {
-            return true;
-        }
-        return false;
+    private boolean hasNewUploadedFiles(AgentChatReq req) {
+        return req.getFiles() != null && req.getFiles().length > 0;
+    }
+
+    /**
+     * 检查请求中是否有历史文件ID引用。
+     */
+    private boolean hasFileIdReference(AgentChatReq req) {
+        return req.getFileIds() != null && !req.getFileIds().isEmpty();
     }
 
     /**

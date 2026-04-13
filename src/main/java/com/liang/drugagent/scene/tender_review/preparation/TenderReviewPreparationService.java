@@ -353,6 +353,23 @@ public class TenderReviewPreparationService {
             }
         }
 
+        // 优先级4（兜底）：从数据库按 sessionId 查找该会话上传过的历史文件
+        // 解决刷新页面后 fileIds 丢失的问题
+        String sessionId = context.getSessionId();
+        if (sessionId != null && !sessionId.isBlank()) {
+            List<TenderDocument> sessionDocs = caseService.findDocumentsBySessionId(sessionId);
+            if (sessionDocs != null && !sessionDocs.isEmpty()) {
+                List<String> dbFileIds = sessionDocs.stream()
+                        .map(TenderDocument::getDocumentId)
+                        .filter(id -> id != null && !id.isBlank())
+                        .collect(java.util.stream.Collectors.toList());
+                if (!dbFileIds.isEmpty()) {
+                    log.info("[TenderReviewPreparationService] resolveFileIds 从数据库按 sessionId 恢复文件ID, sessionId={}, size={}", sessionId, dbFileIds.size());
+                    return dbFileIds;
+                }
+            }
+        }
+
         log.warn("[TenderReviewPreparationService] resolveFileIds 所有来源均为空，无法获取文件ID");
         return null;
     }

@@ -80,7 +80,10 @@ public class AgentChatService {
             // 2. 保存本轮上传文件
             List<OssFile> uploadedFiles = saveUploadedFiles(sessionId, req);
 
-            // 3. 读取最近消息和摘要，构建上下文
+            // 3. 合并 fileIds：将本轮上传文件的 ID 也加入
+            mergeFileIds(req, uploadedFiles);
+
+            // 4. 读取最近消息和摘要，构建上下文
             List<ChatMessage> recentMessages = agentMessageService.getRecentMessages(sessionId, 20);
             AgentChatContext context = AgentChatContext.from(req, sessionId);
             context.setSession(session);
@@ -88,17 +91,16 @@ public class AgentChatService {
             context.setRecentSummary(session.getSummary());
             context.setUploadedFiles(uploadedFiles);
 
-            // 合并 fileIds：将本轮上传文件的 ID 也加入
-            mergeFileIds(req, uploadedFiles);
-
             log.info("[AgentChatService] 构建执行上下文: sessionId={}, traceId={}, historyCount={}, uploadedFilesCount={}, req.fileIds={}",
                     sessionId, context.getTraceId(), recentMessages.size(), uploadedFiles.size(), req.getFileIds());
 
-            // 3. 调用 AgentSceneService 执行场景判断与分发
+            // 5. 调用 AgentSceneService 执行场景判断与分发
             AgentSceneService.AgentSceneExecution execution = agentSceneService.decideAndExecute(context, req);
 
-            // 4. 如需要澄清，直接返回澄清响应
+            // 4. 如需要澄清，先保存用户消息再返回澄清响应（避免消息丢失）
             if (execution.isNeedsClarification()) {
+                agentMessageService.saveUserMessage(sessionId, req.getQuery(), null);
+                agentSessionService.increaseMessageCount(sessionId, 1);
                 return buildClarificationResp(context, execution.getDecision(), execution.getClarificationQuestion());
             }
 

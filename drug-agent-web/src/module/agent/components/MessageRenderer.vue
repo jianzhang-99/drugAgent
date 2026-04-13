@@ -50,6 +50,7 @@
           :default-expanded="true"
         />
         <div
+          v-if="!(message.thinkingSteps && message.thinkingSteps.length > 0)"
           :class="message.thinkingSteps && message.thinkingSteps.length > 0
             ? 'processing-status'
             : 'message-content processing-content'"
@@ -206,6 +207,7 @@ async function handleCopy(text: string) {
   font-size: 15px;
   line-height: 1.75;
   word-break: break-word;
+  white-space: pre-wrap;
 }
 
 .message-meta {

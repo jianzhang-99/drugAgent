@@ -54,7 +54,27 @@ export function mapChatMessageToMessage(chatMsg: ChatMessage): Message {
     status: 'sent',
     raw: chatMsg,
   };
-  const metadata = chatMsg.metadata as DrugAgentResp | undefined;
+  let metadata = chatMsg.metadata as any;
+  if (typeof metadata === 'string') {
+    try {
+      metadata = JSON.parse(metadata);
+    } catch (e) {
+      console.warn('Failed to parse metadata:', e);
+    }
+  }
+
+  // 如果有 markdown 内容且能解析出数据，用 markdown 数据补充/覆盖 metadata
+  if (chatMsg.content && isReportMarkdown(chatMsg.content)) {
+    const markdownData = parseReportFromMarkdown(chatMsg.content);
+    // 用 markdown 数据补充 metadata
+    if (!metadata) metadata = {};
+    metadata.riskLevel = metadata.riskLevel || markdownData.riskLevel;
+    metadata.score = metadata.score || markdownData.score;
+    metadata.summary = metadata.summary || markdownData.summary;
+    metadata.report = metadata.report || markdownData.report;
+    metadata.documentNames = metadata.documentNames || markdownData.documentNames;
+    metadata.traceId = metadata.traceId || markdownData.traceId;
+  }
 
   // 情形1：后端存储的 type 本身已是结果卡片类型（最可靠的判断）
   if (chatMsg.type === 'assistant_result_card') {
@@ -102,6 +122,7 @@ function isReportMarkdown(content: string): boolean {
     content.includes('| 项目 | 内容 |') ||
     content.includes('## 二、审查结论') ||
     content.includes('## 三、重点风险说明') ||
+    content.includes('重点风险研判') ||
     content.includes('审查编号') ||
     (content.includes('##') && content.includes('风险等级') && content.includes('建议处置意见'))
   );
@@ -120,8 +141,9 @@ function parseReportFromMarkdown(content: string): {
 } {
   const result: ReturnType<typeof parseReportFromMarkdown> = {};
 
-  // 提取风险等级
-  const levelMatch = content.match(/\*\*综合风险等级\*\*[:\s]*[:：]?\s*\*\*([^\*]+)\*\*/i);
+  // 提取风险等级 - 匹配 **综合风险等级**:** 高风险 ** 或 类似格式
+  const levelMatch = content.match(/\*\*综合风险等级\*\*[^\n]*?\*\*([^\*]+)\*\*/i) ||
+                      content.match(/综合风险等级[^\n]*?[:：]\s*([^\n,，]+)/i);
   if (levelMatch) {
     const level = levelMatch[1].toLowerCase();
     if (level.includes('高风险') || level.includes('high')) result.riskLevel = 'high';
@@ -130,29 +152,97 @@ function parseReportFromMarkdown(content: string): {
     else if (level.includes('安全') || level.includes('safe')) result.riskLevel = 'safe';
   }
 
-  // 提取风险分数
-  const scoreMatch = content.match(/\*\*风险参考分值\*\*[:\s]*[:：]?\s*\*\*(\d+)\*\*/);
+  // 提取风险分数 - 匹配 风险融合分值=100 或 风险参考分值: 100
+  const scoreMatch = content.match(/风险融合分值[=\s:：]*(\d+)/i) ||
+                     content.match(/风险参考分值[=\s:：]*(\d+)/i) ||
+                     content.match(/\*\*(\d+)\s*\/ 100\*\*/);
   if (scoreMatch) {
     result.score = parseInt(scoreMatch[1], 10);
   }
 
   // 提取审查编号（作为 traceId）
-  const traceMatch = content.match(/\*\*审查编号\*\*[^\n]*\|\s*([a-f0-9-]+)/i);
+  const traceMatch = content.match(/\*\*审查编号\*\*[^\n]*\|\s*([a-f0-9-]+)/i) ||
+                     content.match(/审查编号[^\n]*\|\s*([a-f0-9-]+)/i);
   if (traceMatch) {
     result.traceId = traceMatch[1];
   }
 
-  // 提取文档名称
-  const docMatch = content.match(/\*\*审查对象\*\*[^\n]*\|\s*([^\n]+)/);
+  // 提取文档名称 - 匹配 审查对象 | 投标人A...md / 投标人B...md
+  const docMatch = content.match(/\*\*审查对象\*\*[^\n]*\|\s*([^\n]+)/i) ||
+                   content.match(/审查对象[^\n]*\|\s*([^\n]+)/i);
   if (docMatch) {
     const docs = docMatch[1].split(/\s*\/\s*/);
     result.documentNames = docs.map((d: string) => d.trim()).filter((d: string) => d.length > 0);
   }
 
-  // 提取结论摘要
-  const summaryMatch = content.match(/\*\*结论摘要\*\*[^\n]*\|\s*([^\n]+)/);
-  if (summaryMatch) {
-    result.summary = summaryMatch[1].trim();
+  // 提取结论摘要 - 匹配 ### 2.2 结论摘要 后的内容 或 **结论摘要**
+  const summarySectionMatch = content.match(/###\s*2\.2\s*结论摘要[^\n]*\n([^\n#]+)/i);
+  if (summarySectionMatch) {
+    result.summary = summarySectionMatch[1].trim();
+  }
+
+  // 从结论摘要中提取 rawHitCount（如"有效命中=10"）
+  let rawHitCount = 0;
+  const hitCountMatch = result.summary?.match(/有效命中[=\s]*(\d+)/i);
+  if (hitCountMatch) {
+    rawHitCount = parseInt(hitCountMatch[1], 10);
+  }
+
+  // 尝试从 markdown 中解析 riskItems（重点风险说明部分）
+  const riskItems: any[] = [];
+  const riskSectionMatch = content.match(/###\s*(?:重点风险说明|重点风险研判)\s*\n([\s\S]*?)(?=###|\n\n##|$)/i);
+  if (riskSectionMatch) {
+    const riskSection = riskSectionMatch[1];
+    // 匹配表格行格式：| 序号 | 风险类型 | 风险等级 | 规则名称 |
+    // cells[0]=序号, cells[1]=风险类型, cells[2]=风险等级, cells[3]=规则名称, ...
+    const tableRows = riskSection.matchAll(/\|\s*\d+\s*\|[^\|]+\|[^\|]+\|[^\|]+\|/g);
+    for (const rowMatch of tableRows) {
+      const row = rowMatch[0];
+      const cells = row.split('|').map(c => c.trim());
+      if (cells.length >= 4) {
+        const riskLevelStr = cells[2].toLowerCase(); // cells[2] 是风险等级
+        const riskLevel = riskLevelStr.includes('高风险') ? 'high' :
+                         riskLevelStr.includes('中风险') ? 'medium' :
+                         riskLevelStr.includes('低风险') ? 'low' : 'unknown';
+        riskItems.push({
+          riskType: cells[1] || 'collusion', // cells[1] 是风险类型
+          riskLevel,
+          title: cells[3] || cells[1] || '风险项', // cells[3] 是规则名称
+          summary: '',
+        });
+      }
+    }
+  }
+
+  // 如果从摘要中解析到了 rawHitCount 但 riskItems 为空，用摘要中的数据构建 riskItems
+  if (rawHitCount > 0 && riskItems.length === 0) {
+    const summaryText = result.summary || '';
+    // 从摘要中提取规则类型数
+    const ruleTypeMatch = summaryText.match(/规则类型数[=\s]*(\d+)/i);
+    const ruleTypeCount = ruleTypeMatch ? parseInt(ruleTypeMatch[1], 10) : 1;
+    // 根据有效命中数构建风险项
+    for (let i = 0; i < Math.min(rawHitCount, ruleTypeCount); i++) {
+      riskItems.push({
+        riskType: 'collusion',
+        riskLevel: result.riskLevel || 'high',
+        title: `围标风险特征${i + 1}`,
+        summary: '',
+      });
+    }
+  }
+
+  // 构建 report 对象
+  if (riskItems.length > 0 || result.score !== undefined || rawHitCount > 0) {
+    result.report = {
+      overview: {
+        documentCount: result.documentNames?.length || 2,
+        rawHitCount: rawHitCount || riskItems.length,
+        effectiveHitCount: result.score !== undefined ? Math.round(result.score / 10) : (rawHitCount || 0),
+        score: result.score,
+        riskLevel: result.riskLevel,
+      },
+      riskItems,
+    };
   }
 
   return result;

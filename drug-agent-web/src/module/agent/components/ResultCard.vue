@@ -2,13 +2,13 @@
   <div class="result-card-wrapper" :class="[`wrapper-risk-${data?.riskLevel || 'unknown'}`]">
     <div class="result-card" @click="handleViewDetail">
       <!-- 顶部装饰条 -->
-      <div class="card-top-bar" :class="`bar-risk-${scoreBreakdown.derivedLevel}`"></div>
+      <div class="card-top-bar" :class="`bar-risk-${derivedLevel}`"></div>
 
       <div class="card-inner">
-        <!-- 卡片头部 -->
+        <!-- 卡片头部：场景名 + 风险等级标签 -->
         <div class="card-header">
-          <div class="header-title-group">
-            <div class="scene-icon" :class="`icon-bg-${scoreBreakdown.derivedLevel}`">
+          <div class="header-left">
+            <div class="scene-icon" :class="`icon-bg-${derivedLevel}`">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                 <polyline points="14 2 14 8 20 8"></polyline>
@@ -19,114 +19,57 @@
             </div>
             <div>
               <div class="scene-name">标书围标风险审查</div>
-              <div class="trace-meta" v-if="data?.traceId">
-                <span class="trace-dot"></span>
-                <span>TRACE · {{ data.traceId }}</span>
-              </div>
+              <div class="trace-id" v-if="data?.traceId">TRACE · {{ shortTraceId }}</div>
             </div>
           </div>
-          <div class="risk-badge" :class="`risk-${scoreBreakdown.derivedLevel}`">
-            <span class="risk-dot"></span>
+          <div class="risk-badge" :class="`badge-${derivedLevel}`">
+            <span class="badge-dot"></span>
             {{ riskLabel }}
           </div>
         </div>
 
-        <!-- 主体：评分仪表盘 + 维度条 -->
-        <div class="score-section">
-          <!-- 左侧：圆形仪表盘 -->
-          <div class="gauge-wrap">
-            <svg class="gauge-svg" viewBox="0 0 120 120" width="120" height="120">
-              <!-- 背景轨道（半圆弧）-->
-              <path
-                :d="arcPath(0)"
-                fill="none"
-                stroke="#f0f1f5"
-                stroke-width="10"
-                stroke-linecap="round"
-              />
-              <!-- 进度弧（按评分填充）-->
-              <path
-                :d="arcPath(scoreBreakdown.total)"
-                fill="none"
-                :stroke="gaugeColor"
-                stroke-width="10"
-                stroke-linecap="round"
-                class="gauge-progress"
-              />
-            </svg>
-            <div class="gauge-center">
-              <div class="gauge-score" :class="`score-color-${scoreBreakdown.derivedLevel}`">
-                {{ scoreBreakdown.total }}
-              </div>
-              <div class="gauge-unit">风险分</div>
-            </div>
+        <!-- 核心指标区：评分 + 结论 -->
+        <div class="core-section">
+          <div class="score-block">
+            <div class="score-number" :class="`score-${derivedLevel}`">{{ displayScore }}</div>
+            <div class="score-label">风险评分</div>
           </div>
-
-          <!-- 右侧：维度明细 -->
-          <div class="dimensions-wrap">
-            <div
-              v-for="(dim, key) in scoreBreakdown.dimensions"
-              :key="key"
-              class="dim-row"
-            >
-              <div class="dim-label">{{ DIMENSION_LABELS[key as keyof typeof DIMENSION_LABELS] }}</div>
-              <div class="dim-bar-wrap">
-                <div class="dim-bar">
-                  <div
-                    class="dim-bar-fill"
-                    :class="`fill-${dimLevelClass(dim)}`"
-                    :style="{ width: `${dim}%` }"
-                  ></div>
-                </div>
-                <span class="dim-val">{{ dim }}</span>
-              </div>
-            </div>
+          <div class="conclusion-block" :class="`conclusion-${derivedLevel}`">
+            <div class="conclusion-text">{{ conclusionText }}</div>
           </div>
         </div>
 
-        <!-- 解释文本 -->
-        <div class="interpretation-block" :class="`interp-${scoreBreakdown.derivedLevel}`">
-          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="interp-icon">
-            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          <span>{{ scoreBreakdown.interpretation }}</span>
+        <!-- 文档信息 -->
+        <div class="docs-row" v-if="data?.documentNames?.length">
+          <span class="docs-label">比对文件：</span>
+          <span class="doc-name doc-a">{{ data.documentNames[0] || '文档A' }}</span>
+          <span class="vs-sep">VS</span>
+          <span class="doc-name doc-b">{{ data.documentNames[1] || '文档B' }}</span>
         </div>
 
-        <!-- 文档列表 -->
-        <div class="docs-block" v-if="data?.documentNames?.length">
-          <div class="docs-label">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
-            </svg>
-            审查文件
+        <!-- 统计指标 -->
+        <div class="stats-row">
+          <div class="stat-item">
+            <span class="stat-value">{{ docCount }}</span>
+            <span class="stat-label">份文档</span>
           </div>
-          <div class="docs-chips">
-            <span
-              v-for="(name, i) in data.documentNames"
-              :key="i"
-              class="doc-chip"
-              :class="i === 0 ? 'chip-a' : 'chip-b'"
-            >
-              {{ name }}
-            </span>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <span class="stat-value">{{ riskItemCount }}</span>
+            <span class="stat-label">条规则</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <span class="stat-value">{{ evidenceCount }}</span>
+            <span class="stat-label">处证据</span>
           </div>
         </div>
 
-        <!-- 底部操作栏 -->
+        <!-- 底部操作 -->
         <div class="card-footer">
-          <div class="footer-stats">
-            <span class="footer-stat">
-              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
-              {{ docCount }} 份文档
-            </span>
-            <span class="stat-dot">·</span>
-            <span class="footer-stat">
-              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
-              {{ riskItemCount }} 条规则
-            </span>
-          </div>
+          <div class="footer-hint">点击查看完整报告</div>
           <div class="view-btn">
-            <span>查看完整报告</span>
+            <span>查看详情</span>
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <polyline points="9 18 15 12 9 6"></polyline>
             </svg>
@@ -141,76 +84,69 @@
 import { computed } from 'vue';
 import { useAgentStore } from '../store/agentStore';
 import type { ResultData, DrugAgentResp } from '../types/agent';
-import { calcRiskScore, DIMENSION_LABELS } from '../utils/riskScoreCalculator';
 
 const props = defineProps<{ data?: ResultData }>();
 const store = useAgentStore();
 
-// ── 评分计算 ──
-const scoreBreakdown = computed(() => calcRiskScore(props.data));
-
-// ── 仪表盘颜色 ──
-const gaugeColor = computed(() => {
-  const map: Record<string, string> = {
-    high: '#f53f3f',
-    medium: '#faad14',
-    low: '#165dff',
-    safe: '#00b42a',
-  };
-  return map[scoreBreakdown.value.derivedLevel] ?? '#86909c';
+// 风险等级
+const derivedLevel = computed(() => {
+  const level = props.data?.riskLevel?.toLowerCase();
+  if (level === 'high') return 'high';
+  if (level === 'medium') return 'medium';
+  if (level === 'low') return 'low';
+  if (level === 'safe') return 'safe';
+  return 'unknown';
 });
 
-// ── 辅助计算 ──
+// 风险标签
 const riskLabel = computed(() => {
   const map: Record<string, string> = {
     high: '高风险', medium: '中风险', low: '低风险', safe: '安全', unknown: '未知',
   };
-  return map[scoreBreakdown.value.derivedLevel] || map[props.data?.riskLevel || 'unknown'] || '未知';
+  return map[derivedLevel.value] || '未知';
 });
 
-const riskItemCount = computed(() => {
-  return (props.data as any)?.report?.riskItems?.length ?? 0;
+// 显示分数（优先用后端原始分，否则用计算分）
+const displayScore = computed(() => {
+  if (props.data?.score !== undefined) return props.data.score;
+  if (props.data?.report?.overview?.score !== undefined) return props.data.report.overview.score;
+  return 0;
 });
 
+// 一句话结论
+const conclusionText = computed(() => {
+  const level = derivedLevel.value;
+  const count = riskItemCount.value;
+  if (level === 'high') return `发现明显围标特征，建议立即人工复核`;
+  if (level === 'medium') return `存在疑似特征，建议进行人工核查`;
+  if (level === 'low') return `相似度较低，持续关注即可`;
+  if (level === 'safe') return `未发现明显围标嫌疑`;
+  return '风险等级待确认';
+});
+
+// 缩短的 traceId
+const shortTraceId = computed(() => {
+  const tid = props.data?.traceId || '';
+  if (tid.length > 8) return tid.substring(0, 8);
+  return tid;
+});
+
+// 文档数
 const docCount = computed(() => {
   return props.data?.docCount ?? props.data?.documentNames?.length ?? 2;
 });
 
-// ── 维度条颜色 ──
-function dimLevelClass(score: number): string {
-  if (score >= 80) return 'high';
-  if (score >= 55) return 'medium';
-  if (score >= 25) return 'low';
-  return 'safe';
-}
+// 规则数
+const riskItemCount = computed(() => {
+  return props.data?.report?.riskItems?.length ?? 0;
+});
 
-// ── SVG 半圆弧路径 ──
-// 半圆从 -π 到 0（底部），映射 0~100 分
-function arcPath(score: number): string {
-  const cx = 60, cy = 66, r = 46;
-  // 弧从左（225°）到右（-45°），总弧度 270°
-  const startAngle = (225 * Math.PI) / 180;
-  const endAngle = startAngle - (270 * Math.PI / 180) * (score / 100);
-
-  const x1 = cx + r * Math.cos(startAngle);
-  const y1 = cy + r * Math.sin(startAngle);
-  const x2 = cx + r * Math.cos(endAngle);
-  const y2 = cy + r * Math.sin(endAngle);
-
-  // largeArcFlag: 超过 180° 时为 1
-  const angleDiff = (270 * score) / 100;
-  const largeArc = angleDiff > 180 ? 1 : 0;
-
-  if (score === 0) {
-    // 背景轨道：始终画完整的 270° 弧
-    const bgEndAngle = startAngle - (270 * Math.PI) / 180;
-    const bx2 = cx + r * Math.cos(bgEndAngle);
-    const by2 = cy + r * Math.sin(bgEndAngle);
-    return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 1 0 ${bx2.toFixed(2)} ${by2.toFixed(2)}`;
-  }
-
-  return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${largeArc} 0 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
-}
+// 证据数
+const evidenceCount = computed(() => {
+  const groups = props.data?.evidenceGroups?.length ?? 0;
+  const list = props.data?.evidenceList?.length ?? 0;
+  return groups > 0 ? groups : list;
+});
 
 function handleViewDetail() {
   if (props.data) {
@@ -223,7 +159,7 @@ function handleViewDetail() {
 .result-card-wrapper {
   margin-top: 8px;
   width: 100%;
-  max-width: 580px;
+  max-width: 560px;
 }
 
 .result-card {
@@ -255,288 +191,209 @@ function handleViewDetail() {
 .bar-risk-medium { background: linear-gradient(90deg, #faad14, #ffc940); }
 .bar-risk-low    { background: linear-gradient(90deg, #165dff, #5b8df6); }
 .bar-risk-safe   { background: linear-gradient(90deg, #00b42a, #52c41a); }
+.bar-risk-unknown { background: linear-gradient(90deg, #86909c, #c9cdd4); }
 
 .card-inner {
-  padding: 18px 22px 16px;
+  padding: 18px 20px 14px;
 }
 
 /* ── 头部 ── */
 .card-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
-.header-title-group {
+.header-left {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: center;
+  gap: 10px;
 }
 
 .scene-icon {
-  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  margin-top: 2px;
+  flex-shrink: 0;
 }
-
 .icon-bg-high   { background: #fff1f0; color: #f53f3f; }
 .icon-bg-medium { background: #fff7e8; color: #faad14; }
 .icon-bg-low    { background: #f0f5ff; color: #165dff; }
 .icon-bg-safe   { background: #e8ffea; color: #00b42a; }
+.icon-bg-unknown { background: #f4f5f7; color: #86909c; }
 
 .scene-name {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: #1d2129;
-  line-height: 1.4;
+  line-height: 1.3;
 }
 
-.trace-meta {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 3px;
+.trace-id {
   font-size: 11px;
-  color: #c2c7d0;
+  color: #86909c;
   font-family: 'SF Mono', 'Fira Code', monospace;
+  margin-top: 2px;
 }
 
-.trace-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #c2c7d0;
-  flex-shrink: 0;
-}
-
-/* ── 风险徽章 ── */
+/* 风险徽章 */
 .risk-badge {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   padding: 5px 12px;
   border-radius: 20px;
   font-size: 13px;
   font-weight: 700;
   flex-shrink: 0;
-  margin-top: 2px;
 }
-
-.risk-dot {
-  width: 7px;
-  height: 7px;
+.badge-dot {
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
 }
+.badge-high   { background: #fff1f0; color: #f53f3f; border: 1px solid #ffccc7; }
+.badge-high   .badge-dot { background: #f53f3f; }
+.badge-medium { background: #fff7e6; color: #faad14; border: 1px solid #ffe58f; }
+.badge-medium .badge-dot { background: #faad14; }
+.badge-low    { background: #e8f0ff; color: #165dff; border: 1px solid #adc6ff; }
+.badge-low    .badge-dot { background: #165dff; }
+.badge-safe   { background: #e8ffea; color: #00b42a; border: 1px solid #b7efc5; }
+.badge-safe   .badge-dot { background: #00b42a; }
+.badge-unknown { background: #f4f5f7; color: #86909c; border: 1px solid #e2e4e9; }
+.badge-unknown .badge-dot { background: #86909c; }
 
-.risk-high   { background: #fff1f0; color: #f53f3f; border: 1px solid #ffccc7; }
-.risk-medium { background: #fff7e6; color: #faad14; border: 1px solid #ffe58f; }
-.risk-low    { background: #e8f0ff; color: #165dff; border: 1px solid #adc6ff; }
-.risk-safe   { background: #e8ffea; color: #00b42a; border: 1px solid #b7efc5; }
-
-.risk-high   .risk-dot { background: #f53f3f; box-shadow: 0 0 0 3px rgba(245,63,63,0.2); }
-.risk-medium .risk-dot { background: #faad14; box-shadow: 0 0 0 3px rgba(250,173,20,0.2); }
-.risk-low    .risk-dot { background: #165dff; box-shadow: 0 0 0 3px rgba(22,93,255,0.2); }
-.risk-safe   .risk-dot { background: #00b42a; box-shadow: 0 0 0 3px rgba(0,180,42,0.2); }
-
-/* ── 评分区域 ── */
-.score-section {
+/* ── 核心指标区 ── */
+.core-section {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   margin-bottom: 14px;
 }
 
-/* 仪表盘 */
-.gauge-wrap {
-  position: relative;
+.score-block {
+  text-align: center;
   flex-shrink: 0;
-  width: 120px;
-  height: 120px;
 }
 
-.gauge-svg {
-  display: block;
-}
-
-.gauge-progress {
-  transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.gauge-center {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding-top: 10px;
-}
-
-.gauge-score {
-  font-size: 28px;
+.score-number {
+  font-size: 42px;
   font-weight: 900;
   line-height: 1;
-  letter-spacing: -1px;
+  letter-spacing: -2px;
 }
-
-.score-color-high   { color: #f53f3f; }
-.score-color-medium { color: #faad14; }
-.score-color-low    { color: #165dff; }
-.score-color-safe   { color: #00b42a; }
-
-.gauge-unit {
+.score-label {
   font-size: 11px;
   color: #86909c;
-  margin-top: 3px;
+  margin-top: 4px;
 }
+.score-high   { color: #f53f3f; }
+.score-medium { color: #faad14; }
+.score-low    { color: #165dff; }
+.score-safe   { color: #00b42a; }
+.score-unknown { color: #86909c; }
 
-/* 维度条 */
-.dimensions-wrap {
+.conclusion-block {
   flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.dim-row {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.dim-label {
-  font-size: 11px;
-  color: #86909c;
-}
-
-.dim-bar-wrap {
+  padding: 10px 14px;
+  border-radius: 10px;
+  min-height: 60px;
   display: flex;
   align-items: center;
-  gap: 7px;
 }
-
-.dim-bar {
-  flex: 1;
-  height: 5px;
-  background: #f0f1f5;
-  border-radius: 999px;
-  overflow: hidden;
+.conclusion-text {
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 500;
 }
+.conclusion-high   { background: #fff9f9; color: #c1000a; border: 1px solid #ffccc7; }
+.conclusion-medium { background: #fffbf0; color: #875400; border: 1px solid #ffe58f; }
+.conclusion-low    { background: #f0f5ff; color: #1d39c4; border: 1px solid #adc6ff; }
+.conclusion-safe   { background: #f0fdf4; color: #15803d; border: 1px solid #b7efc5; }
+.conclusion-unknown { background: #f4f5f7; color: #4e5969; border: 1px solid #e2e4e9; }
 
-.dim-bar-fill {
-  height: 100%;
-  border-radius: 999px;
-  transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.fill-high   { background: linear-gradient(90deg, #f53f3f, #ff7875); }
-.fill-medium { background: linear-gradient(90deg, #faad14, #ffc940); }
-.fill-low    { background: linear-gradient(90deg, #165dff, #5b8df6); }
-.fill-safe   { background: linear-gradient(90deg, #00b42a, #52c41a); }
-
-.dim-val {
-  font-size: 11px;
-  font-weight: 600;
-  color: #4e5969;
-  width: 24px;
-  text-align: right;
-  flex-shrink: 0;
-}
-
-/* ── 解释文本 ── */
-.interpretation-block {
+/* ── 文档信息 ── */
+.docs-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 6px;
-  padding: 9px 12px;
-  border-radius: 8px;
-  font-size: 12.5px;
-  line-height: 1.55;
-  margin-bottom: 14px;
-}
-
-.interp-icon {
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-
-.interp-high   { background: #fff9f9; color: #c1000a; border: 1px solid #ffccc7; }
-.interp-medium { background: #fffbf0; color: #875400; border: 1px solid #ffe58f; }
-.interp-low    { background: #f0f5ff; color: #1d39c4; border: 1px solid #adc6ff; }
-.interp-safe   { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
-
-/* ── 文档区 ── */
-.docs-block {
-  margin-bottom: 14px;
-}
-
-.docs-label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11.5px;
-  color: #86909c;
-  margin-bottom: 7px;
-}
-
-.docs-chips {
-  display: flex;
+  margin-bottom: 12px;
   flex-wrap: wrap;
-  gap: 7px;
 }
-
-.doc-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 9px;
-  border-radius: 5px;
+.docs-label {
+  font-size: 12px;
+  color: #86909c;
+}
+.doc-name {
   font-size: 12px;
   font-weight: 500;
-  max-width: 220px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.doc-a { background: #eff4ff; color: #2b5fd9; }
+.doc-b { background: #f0fdf4; color: #15803d; }
+.vs-sep {
+  font-size: 10px;
+  font-weight: 700;
+  color: #c2c7d0;
+  background: #f2f3f5;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
 
-.chip-a { background: #eff4ff; color: #2b5fd9; border: 1px solid #c8d9ff; }
-.chip-b { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+/* ── 统计指标 ── */
+.stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+  background: #f7f8fa;
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+}
+.stat-item {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1d2129;
+}
+.stat-label {
+  font-size: 12px;
+  color: #86909c;
+}
+.stat-divider {
+  width: 1px;
+  height: 20px;
+  background: #e2e4e9;
+  margin: 0 20px;
+}
 
 /* ── 底部 ── */
 .card-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 13px;
+  padding-top: 12px;
   border-top: 1px solid #f0f1f5;
 }
-
-.footer-stats {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.footer-hint {
   font-size: 12px;
   color: #86909c;
 }
-
-.footer-stat {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.stat-dot {
-  color: #c9cdd4;
-}
-
 .view-btn {
   display: flex;
   align-items: center;
@@ -546,7 +403,6 @@ function handleViewDetail() {
   color: #165dff;
   transition: gap 0.2s;
 }
-
 .result-card:hover .view-btn {
   gap: 7px;
 }

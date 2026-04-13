@@ -195,6 +195,31 @@ export const useAgentStore = defineStore('agent', () => {
           messagesBySession.value[sessionId] = session.messages.map(
             mapChatMessageToMessage
           );
+
+          // 从历史消息的 metadata 中恢复 fileIds
+          const restoredFileIds = new Set<string>();
+          for (const msg of session.messages) {
+            if (msg.role === 'assistant' && msg.metadata) {
+              try {
+                const meta = typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : msg.metadata;
+                if (meta.fileIds && Array.isArray(meta.fileIds)) {
+                  meta.fileIds.forEach((id: string) => restoredFileIds.add(id));
+                }
+              } catch (e) {
+                // ignore parsing errors
+              }
+            }
+          }
+          // 补充从 session 级附件列表恢复（覆盖 metadata 解析失败的情况）
+          // session.files 是 getSessionById 返回的 oss_file 列表
+          if (session.files && Array.isArray(session.files)) {
+            for (const file of session.files) {
+              if (file.id) restoredFileIds.add(file.id);
+            }
+          }
+          if (restoredFileIds.size > 0) {
+            sessionFileIds.value[sessionId] = Array.from(restoredFileIds);
+          }
         }
       }
     } catch (error) {

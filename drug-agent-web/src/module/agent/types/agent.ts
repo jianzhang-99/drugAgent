@@ -225,6 +225,20 @@ export interface DrugAgentResp {
   ocrResult?: OcrResponse;
 }
 
+// OSS文件信息（对应后端 OssFile 实体）
+export interface OssFileInfo {
+  id: string;
+  sessionId?: string;
+  fileName?: string;
+  fileSuffix?: string;
+  fileSize?: number;
+  ossUrl?: string;
+  fileType?: number;
+  uploadStatus?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 // 后端 ChatSession 格式
 export interface ChatSession {
   id: string;
@@ -235,6 +249,8 @@ export interface ChatSession {
   updatedAt: string;
   deleted: boolean;
   messages?: ChatMessage[];
+  /** 会话关联的附件列表（非数据库字段，用于关联查询） */
+  files?: OssFileInfo[];
 }
 
 export interface ChatMessage {

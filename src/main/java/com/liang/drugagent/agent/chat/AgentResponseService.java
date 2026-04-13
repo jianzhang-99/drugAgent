@@ -69,13 +69,19 @@ public class AgentResponseService {
         resp.setThinkingSteps(buildThinkingSteps(decision, executionResult));
         fillStructuredFields(resp, executionResult);
 
-        // 填充上传文件的ID列表
-        if (context.getUploadedFiles() != null && !context.getUploadedFiles().isEmpty()) {
-            List<String> fileIds = context.getUploadedFiles().stream()
-                    .map(OssFile::getId)
-                    .collect(Collectors.toList());
-            resp.setFileIds(fileIds);
+        // 填充关联的文档ID列表
+        List<String> fileIds = new ArrayList<>();
+        if (context.getFileIds() != null && !context.getFileIds().isEmpty()) {
+            fileIds.addAll(context.getFileIds());
         }
+        if (context.getUploadedFiles() != null && !context.getUploadedFiles().isEmpty()) {
+            for (OssFile f : context.getUploadedFiles()) {
+                if (!fileIds.contains(f.getId())) {
+                    fileIds.add(f.getId());
+                }
+            }
+        }
+        resp.setFileIds(fileIds);
 
         // 处理执行失败的情况
         if (!executionResult.isSuccess()) {

@@ -1,11 +1,17 @@
 package com.liang.drugagent.scene.tender_review.facade;
 
+import com.liang.drugagent.agent.chat.AgentMessageService;
+import com.liang.drugagent.agent.common.entity.ChatMessage;
 import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.controller.domain.request.agent.AgentChatReq;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
 import com.liang.drugagent.scene.tender_review.preparation.TenderReviewPreparationService;
 import com.liang.drugagent.scene.tender_review.workflow.TenderReviewWorkflow;
+import com.liang.drugagent.shared.llm.LlmProviderType;
+import com.liang.drugagent.shared.llm.LlmRequest;
+import com.liang.drugagent.shared.llm.LlmResponse;
+import com.liang.drugagent.shared.llm.LlmService;
 import com.liang.drugagent.shared.model.AgentExecutionResult;
 import com.liang.drugagent.shared.model.ThinkingStepEmitter;
 import com.liang.drugagent.shared.model.ThinkingStepProgress;
@@ -55,6 +61,8 @@ public class TenderReviewSceneService {
 
     private final TenderReviewPreparationService preparationService;
     private final TenderReviewWorkflow tenderReviewWorkflow;
+    private final LlmService llmService;
+    private final AgentMessageService agentMessageService;
 
     /**
      * 执行标书审查场景。
@@ -83,6 +91,11 @@ public class TenderReviewSceneService {
 
             // 2. 校验数据是否满足最低要求
             if (!preparationService.hasEnoughDocuments(data)) {
+                // 【新增】检查历史消息中是否有已完成的审查结果，支持追问模式
+                AgentExecutionResult followUpResult = tryFollowUpMode(context);
+                if (followUpResult != null) {
+                    return followUpResult;
+                }
                 // 优先使用 preparationService 返回的具体错误信息
                 String specificError = (String) context.getMetadata().get("preparationError");
                 if (specificError != null && !specificError.isBlank()) {
@@ -225,5 +238,76 @@ public class TenderReviewSceneService {
                 .clarificationQuestion(message)
                 .needsFallback(true)
                 .build();
+    }
+
+    /**
+     * 尝试追问模式：若历史消息中有已完成的审查报告，用报告内容作上下文回答用户问题。
+     * 适用场景：审查完成后用户追问细节，无需重新上传文件也无需重跑 workflow。
+     *
+     * @return 回答结果；如果没有可用的历史报告，返回 null
+     */
+    private AgentExecutionResult tryFollowUpMode(AgentChatContext context) {
+        // 从历史消息中找最近一条审查结果卡片
+        String previousReportContent = findLatestReviewReportContent(context);
+        if (previousReportContent == null) {
+            return null;
+        }
+
+        log.info("[TenderReviewSceneService] 检测到历史审查结果，进入追问模式, sessionId={}", context.getSessionId());
+
+        // 构建系统提示：以历史报告为上下文，回答用户追问
+        String systemPrompt = "你是一位医药监管领域的专业AI助手，专注于围标串标风险审查。\n" +
+                "用户已完成一次标书审查，以下是本次审查报告的核心内容：\n\n" +
+                "【审查报告】\n" + previousReportContent + "\n\n" +
+                "请基于上述审查报告回答用户的追问。\n" +
+                "- 如果问题是关于报告中的某个风险点、证据或结论，直接基于报告内容解释。\n" +
+                "- 如果问题超出报告范围，结合专业知识补充说明，但需明确区分。\n" +
+                "- 回答应专业、简洁，避免重复审查报告的全部内容。";
+
+        LlmRequest request = LlmRequest.builder()
+                .provider(LlmProviderType.DASHSCOPE)
+                .model("qwen-plus")
+                .sessionId(context.getSessionId())
+                .systemPrompt(systemPrompt)
+                .messages(List.of(LlmRequest.ChatMessage.builder()
+                        .role("user")
+                        .content(context.getQuery())
+                        .build()))
+                .build();
+
+        try {
+            LlmResponse response = llmService.chat(request);
+            if (Boolean.TRUE.equals(response.getSuccess()) && response.getContent() != null) {
+                return AgentExecutionResult.builder()
+                        .success(true)
+                        .scene(SceneEnum.TENDER_REVIEW)
+                        .answer(response.getContent())
+                        .summary("基于审查报告追问解答")
+                        .needsFallback(false)
+                        .build();
+            }
+        } catch (Exception e) {
+            log.warn("[TenderReviewSceneService] 追问模式 LLM 调用失败: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * 从会话历史中提取最近一次成功的审查报告内容。
+     */
+    private String findLatestReviewReportContent(AgentChatContext context) {
+        List<ChatMessage> history = context.getHistoryMessages();
+        if (history == null || history.isEmpty()) {
+            return null;
+        }
+        // 倒序查找最近一条审查结果卡片
+        for (int i = history.size() - 1; i >= 0; i--) {
+            ChatMessage msg = history.get(i);
+            if ("assistant_result_card".equalsIgnoreCase(msg.getType())
+                    && msg.getContent() != null && !msg.getContent().isBlank()) {
+                return msg.getContent();
+            }
+        }
+        return null;
     }
 }

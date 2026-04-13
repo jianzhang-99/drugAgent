@@ -263,3 +263,7 @@ Standard Commons Logging discovery in action with spring-jcl: please remove comm
 {"level":30,"time":1775970988889,"pid":27636,"hostname":"TONY","msg":"MySQL MCP server running on stdio"}
 {"level":30,"time":1775970989202,"pid":25820,"hostname":"TONY","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
 {"level":30,"time":1775970989203,"pid":25820,"hostname":"TONY","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1776071387104,"pid":91060,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
+{"level":30,"time":1776071387105,"pid":91060,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1776071388445,"pid":91096,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
+{"level":30,"time":1776071388445,"pid":91096,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
