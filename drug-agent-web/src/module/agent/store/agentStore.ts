@@ -21,7 +21,6 @@ import {
   mapResponseToMessage,
   createUserMessage,
   createErrorMessage,
-  createUploadingMessage,
   createAssistantMessage,
   createProcessingMessage,
 } from '../utils/messageMapper';
@@ -36,7 +35,7 @@ export const useAgentStore = defineStore('agent', () => {
   const activeSessionId = ref<string | null>(null);
 
   /** 侧边栏及主视图状态 */
-  const activeView = ref<'WORKSPACE' | 'TASKS' | 'KNOWLEDGE'>('WORKSPACE');
+  const activeView = ref<'WORKSPACE' | 'TASKS' | 'KNOWLEDGE' | 'BENCHMARK'>('WORKSPACE');
   const isSidebarCollapsed = ref(false);
 
   /** 按会话 ID 存储的消息映射 */
@@ -77,6 +76,12 @@ export const useAgentStore = defineStore('agent', () => {
 
   /** 当前选中的模型 */
   const currentModel = ref<string>('minimax');
+
+  /** 评测历史记录列表 */
+  const benchmarkRecords = ref<any[]>([]);
+
+  /** 评测加载状态 */
+  const benchmarkLoading = ref(false);
 
   /**
    * 会话级已上传文件ID列表。
@@ -438,25 +443,28 @@ export const useAgentStore = defineStore('agent', () => {
     uploading.value = true;
     processingStatus.value = 'uploading';
 
+    const uploadedAttachments = files.map((f) => ({
+      id: `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      name: f.name,
+      size: f.size,
+      type: f.type,
+    }));
+    const userContent = query?.trim() || '请审查这些文件';
+
+    // 上传型对话也需要先展示用户气泡，避免界面看起来只有助手在回复。
+    addMessage(createUserMessage(userContent, uploadedAttachments));
+
     // 初始化思考步骤
     initTenderReviewThinkingSteps();
 
-    // 添加上传中消息
-    const uploadingMsg = createUploadingMessage(
-      files.map((f) => ({
-        id: `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        name: f.name,
-        size: f.size,
-        type: f.type,
-      }))
-    );
-    addMessage(uploadingMsg);
-
-    // 添加处理中消息（带思考步骤）
+    // 仅保留一个助手处理中态，避免同一次提交堆出多个回复框。
     const processingMsg = createProcessingMessage([...thinkingStepsInProgress.value]);
+    processingMsg.content = '文件上传并分析中，请稍候...';
     addMessage(processingMsg);
 
     try {
+      processingStatus.value = 'processing';
+
       const res = await agentApi.submit(
         query,
         activeSession.value?.scene,
@@ -468,18 +476,11 @@ export const useAgentStore = defineStore('agent', () => {
       );
 
       if (res.data.code === 200 || res.data.code === 0) {
-        // 移除上传中消息和处理中消息
-        removeMessage(uploadingMsg.id);
         removeMessage(processingMsg.id);
 
         // 添加助手消息（后端返回的思考步骤会替换前端的占位步骤）
         const aiMsg = mapResponseToMessage(res.data.data);
         addMessage(aiMsg);
-
-        // 设置当前结果
-        if (aiMsg.result) {
-          currentResult.value = res.data.data;
-        }
 
         // 实时更新会话标题
         if (res.data.data?.sessionTitle) {
@@ -500,14 +501,12 @@ export const useAgentStore = defineStore('agent', () => {
 
         return res.data.data;
       } else {
-        // 移除上传中消息，添加错误消息
-        removeMessage(uploadingMsg.id);
+        removeMessage(processingMsg.id);
         const errorMsg = createErrorMessage(res.data.message || '上传失败');
         addMessage(errorMsg);
       }
     } catch (error: unknown) {
       console.error('上传文件失败:', error);
-      removeMessage(uploadingMsg.id);
       removeMessage(processingMsg.id);
       const errorMsg = createErrorMessage(
         error instanceof Error ? error.message : '网络错误，请稍后重试'
@@ -627,6 +626,8 @@ export const useAgentStore = defineStore('agent', () => {
     availableModels,
     currentModel,
     sessionFileIds,
+    benchmarkRecords,
+    benchmarkLoading,
 
     // 计算属性
     activeSession,

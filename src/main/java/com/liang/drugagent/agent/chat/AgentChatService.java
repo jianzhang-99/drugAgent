@@ -1,5 +1,6 @@
 package com.liang.drugagent.agent.chat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.liang.drugagent.agent.common.entity.ChatMessage;
 import com.liang.drugagent.agent.common.entity.ChatSession;
 import com.liang.drugagent.controller.domain.AgentChatContext;
@@ -50,6 +51,7 @@ public class AgentChatService {
     private final AgentResponseService agentResponseService;
     private final AgentMessageService agentMessageService;
     private final TencentCosStorageService cosStorageService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
 
     /**
@@ -105,10 +107,25 @@ public class AgentChatService {
             // 5. 保存用户消息
             agentMessageService.saveUserMessage(sessionId, req.getQuery(), null);
 
-            // 6. 保存助手消息
+            // 6. 保存助手消息，根据执行结果决定消息类型和 metadata
             String assistantContent = executionResult.getAnswer() != null ? executionResult.getAnswer() : executionResult.getSummary();
-            String messageType = executionResult.isNeedsFallback() ? "assistant_clarify" : "assistant_text";
-            agentMessageService.saveAssistantMessage(sessionId, assistantContent, null, messageType);
+            String messageType;
+            String metadataJson = null;
+            if (executionResult.isNeedsFallback()) {
+                messageType = "assistant_clarify";
+            } else if (executionResult.getReport() != null || executionResult.getRiskLevel() != null) {
+                // 标书审查等结构化结果场景：存储为结果卡片类型，并将完整响应序列化为 metadata
+                messageType = "assistant_result_card";
+                try {
+                    AgentChatResp respForMetadata = agentResponseService.buildResponse(context, execution.getDecision(), executionResult);
+                    metadataJson = objectMapper.writeValueAsString(respForMetadata);
+                } catch (Exception ex) {
+                    log.warn("[AgentChatService] 序列化 metadata 失败，将以空 metadata 保存: {}", ex.getMessage());
+                }
+            } else {
+                messageType = "assistant_text";
+            }
+            agentMessageService.saveAssistantMessage(sessionId, assistantContent, metadataJson, messageType);
 
             // 7. 更新会话聚合状态
             String scene = execution.getDecision() != null ? execution.getDecision().getScene().name() : null;

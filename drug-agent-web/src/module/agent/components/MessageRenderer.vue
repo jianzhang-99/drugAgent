@@ -49,7 +49,11 @@
           :steps="message.thinkingSteps"
           :default-expanded="true"
         />
-        <div class="message-content processing-content">
+        <div
+          :class="message.thinkingSteps && message.thinkingSteps.length > 0
+            ? 'processing-status'
+            : 'message-content processing-content'"
+        >
           <t-loading />
           <span>{{ message.content }}</span>
         </div>
@@ -245,11 +249,9 @@ async function handleCopy(text: string) {
 }
 
 .assistant-message .message-content {
-  background: #ffffff;
+  background: transparent;
   color: #0f172a;
-  border-bottom-left-radius: 6px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.04);
+  padding: 8px 4px;
 }
 
 .clarify-message {
@@ -324,6 +326,15 @@ async function handleCopy(text: string) {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   color: #64748b;
+}
+
+.processing-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 4px 0;
+  color: #64748b;
+  font-size: 14px;
 }
 
 .message-time {

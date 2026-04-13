@@ -3,7 +3,7 @@
     <!-- 顶部栏 -->
     <header class="tb-topbar">
       <div class="topbar-left">
-        <span class="topbar-title-text">全局任务看板</span>
+        <span class="topbar-title-text">任务看板</span>
       </div>
       <div class="topbar-right">
         <div class="topbar-pill">
@@ -21,7 +21,7 @@
         <div class="headline-icon tb-icon-bg">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
         </div>
-        <h1 class="headline-title">全局任务看板</h1>
+        <h1 class="headline-title">任务看板</h1>
       </div>
       <p class="tb-desc">
         统一管理您提交的所有异步审查任务、后台分析进度及历史记录。

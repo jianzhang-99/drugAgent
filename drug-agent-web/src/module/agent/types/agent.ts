@@ -225,13 +225,6 @@ export interface DrugAgentResp {
   ocrResult?: OcrResponse;
 }
 
-export interface EvidenceGroup {
-  id?: string;
-  type?: string;
-  evidenceList?: Evidence[];
-  similarity?: number;
-}
-
 // 后端 ChatSession 格式
 export interface ChatSession {
   id: string;

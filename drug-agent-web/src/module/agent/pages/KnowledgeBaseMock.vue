@@ -3,7 +3,7 @@
     <!-- 顶部栏 -->
     <header class="kb-topbar">
       <div class="topbar-left">
-        <span class="topbar-title-text">合规知识大脑</span>
+        <span class="topbar-title-text">RAG知识库</span>
       </div>
       <div class="topbar-right">
         <div class="topbar-pill">
@@ -21,7 +21,7 @@
         <div class="headline-icon">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
         </div>
-        <h1 class="headline-title">合规知识大脑</h1>
+        <h1 class="headline-title">RAG知识库</h1>
       </div>
       <p class="kb-desc">
         在这里上传法规文件、管理制度或标准模板。横渡智能体会自动阅读并记忆这些文件。在后续的标书审查与合同预审中，它将严格按照此处的标准进行比对。
