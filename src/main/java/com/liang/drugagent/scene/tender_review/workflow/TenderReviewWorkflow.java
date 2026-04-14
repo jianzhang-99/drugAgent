@@ -24,6 +24,7 @@ import com.liang.drugagent.agent.prompt.tender_review.validate.TenderReviewValid
 import com.liang.drugagent.scene.tender_review.support.assembler.TenderReviewDataAssembler;
 import com.liang.drugagent.shared.model.EvidenceItem;
 import com.liang.drugagent.shared.model.ReviewReport;
+import com.liang.drugagent.shared.model.report.ReportData;
 import com.liang.drugagent.shared.model.ThinkingStep;
 import com.liang.drugagent.shared.model.ThinkingStepEmitter;
 import com.liang.drugagent.shared.model.ThinkingStepProgress;
@@ -441,6 +442,17 @@ public class TenderReviewWorkflow {
         result.setEvidenceList(evidenceAssemblyResult.getFlatItems());
         result.setEvidenceGroups(evidenceAssemblyResult.getGroups());
         result.setAnalyzerStatus(analyzerStatus);
+
+        // 生成结构化报告数据（供报告决策页面使用）
+        ReportData reportData = reportGenerationService.generateReportData(
+                tenderReviewData,
+                allHits,
+                effectiveHits,
+                exemptionHits,
+                fusionResult,
+                evidenceAssemblyResult
+        );
+        result.setReportData(reportData);
 
         // 如果超过一半的 LLM 分析器失败，在报告中增加警告说明
         if (failedCount > 3) {

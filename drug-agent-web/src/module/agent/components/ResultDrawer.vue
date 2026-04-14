@@ -261,7 +261,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useAgentStore } from '../store/agentStore';
-import { exportElementToPdf, exportMarkdownToPdf } from '../utils/pdfExporter';
 
 const store = useAgentStore();
 
@@ -387,29 +386,161 @@ function handleClose() {
 }
 
 async function handleExportPdf() {
-  // 优先使用 Markdown 内容导出 PDF（格式更清晰）
-  const markdownContent = result.value?.report?.markdownContent;
-  if (markdownContent) {
-    try {
-      await exportMarkdownToPdf(markdownContent, `标书审查报告_${result.value?.traceId || Date.now()}`);
-      return;
-    } catch (error) {
-      console.error('Markdown 导出 PDF 失败，降级为 DOM 导出:', error);
-      // 降级到 DOM 导出
-    }
-  }
+  // 构建专用打印 HTML，避免 flex/grid DOM 截图变形问题
+  const r = result.value;
+  if (!r) return;
 
-  // 降级方案：直接导出 modal-body DOM
-  const element = document.querySelector('.modal-body') as HTMLElement;
-  if (!element) {
-    console.error('未找到可导出的 DOM 元素');
+  const levelMap: Record<string, string> = { high: '高风险', medium: '中风险', low: '低风险', safe: '安全', unknown: '未知' };
+  const riskLevelText = levelMap[(r.riskLevel || 'unknown').toLowerCase()] || '未知';
+  const scoreVal = r.score ?? r.report?.overview?.score ?? 0;
+  const docA = documentNames.value[0] || '文档A';
+  const docB = documentNames.value[1] || '文档B';
+
+  const escHtml = (s?: string) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // 重点风险 HTML
+  const topRisksHtml = topRiskItems.value.map((item, i) => `
+    <div style="border:1px solid #e5e6eb;border-radius:8px;padding:12px 16px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span style="font-weight:700;color:#444;">${i + 1}.</span>
+        <span style="font-size:12px;color:#555;">${escHtml(translateRiskType(item.riskType))}</span>
+        <span style="font-size:11px;padding:1px 6px;border-radius:4px;background:#fff1f0;color:#f53f3f;">${levelLabel(item.riskLevel)}</span>
+      </div>
+      <div style="font-weight:600;color:#1d2129;margin-bottom:4px;">${escHtml(item.summary || item.title)}</div>
+      ${(item.evidenceTitles?.length || item.reasonCodes?.length) ? `<div style="font-size:12px;color:#888;">命中规则与特征：${escHtml((item.evidenceTitles?.length ? item.evidenceTitles : item.reasonCodes || []).join('、'))}</div>` : ''}
+    </div>`).join('');
+
+  // 证据 HTML
+  const evidenceHtml = evidenceGroups.value.map((ev, i) => {
+    const items = ev.items && ev.items.length > 0 ? ev.items : [];
+    const itemsHtml = items.length > 0
+      ? items.map((item, j) => `
+          <div style="flex:1;padding:10px 12px;background:#fafafa;border:1px solid #eee;border-radius:6px;">
+            <div style="font-size:11px;font-weight:600;color:#555;margin-bottom:6px;">${escHtml(documentNames.value[j] || item.source || `文档${j + 1}`)}</div>
+            <div style="font-size:12.5px;line-height:1.8;color:#333;">${escHtml(item.content)}</div>
+          </div>`).join('<div style="width:12px;flex-shrink:0;"></div>')
+      : (ev.contentA || ev.contentB ? `
+          <div style="flex:1;padding:10px 12px;background:#fafafa;border:1px solid #eee;border-radius:6px;">
+            <div style="font-size:11px;font-weight:600;color:#165dff;margin-bottom:6px;">${escHtml(docA)}</div>
+            <div style="font-size:12.5px;line-height:1.8;color:#333;">${escHtml(ev.contentA)}</div>
+          </div>
+          <div style="width:12px;flex-shrink:0;"></div>
+          <div style="flex:1;padding:10px 12px;background:#fafafa;border:1px solid #eee;border-radius:6px;">
+            <div style="font-size:11px;font-weight:600;color:#00b42a;margin-bottom:6px;">${escHtml(docB)}</div>
+            <div style="font-size:12.5px;line-height:1.8;color:#333;">${escHtml(ev.contentB)}</div>
+          </div>` : '<div style="color:#aaa;font-size:12px;">未提取文本详情</div>');
+    return `
+      <div style="border:1px solid #e5e6eb;border-radius:8px;margin-bottom:12px;overflow:hidden;">
+        <div style="background:#f7f8fa;padding:10px 14px;border-bottom:1px solid #e5e6eb;display:flex;align-items:center;gap:10px;">
+          <span style="background:#eff4ff;color:#165dff;font-size:11px;font-weight:700;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;">${i + 1}</span>
+          <span style="font-weight:600;color:#1d2129;font-size:13px;">${escHtml(ev.title || '特征片段说明')}</span>
+          ${ev.summary ? `<span style="font-size:12px;color:#86909c;">${escHtml(ev.summary)}</span>` : ''}
+          ${ev.similarity !== undefined ? `<span style="margin-left:auto;font-size:12px;font-weight:700;color:#f53f3f;">共性度：${Math.round((ev.similarity || 0) * 100)}%</span>` : ''}
+        </div>
+        <div style="padding:12px;display:flex;gap:0;">${itemsHtml}</div>
+      </div>`;
+  }).join('');
+
+  // 触发规则 HTML
+  const allRulesHtml = riskItems.value.map(item => `
+    <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;border:1px solid #e5e6eb;background:#f9fafb;font-size:12px;margin:4px;">
+      <span style="font-size:10px;padding:1px 5px;border-radius:3px;background:#fff1f0;color:#f53f3f;">${levelLabel(item.riskLevel)}</span>
+      ${escHtml(item.summary || item.title || '未知规则')}
+    </span>`).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>标书围标深度比对报告</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'PingFang SC', 'Microsoft YaHei', 'Heiti SC', sans-serif; font-size: 14px; color: #1d2129; background: #fff; padding: 32px 40px; }
+  h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .sub { font-size: 12px; color: #86909c; margin-bottom: 24px; }
+  .section { margin-bottom: 20px; }
+  .section-title { font-size: 14px; font-weight: 700; color: #1d2129; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid #f0f0f0; }
+  .banner { background: #fff9f9; border: 1px solid #ffccc7; border-radius: 10px; padding: 16px 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 20px; }
+  .banner-label { font-size: 15px; font-weight: 700; color: #f53f3f; }
+  .banner-score { font-size: 40px; font-weight: 900; color: #1d2129; }
+  .banner-score small { font-size: 14px; color: #86909c; }
+  .banner-conclusion { font-size: 14px; color: #4e5969; flex: 1; }
+  .files-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .file-tag { padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; }
+  .file-a { background: #eff4ff; color: #2b5fd9; border: 1px solid #c8d9ff; }
+  .file-b { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+  .vs { font-size: 11px; color: #c2c7d0; background: #f2f3f5; padding: 2px 8px; border-radius: 4px; }
+  .stats { display: flex; gap: 24px; margin-bottom: 20px; }
+  .stat-item span:first-child { font-size: 20px; font-weight: 700; color: #1d2129; margin-right: 4px; }
+  .stat-item span:last-child { font-size: 12px; color: #86909c; }
+  @media print {
+    body { padding: 16px 20px; }
+    .no-break { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+  <h1>标书围标深度比对报告</h1>
+  <div class="sub">TRACE: ${escHtml(r.traceId)} &nbsp;|&nbsp; 生成时间：${new Date().toLocaleString('zh-CN')}</div>
+
+  <div class="banner">
+    <span class="banner-label">● ${riskLevelText}</span>
+    <span class="banner-score">${scoreVal}<small>/100</small></span>
+    <span class="banner-conclusion">${escHtml(conclusionText.value)}</span>
+  </div>
+
+  <div class="files-row">
+    <span class="file-tag file-a">${escHtml(docA)}</span>
+    <span class="vs">VS</span>
+    <span class="file-tag file-b">${escHtml(docB)}</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat-item"><span>${r.report?.overview?.documentCount ?? 2}</span><span>比对文档</span></div>
+    <div class="stat-item"><span>${riskItems.value.length}</span><span>命中规则</span></div>
+    <div class="stat-item"><span>${evidenceGroups.value.length}</span><span>证据片段</span></div>
+  </div>
+
+  ${topRiskItems.value.length > 0 ? `
+  <div class="section no-break">
+    <div class="section-title">▲ 重点风险（Top ${topRiskItems.value.length}）</div>
+    ${topRisksHtml}
+  </div>` : ''}
+
+  ${evidenceGroups.value.length > 0 ? `
+  <div class="section">
+    <div class="section-title">🔍 查证证据提取（${evidenceGroups.value.length} 处）</div>
+    ${evidenceHtml}
+  </div>` : ''}
+
+  ${riskItems.value.length > 0 ? `
+  <div class="section no-break">
+    <div class="section-title">✓ 触发合规规则（${riskItems.value.length} 条）</div>
+    <div>${allRulesHtml}</div>
+  </div>` : ''}
+
+  ${r.summary ? `
+  <div class="section no-break">
+    <div class="section-title">📄 审查摘要原文</div>
+    <div style="font-size:13px;line-height:1.8;color:#4e5969;background:#f7f8fa;padding:12px 14px;border-radius:8px;white-space:pre-wrap;">${escHtml(r.summary)}</div>
+  </div>` : ''}
+</body>
+</html>`;
+
+  const printWin = window.open('', '_blank', 'width=900,height=700');
+  if (!printWin) {
+    alert('请允许浏览器弹窗权限后重试');
     return;
   }
-  try {
-    await exportElementToPdf(element, `标书审查报告_${result.value?.traceId || Date.now()}`);
-  } catch (error) {
-    console.error('导出 PDF 失败:', error);
-  }
+  printWin.document.write(html);
+  printWin.document.close();
+  // 等待字体和图片加载完毕再触发打印
+  printWin.onload = () => {
+    setTimeout(() => {
+      printWin.focus();
+      printWin.print();
+    }, 600);
+  };
 }
 </script>
 

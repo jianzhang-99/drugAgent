@@ -12,7 +12,7 @@
         <slot />
       </main>
 
-      <ResultDrawer v-if="store.activeView === 'WORKSPACE'" />
+      <ReportDrawer v-if="store.activeView === 'WORKSPACE'" />
     </div>
   </div>
 </template>
@@ -21,7 +21,7 @@
 import { useAgentStore } from '../store/agentStore';
 import AgentSidebar from '../sections/sidebar/AgentSidebar.vue';
 import WorkspaceHeader from '../sections/workspace/WorkspaceHeader.vue';
-import ResultDrawer from '../components/ResultDrawer.vue';
+import ReportDrawer from '../components/report/ReportDrawer.vue';
 
 const store = useAgentStore();
 </script>

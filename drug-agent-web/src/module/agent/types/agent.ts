@@ -210,6 +210,8 @@ export interface UpdateTitleRequest {
   title: string;
 }
 
+import type { ReportData } from './report.types';
+
 // API 响应类型
 export interface DrugAgentResp {
   sessionId?: string;
@@ -230,6 +232,8 @@ export interface DrugAgentResp {
   /** 本次审查的文档名称列表 */
   documentNames?: string[];
   report?: ReviewReport;
+  /** 结构化报告数据（报告决策页面使用） */
+  reportData?: ReportData;
   evidenceList?: Evidence[];
   evidenceGroups?: EvidenceGroup[];
   steps?: string[];

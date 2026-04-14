@@ -4,6 +4,7 @@ import com.liang.drugagent.shared.model.EvidenceItem;
 import com.liang.drugagent.shared.model.EvidenceGroup;
 import com.liang.drugagent.shared.model.ReviewReport;
 import com.liang.drugagent.shared.model.ThinkingStep;
+import com.liang.drugagent.shared.model.report.ReportData;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -77,6 +78,11 @@ public class AgentChatResp {
 
     /** 审查报告 */
     private ReviewReport report;
+
+    /**
+     * 结构化报告数据（报告决策页面使用）
+     */
+    private ReportData reportData;
 
     /** 证据列表 */
     private List<EvidenceItem> evidenceList = new ArrayList<>();

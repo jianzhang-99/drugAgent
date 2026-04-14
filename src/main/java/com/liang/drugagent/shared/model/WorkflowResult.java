@@ -1,6 +1,7 @@
 package com.liang.drugagent.shared.model;
 
 import com.liang.drugagent.scene.SceneEnum;
+import com.liang.drugagent.shared.model.report.ReportData;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -31,6 +32,10 @@ public class WorkflowResult {
     private String riskLevel;
     private Integer score;
     private ReviewReport report;
+    /**
+     * 结构化报告数据（报告决策页面使用）
+     */
+    private ReportData reportData;
     private List<EvidenceItem> evidenceList = new ArrayList<>();
     private List<EvidenceGroup> evidenceGroups = new ArrayList<>();
     private List<String> steps = new ArrayList<>();

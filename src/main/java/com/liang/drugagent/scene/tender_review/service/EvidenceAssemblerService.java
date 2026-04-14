@@ -7,6 +7,7 @@ import com.liang.drugagent.scene.tender_review.model.RuleHit;
 import com.liang.drugagent.shared.model.EvidenceAssemblyResult;
 import com.liang.drugagent.shared.model.EvidenceGroup;
 import com.liang.drugagent.shared.model.EvidenceItem;
+import com.liang.drugagent.shared.model.report.Page4DetailComparison;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -285,5 +286,258 @@ public class EvidenceAssemblerService {
                 yield raw;
             }
         };
+    }
+
+    /**
+     * 按风险类型分组证据，用于报告第2页风险总览。
+     *
+     * @param hits 有效命中列表
+     * @param fusionResult 风险融合结果
+     * @param docIdToName 文档ID到名称的映射
+     * @return 按风险类型分组的Map：pricing/team/plagiarism/template/auxiliary
+     */
+    public Map<String, List<RuleHit>> groupByRiskType(List<RuleHit> hits,
+                                                      RiskFusionResult fusionResult,
+                                                      Map<String, String> docIdToName) {
+        Map<String, List<RuleHit>> grouped = new LinkedHashMap<>();
+        grouped.put("pricing", new ArrayList<>());
+        grouped.put("team", new ArrayList<>());
+        grouped.put("plagiarism", new ArrayList<>());
+        grouped.put("template", new ArrayList<>());
+        grouped.put("auxiliary", new ArrayList<>());
+
+        if (hits == null || hits.isEmpty()) {
+            return grouped;
+        }
+
+        for (RuleHit hit : hits) {
+            String type = resolveReportGroupKey(hit);
+            grouped.computeIfAbsent(type, k -> new ArrayList<>()).add(hit);
+        }
+        return grouped;
+    }
+
+    /**
+     * 生成详细比对数据，用于报告第4页。
+     *
+     * @param hits 有效命中列表
+     * @param docIdToName 文档ID到名称的映射
+     * @return 包含报价对比、团队对比和文本高亮的比对数据
+     */
+    public Page4DetailComparison buildDetailComparison(List<RuleHit> hits,
+                                                        Map<String, String> docIdToName) {
+        Page4DetailComparison comparison = new Page4DetailComparison();
+
+        // 构建报价对比
+        comparison.setPriceComparison(buildPriceComparison(hits, docIdToName));
+
+        // 构建团队对比
+        comparison.setTeamComparison(buildTeamComparison(hits, docIdToName));
+
+        // 构建文本高亮
+        comparison.setTextHighlights(buildTextHighlights(hits, docIdToName));
+
+        return comparison;
+    }
+
+    private String resolveReportGroupKey(RuleHit hit) {
+        if (hit == null || hit.getRuleCode() == null) {
+            return "auxiliary";
+        }
+        String ruleCode = hit.getRuleCode();
+        if (ruleCode.startsWith("W-M1")) {
+            return "pricing";
+        }
+        if (ruleCode.startsWith("W-M2")) {
+            return "team";
+        }
+        if (ruleCode.startsWith("W-M3")) {
+            return "team";
+        }
+        if (ruleCode.startsWith("W-P1") || ruleCode.startsWith("W-P2") || ruleCode.startsWith("W-P3")) {
+            return "text_similarity";
+        }
+        if (ruleCode.startsWith("W-P4") || ruleCode.startsWith("W-P5")) {
+            return "template";
+        }
+        return "auxiliary";
+    }
+
+    private Page4DetailComparison.PriceComparison buildPriceComparison(List<RuleHit> hits,
+                                                                        Map<String, String> docIdToName) {
+        List<Page4DetailComparison.PriceRow> rows = new ArrayList<>();
+        List<String> headers = List.of("报价项", "文档A", "文档B", "差异", "判定");
+
+        List<RuleHit> pricingHits = (hits == null ? List.<RuleHit>of() : hits).stream()
+                .filter(h -> h.getRuleCode() != null && h.getRuleCode().startsWith("W-M1"))
+                .toList();
+
+        for (RuleHit hit : pricingHits) {
+            List<RuleEvidence> evidences = hit.getEvidences() == null ? List.of() : hit.getEvidences();
+            RuleEvidence evidenceA = evidences.size() > 0 ? evidences.get(0) : null;
+            RuleEvidence evidenceB = evidences.size() > 1 ? evidences.get(1) : null;
+
+            Page4DetailComparison.PriceRow row = Page4DetailComparison.PriceRow.builder()
+                    .item(resolvePriceItemName(hit, evidenceA))
+                    .docA(resolveEvidenceValue(evidenceA, docIdToName))
+                    .docB(resolveEvidenceValue(evidenceB, docIdToName))
+                    .diff(resolveDiffText(hit))
+                    .verdict(resolveDetailVerdict(hit))
+                    .build();
+            rows.add(row);
+        }
+
+        return Page4DetailComparison.PriceComparison.builder()
+                .headers(headers)
+                .rows(rows)
+                .build();
+    }
+
+    private Page4DetailComparison.TeamComparison buildTeamComparison(List<RuleHit> hits,
+                                                                      Map<String, String> docIdToName) {
+        List<Page4DetailComparison.TeamRow> rows = new ArrayList<>();
+        List<String> headers = List.of("角色", "文档A", "文档B", "判定");
+
+        List<RuleHit> teamHits = (hits == null ? List.<RuleHit>of() : hits).stream()
+                .filter(h -> h.getRuleCode() != null && (h.getRuleCode().startsWith("W-M2") || h.getRuleCode().startsWith("W-M3")))
+                .toList();
+
+        for (RuleHit hit : teamHits) {
+            List<RuleEvidence> evidences = hit.getEvidences() == null ? List.of() : hit.getEvidences();
+            RuleEvidence evidenceA = evidences.size() > 0 ? evidences.get(0) : null;
+            RuleEvidence evidenceB = evidences.size() > 1 ? evidences.get(1) : null;
+
+            Page4DetailComparison.TeamRow row = Page4DetailComparison.TeamRow.builder()
+                    .role(resolveTeamRole(hit, evidenceA))
+                    .docA(resolveEvidenceValue(evidenceA, docIdToName))
+                    .docB(resolveEvidenceValue(evidenceB, docIdToName))
+                    .verdict(resolveDetailVerdict(hit))
+                    .build();
+            rows.add(row);
+        }
+
+        return Page4DetailComparison.TeamComparison.builder()
+                .headers(headers)
+                .rows(rows)
+                .build();
+    }
+
+    private List<Page4DetailComparison.TextHighlight> buildTextHighlights(List<RuleHit> hits,
+                                                                          Map<String, String> docIdToName) {
+        List<Page4DetailComparison.TextHighlight> highlights = new ArrayList<>();
+
+        List<RuleHit> plagiarismHits = (hits == null ? List.<RuleHit>of() : hits).stream()
+                .filter(h -> h.getRuleCode() != null && h.getRuleCode().startsWith("W-P"))
+                .toList();
+
+        for (RuleHit hit : plagiarismHits) {
+            String category = resolveDisplayLabel(hit.getRuleName());
+            String textA = "";
+            String textB = "";
+            if (hit.getEvidences() != null && hit.getEvidences().size() >= 2) {
+                textA = summarizeEvidenceText(hit.getEvidences().get(0));
+                textB = summarizeEvidenceText(hit.getEvidences().get(1));
+            }
+
+            Page4DetailComparison.TextHighlight highlight = Page4DetailComparison.TextHighlight.builder()
+                    .category(category)
+                    .textA(textA)
+                    .textB(textB)
+                    .similarity(hit.getConfidence() != null
+                            ? String.format("%.0f%%", hit.getConfidence() * 100)
+                            : "-")
+                    .verdict(resolveTextVerdict(hit))
+                    .analysis(resolveTextAnalysis(hit))
+                    .build();
+            highlights.add(highlight);
+        }
+
+        return highlights;
+    }
+
+    private String resolveDocName(String docId, Map<String, String> docIdToName) {
+        if (docId == null) {
+            return "-";
+        }
+        if (docIdToName != null && docIdToName.containsKey(docId)) {
+            return docIdToName.get(docId);
+        }
+        return docId.length() > 8 ? docId.substring(0, 8) + "..." : docId;
+    }
+
+    private String summarizeEvidenceText(RuleEvidence evidence) {
+        if (evidence == null) {
+            return "-";
+        }
+        String value = evidence.getMatchedValue();
+        if (value == null || value.isBlank()) {
+            return "-";
+        }
+        return value.length() > 50 ? value.substring(0, 50) + "..." : value;
+    }
+
+    private String resolveEvidenceValue(RuleEvidence evidence, Map<String, String> docIdToName) {
+        if (evidence == null) {
+            return "-";
+        }
+        String value = evidence.getMatchedValue();
+        if (value != null && !value.isBlank()) {
+            return value.length() > 28 ? value.substring(0, 28) + "..." : value;
+        }
+        return resolveDocName(evidence.getDocumentId(), docIdToName);
+    }
+
+    private String resolvePriceItemName(RuleHit hit, RuleEvidence evidence) {
+        if (evidence != null && evidence.getChapterPath() != null && !evidence.getChapterPath().isBlank()) {
+            return evidence.getChapterPath();
+        }
+        return resolveDisplayLabel(hit == null ? null : hit.getRuleName());
+    }
+
+    private String resolveTeamRole(RuleHit hit, RuleEvidence evidence) {
+        if (evidence != null && evidence.getChapterPath() != null && !evidence.getChapterPath().isBlank()) {
+            return evidence.getChapterPath();
+        }
+        return resolveDisplayLabel(hit == null ? null : hit.getRuleName());
+    }
+
+    private String resolveDiffText(RuleHit hit) {
+        if (hit == null) {
+            return "-";
+        }
+        if (hit.getMatchedValue() != null && !hit.getMatchedValue().isBlank()) {
+            return hit.getMatchedValue();
+        }
+        return effectiveWeight(hit) != null ? "权重 " + effectiveWeight(hit) : "-";
+    }
+
+    private String resolveDetailVerdict(RuleHit hit) {
+        Integer weight = effectiveWeight(hit);
+        if (weight != null && weight >= 85) {
+            return "高度异常";
+        }
+        if (weight != null && weight >= 60) {
+            return "异常";
+        }
+        return "提示";
+    }
+
+    private String resolveTextVerdict(RuleHit hit) {
+        if (hit == null || hit.getConfidence() == null) {
+            return resolveDetailVerdict(hit);
+        }
+        if (hit.getConfidence() >= 0.9) {
+            return "高度相似";
+        }
+        if (hit.getConfidence() >= 0.7) {
+            return "中度相似";
+        }
+        return "存在相似";
+    }
+
+    private String resolveTextAnalysis(RuleHit hit) {
+        return hit == null || hit.getTriggerSummary() == null || hit.getTriggerSummary().isBlank()
+                ? "该片段存在相似表达，建议结合上下文继续复核。"
+                : hit.getTriggerSummary();
     }
 }

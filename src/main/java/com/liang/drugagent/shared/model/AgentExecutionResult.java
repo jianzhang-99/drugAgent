@@ -1,6 +1,7 @@
 package com.liang.drugagent.shared.model;
 
 import com.liang.drugagent.scene.SceneEnum;
+import com.liang.drugagent.shared.model.report.ReportData;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -72,6 +73,11 @@ public class AgentExecutionResult {
      * 审查报告。
      */
     private ReviewReport report;
+
+    /**
+     * 结构化报告数据（报告决策页面使用）。
+     */
+    private ReportData reportData;
 
     /**
      * 证据列表。
@@ -162,6 +168,7 @@ public class AgentExecutionResult {
         result.setRiskLevel(workflowResult.getRiskLevel());
         result.setScore(workflowResult.getScore());
         result.setReport(workflowResult.getReport());
+        result.setReportData(workflowResult.getReportData());
         result.setEvidenceList(workflowResult.getEvidenceList());
         result.setEvidenceGroups(workflowResult.getEvidenceGroups());
         result.setSteps(workflowResult.getSteps());
