@@ -15,6 +15,7 @@ import type {
   ModelInfo,
   SpeechRecognitionResponse,
   SpeechSynthesisResponse,
+  ThinkingStep,
 } from '../types/agent';
 import * as mockAgentApi from './mockAgentApi';
 
@@ -78,6 +79,151 @@ export function submit(
   });
 
   return request.post<ApiResponse<DrugAgentResp>>('/api/agent/submit', formData);
+}
+
+/**
+ * SSE 思考步骤进度事件
+ * 与后端 ThinkingStepProgress 对齐
+ */
+export interface ThinkingStepProgressEvent {
+  currentCode: string;
+  currentTitle: string;
+  currentStatus: 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  currentDetail: string;
+  completedSteps: ThinkingStep[];
+  currentStep: ThinkingStep;
+  finalResult: boolean;
+  /** WorkflowResult，与后端对齐 */
+  result?: {
+    traceId?: string;
+    scene?: string;
+    answer?: string;
+    summary?: string;
+    riskLevel?: string;
+    score?: number;
+    report?: any;
+    evidenceList?: any[];
+    evidenceGroups?: any[];
+    thinkingSteps?: ThinkingStep[];
+    sessionTitle?: string;
+    documentIds?: string[];
+    documentNames?: string[];
+  };
+  /** 会话标题（SSE 流最终结果携带） */
+  sessionTitle?: string;
+  /** 文档ID列表（SSE 流最终结果携带） */
+  documentIds?: string[];
+}
+
+/**
+ * 文件上传对话（流式版本）
+ * POST /api/agent/submit/stream (multipart/form-data)
+ * 返回 SSE 流，包含实时思考步骤进度
+ */
+export function submitStream(
+  query: string | undefined,
+  sceneHint: string | undefined,
+  sessionId: string | undefined,
+  userId: string | undefined,
+  submittedBy: string,
+  model: string | undefined,
+  files: File[]
+): ReadableStream<ThinkingStepProgressEvent> {
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+  const url = BASE_URL + '/api/agent/submit/stream';
+
+  const req = {
+    query: query || '请审查这些文件',
+    sceneHint,
+    sessionId,
+    userId,
+    submittedBy,
+    model,
+  };
+  const formData = new FormData();
+  formData.append('req', JSON.stringify(req));
+  files.forEach((file) => {
+    formData.append('files', file);
+  });
+
+  const readableStream = new ReadableStream<ThinkingStepProgressEvent>({
+    async start(controller) {
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          controller.close();
+          return;
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          controller.close();
+          return;
+        }
+
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let currentEvent = '';
+        let currentData = '';
+
+        const flushEvent = () => {
+          if (!currentData || currentData === '[DONE]') {
+            currentEvent = '';
+            currentData = '';
+            return;
+          }
+          try {
+            const parsed = JSON.parse(currentData);
+            const eventData = parsed.data || parsed;
+            controller.enqueue(eventData as ThinkingStepProgressEvent);
+          } catch (e) {
+            // Ignore parse errors for incomplete JSON
+          }
+          currentEvent = '';
+          currentData = '';
+        };
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.replace(/\r\n/g, '\n').split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('event:')) {
+              currentEvent = line.slice(6).trim();
+            } else if (line.startsWith('data:')) {
+              const data = line.slice(5).trim();
+              currentData = currentData ? `${currentData}\n${data}` : data;
+            } else if (line.trim() === '') {
+              if (!currentEvent || currentEvent === 'message') {
+                flushEvent();
+              } else {
+                currentEvent = '';
+                currentData = '';
+              }
+            }
+          }
+        }
+
+        if (currentData) {
+          flushEvent();
+        }
+      } catch (e) {
+        console.error('[submitStream] SSE error:', e);
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return readableStream;
 }
 
 /**

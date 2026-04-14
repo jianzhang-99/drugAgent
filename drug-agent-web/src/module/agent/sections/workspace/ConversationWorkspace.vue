@@ -102,17 +102,38 @@ const quickActions = [
   },
 ];
 
-// 仅在用户发送消息时滚动，避免 AI 回复打断用户手动滚动
-watch(
-  () => store.sending,
-  (sending) => {
-    if (sending) {
-      nextTick(() => {
-        if (messageListRef.value) {
-          messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
-        }
-      });
+// 统一的滚动到底部处理
+function scrollToBottom() {
+  nextTick(() => {
+    if (messageListRef.value) {
+      messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
     }
+  });
+}
+
+// 仅在用户发送消息或上传文件时滚动
+watch(
+  () => store.sending || store.uploading,
+  (isActive) => {
+    if (isActive) {
+      scrollToBottom();
+    }
+  }
+);
+
+// 监听消息列表本身改变（例如切换会话、初次加载、发新消息等）
+watch(
+  () => store.activeMessages.length,
+  () => {
+    scrollToBottom();
+  }
+);
+
+// 监听 activeSessionId 改变自动到底部
+watch(
+  () => store.activeSessionId,
+  () => {
+    scrollToBottom();
   }
 );
 
@@ -121,11 +142,7 @@ watch(
   () => store.streamingContent,
   () => {
     if (store.streaming) {
-      nextTick(() => {
-        if (messageListRef.value) {
-          messageListRef.value.scrollTop = messageListRef.value.scrollHeight;
-        }
-      });
+      scrollToBottom();
     }
   }
 );

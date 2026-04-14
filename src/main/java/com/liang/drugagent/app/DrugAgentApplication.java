@@ -8,7 +8,7 @@ import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication(exclude = AnthropicChatAutoConfiguration.class)
 @ComponentScan(basePackages = "com.liang.drugagent")
-@MapperScan({"com.liang.drugagent.scene.common.mapper", "com.liang.drugagent.agent.common.mapper", "com.liang.drugagent.shared.rag.mapper", "com.liang.drugagent.scene.tender_review.mapper", "com.liang.drugagent.shared.llm.benchmark"})
+@MapperScan({"com.liang.drugagent.scene.common.mapper", "com.liang.drugagent.agent.common.mapper", "com.liang.drugagent.shared.rag.mapper", "com.liang.drugagent.scene.tender_review.mapper", "com.liang.drugagent.shared.llm.benchmark", "com.liang.drugagent.benchmark.mapper"})
 public class DrugAgentApplication {
 
     static {

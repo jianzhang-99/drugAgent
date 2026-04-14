@@ -12,6 +12,7 @@ import type {
   Attachment,
   ThinkingStep,
 } from '../types/agent';
+import { normalizeThinkingSteps } from './thinkingStepNormalizer';
 
 /**
  * 从后端 AgentChatResp 映射为前端 Message
@@ -29,7 +30,7 @@ export function mapResponseToMessage(
     content: resp.answer || resp.summary || '',
     createdAt: new Date().toISOString(),
     status: 'sent',
-    thinkingSteps: resp.thinkingSteps,
+    thinkingSteps: normalizeThinkingSteps(resp.thinkingSteps),
     raw: resp,
   };
 
@@ -108,7 +109,7 @@ export function mapChatMessageToMessage(chatMsg: ChatMessage): Message {
 
   // 从 metadata 恢复思考步骤
   if (metadata?.thinkingSteps && metadata.thinkingSteps.length > 0) {
-    message.thinkingSteps = metadata.thinkingSteps as ThinkingStep[];
+    message.thinkingSteps = normalizeThinkingSteps(metadata.thinkingSteps as ThinkingStep[]);
   }
   return message;
 }
@@ -293,6 +294,7 @@ export function mapToResultData(resp: DrugAgentResp): ResultData {
     summary: resp.summary,
     steps: resp.steps,
     evidenceList: resp.evidenceList,
+    evidenceGroups: resp.evidenceGroups,
     report: resp.report,
     confidence: resp.confidence,
     routeReason: resp.routeReason,

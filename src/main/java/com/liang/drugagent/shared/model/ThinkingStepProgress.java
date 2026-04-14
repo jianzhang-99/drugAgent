@@ -30,7 +30,7 @@ public class ThinkingStepProgress {
     private String currentTitle;
 
     /**
-     * 当前步骤状态：IN_PROGRESS / COMPLETED / FAILED
+     * 当前步骤状态：PROCESSING / COMPLETED / FAILED
      */
     private String currentStatus;
 
@@ -58,4 +58,14 @@ public class ThinkingStepProgress {
      * 最终结果数据（仅 finalResult=true 时有值）
      */
     private WorkflowResult result;
+
+    /**
+     * 会话标题（仅 finalResult=true 时有值），注入到前端用于更新会话标题
+     */
+    private String sessionTitle;
+
+    /**
+     * 文档ID列表（仅 finalResult=true 时有值），追加到前端 sessionFileIds
+     */
+    private List<String> documentIds;
 }

@@ -4,8 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.agent.chat.LLMChatService;
+import com.liang.drugagent.scene.tender_review.model.ExemptionHit;
 import com.liang.drugagent.scene.tender_review.model.RiskFusionResult;
 import com.liang.drugagent.scene.tender_review.model.RuleHit;
+import com.liang.drugagent.scene.tender_review.model.TenderDocument;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
 import com.liang.drugagent.scene.tender_review.semantic.analyzer.CommercialCoordinationSemanticAnalyzer;
 import com.liang.drugagent.scene.tender_review.semantic.analyzer.ImplementationMethodSemanticAnalyzer;
@@ -173,7 +175,7 @@ public class TenderReviewWorkflow {
                 .title("结构化加载")
                 .detail("正在解析和加载标书文档数据")
                 .type("EXECUTION")
-                .status("IN_PROGRESS")
+                .status("PROCESSING")
                 .order(1)
                 .build();
         emitter.emit(ThinkingStepProgress.builder()
@@ -216,7 +218,7 @@ public class TenderReviewWorkflow {
                 .title("规则命中分析")
                 .detail("正在执行确定性规则检测")
                 .type("EXECUTION")
-                .status("IN_PROGRESS")
+                .status("PROCESSING")
                 .order(2)
                 .build();
         emitter.emit(ThinkingStepProgress.builder()
@@ -251,7 +253,7 @@ public class TenderReviewWorkflow {
                 .title("LLM语义分析")
                 .detail("正在执行6个语义分析器（技术方案、实施方案、服务承诺、风险识别、团队重叠、商务条款）")
                 .type("EXECUTION")
-                .status("IN_PROGRESS")
+                .status("PROCESSING")
                 .order(3)
                 .build();
         emitter.emit(ThinkingStepProgress.builder()
@@ -290,7 +292,7 @@ public class TenderReviewWorkflow {
                 .title("误报豁免")
                 .detail("正在应用免责判定引擎")
                 .type("EXECUTION")
-                .status("IN_PROGRESS")
+                .status("PROCESSING")
                 .order(4)
                 .build();
         emitter.emit(ThinkingStepProgress.builder()
@@ -304,6 +306,10 @@ public class TenderReviewWorkflow {
                 .build());
 
         var exemptionResult = tenderExemptionEngine.apply(allHits, tenderReviewData);
+
+        // 提取有效命中和豁免列表（供后续 LLM 结论生成使用）
+        List<RuleHit> effectiveHits = exemptionResult.effectiveHits();
+        List<ExemptionHit> exemptionHits = exemptionResult.exemptionHits();
 
         step4.setStatus("COMPLETED");
         step4.setDetail("误报豁免完成，" + exemptionResult.effectiveHits().size() + " 个有效命中，" + exemptionResult.exemptionHits().size() + " 个豁免");
@@ -324,7 +330,7 @@ public class TenderReviewWorkflow {
                 .title("风险融合")
                 .detail("正在计算综合风险评分")
                 .type("EXECUTION")
-                .status("IN_PROGRESS")
+                .status("PROCESSING")
                 .order(5)
                 .build();
         emitter.emit(ThinkingStepProgress.builder()
@@ -362,7 +368,7 @@ public class TenderReviewWorkflow {
                 .title("证据组装")
                 .detail("正在组装风险证据链")
                 .type("EXECUTION")
-                .status("IN_PROGRESS")
+                .status("PROCESSING")
                 .order(6)
                 .build();
         emitter.emit(ThinkingStepProgress.builder()
@@ -378,7 +384,8 @@ public class TenderReviewWorkflow {
         var evidenceAssemblyResult = evidenceAssemblerService.assemble(
                 exemptionResult.effectiveHits(),
                 exemptionResult.exemptionHits(),
-                fusionResult
+                fusionResult,
+                buildDocIdToNameMap(tenderReviewData)
         );
 
         step6.setStatus("COMPLETED");
@@ -400,7 +407,7 @@ public class TenderReviewWorkflow {
                 .title("报告生成")
                 .detail("正在生成审查报告")
                 .type("EXECUTION")
-                .status("IN_PROGRESS")
+                .status("PROCESSING")
                 .order(7)
                 .build();
         emitter.emit(ThinkingStepProgress.builder()
@@ -451,7 +458,7 @@ public class TenderReviewWorkflow {
                     .title("L4输出校验")
                     .detail("正在进行输出合规性校验")
                     .type("EXECUTION")
-                    .status("IN_PROGRESS")
+                    .status("PROCESSING")
                     .order(8)
                     .build();
             emitter.emit(ThinkingStepProgress.builder()
@@ -476,8 +483,39 @@ public class TenderReviewWorkflow {
         step7.setDetail("审查报告生成完成");
         completedSteps.add(step7);
 
+        // LLM 生成自然语言结论（识规则 + 建议）
+        String llmConclusion = generateLlmConclusion(fusionResult, effectiveHits, exemptionHits, report);
+        if (llmConclusion != null && !llmConclusion.isBlank()) {
+            result.setSummary(llmConclusion);
+            if (report.getOverview() != null) {
+                report.getOverview().setSummary(llmConclusion);
+            }
+        }
+
         // 设置思考步骤到结果
         result.setThinkingSteps(new ArrayList<>(completedSteps));
+
+        // 注入 documentIds（SSE 流需要）
+        if (tenderReviewData != null && tenderReviewData.getDocuments() != null) {
+            List<String> docIds = tenderReviewData.getDocuments().stream()
+                    .map(doc -> doc.getDocumentId())
+                    .filter(id -> id != null && !id.isBlank())
+                    .collect(Collectors.toList());
+            result.setDocumentIds(docIds);
+        }
+
+        // 生成会话标题（SSE 流需要）
+        String riskLabel = fusionResult.getRiskLevel() != null ? fusionResult.getRiskLevel() : "未知";
+        String sessionTitle = "标书审查[" + riskLabel + "]";
+        if (tenderReviewData != null && tenderReviewData.getDocuments() != null
+                && tenderReviewData.getDocuments().size() >= 2) {
+            String name1 = tenderReviewData.getDocuments().get(0).getDocumentName();
+            String name2 = tenderReviewData.getDocuments().get(1).getDocumentName();
+            if (name1 != null && name2 != null) {
+                sessionTitle = simplifyDocName(name1) + "与" + simplifyDocName(name2) + "审查";
+            }
+        }
+        result.setSessionTitle(sessionTitle);
 
         // 发送最终结果
         emitter.emit(ThinkingStepProgress.builder()
@@ -489,6 +527,8 @@ public class TenderReviewWorkflow {
                 .completedSteps(completedSteps)
                 .finalResult(true)
                 .result(result)
+                .sessionTitle(result.getSessionTitle())
+                .documentIds(result.getDocumentIds())
                 .build());
 
         return result;
@@ -546,7 +586,8 @@ public class TenderReviewWorkflow {
         var evidenceAssemblyResult = evidenceAssemblerService.assemble(
                 exemptionResult.effectiveHits(),
                 exemptionResult.exemptionHits(),
-                fusionResult
+                fusionResult,
+                buildDocIdToNameMap(tenderReviewData)
         );
 
         // 报告生成
@@ -787,6 +828,133 @@ public class TenderReviewWorkflow {
         } catch (Exception e) {
             log.error("[TenderReviewWorkflow] L4 校验异常: {}", e.getMessage(), e);
         }
+    }
+
+    /**
+     * 简化文档名，用于标题展示。
+     */
+    private String simplifyDocName(String documentName) {
+        if (documentName == null || documentName.isBlank()) {
+            return "";
+        }
+        return documentName.trim()
+                .replaceAll("\\.[A-Za-z0-9]{1,6}$", "")
+                .replaceAll("^投标人[A-Za-z0-9_\\-\\s]+[\\-_]", "")
+                .replaceAll("[\\-_]?(?:标书|投标文件|响应文件|商务标|技术标)$", "");
+    }
+
+    /**
+     * 构建文档ID到可读文件名的映射。
+     * 用于在证据组装时将原始文档ID替换为用户友好的文件名。
+     */
+    private Map<String, String> buildDocIdToNameMap(TenderReviewData data) {
+        Map<String, String> map = new LinkedHashMap<>();
+        if (data != null && data.getDocuments() != null) {
+            for (TenderDocument doc : data.getDocuments()) {
+                if (doc.getDocumentId() != null && doc.getDocumentName() != null) {
+                    map.put(doc.getDocumentId(), simplifyDocName(doc.getDocumentName()));
+                }
+            }
+        }
+        return map;
+    }
+
+    /**
+     * 调用 LLM 生成自然语言结论。
+     * 结合命中的规则、风险等级和证据，生成最可能的规则判断 + 处置建议。
+     *
+     * @param fusionResult 风险融合结果
+     * @param effectiveHits 有效命中的规则列表
+     * @param exemptionHits 豁免的规则列表
+     * @param report 审查报告
+     * @return LLM 生成的结论文本，异常时返回 null
+     */
+    private String generateLlmConclusion(RiskFusionResult fusionResult,
+                                          List<RuleHit> effectiveHits,
+                                          List<ExemptionHit> exemptionHits,
+                                          ReviewReport report) {
+        try {
+            String riskLevel = fusionResult != null ? fusionResult.getRiskLevel() : "UNKNOWN";
+            Integer score = fusionResult != null ? fusionResult.getScore() : 0;
+
+            // 提取最可能的规则（按权重排序取前3）
+            List<RuleHit> topHits = effectiveHits != null
+                    ? effectiveHits.stream()
+                        .sorted((a, b) -> {
+                            Integer wa = a.getAdjustedWeight() != null ? a.getAdjustedWeight() : (a.getWeight() != null ? a.getWeight() : 0);
+                            Integer wb = b.getAdjustedWeight() != null ? b.getAdjustedWeight() : (b.getWeight() != null ? b.getWeight() : 0);
+                            return Integer.compare(wb, wa);
+                        })
+                        .limit(3)
+                        .toList()
+                    : List.of();
+
+            String ruleInfo = topHits.stream()
+                    .map(h -> {
+                        String name = h.getRuleName() != null ? h.getRuleName() : h.getRuleCode();
+                        String summary = h.getTriggerSummary();
+                        return name + (summary != null ? "（" + summary + "）" : "");
+                    })
+                    .toList()
+                    .stream()
+                    .collect(Collectors.joining("；"));
+
+            String evidenceInfo = "";
+            if (report != null && report.getRiskItems() != null && !report.getRiskItems().isEmpty()) {
+                evidenceInfo = report.getRiskItems().stream()
+                        .limit(2)
+                        .map(item -> item.getTitle() + "[" + item.getRiskLevel() + "]")
+                        .toList()
+                        .stream()
+                        .collect(Collectors.joining("、"));
+            }
+
+            String prompt = String.format("""
+                    你是一位医药监管领域的标书审查专家。根据以下标书审查结果，生成一句精炼的自然语言结论，要求：
+                    1. 指出最可能命中的1-2个规则（如"W-M2规则"或"技术方案高度相似"）
+                    2. 给出明确的处置建议
+                    3. 总字数控制在50字以内
+                    4. 语言专业但易懂，不罗列数字
+
+                    审查信息：
+                    - 风险等级：%s
+                    - 风险评分：%d
+                    %s
+                    %s
+
+                    结论格式示例：
+                    "技术方案与服务承诺高度吻合，疑似串标，建议立即人工复核。"
+                    "资质文件存在关联，多个投标人疑似班底重叠，建议进一步核查。"
+
+                    请直接输出结论，不要解释。
+                    """,
+                    riskLevel,
+                    score != null ? score : 0,
+                    ruleInfo.isEmpty() ? "" : "- 最可能命中的规则：" + ruleInfo,
+                    evidenceInfo.isEmpty() ? "" : "- 关键证据：" + evidenceInfo
+            );
+
+            LlmRequest request = LlmRequest.builder()
+                    .provider(LlmProviderType.DASHSCOPE)
+                    .model("qwen-plus-2025-07-28")
+                    .messages(List.of(LlmRequest.ChatMessage.builder()
+                            .role("user")
+                            .content(prompt)
+                            .build()))
+                    .temperature(0.3f)
+                    .stream(false)
+                    .build();
+
+            LlmResponse response = llmClient.chat(request);
+            if (response != null && response.getContent() != null && !response.getContent().isBlank()) {
+                String conclusion = response.getContent().trim();
+                log.info("[TenderReviewWorkflow] LLM 结论生成成功: {}", conclusion);
+                return conclusion;
+            }
+        } catch (Exception e) {
+            log.warn("[TenderReviewWorkflow] LLM 结论生成失败: {}", e.getMessage());
+        }
+        return null;
     }
 
 }

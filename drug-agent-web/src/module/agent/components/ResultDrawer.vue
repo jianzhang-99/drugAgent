@@ -99,13 +99,13 @@
                 >
                   <div class="risk-item-header">
                     <span class="risk-num">{{ idx + 1 }}</span>
-                    <span class="risk-type">{{ item.riskType || '风险项' }}</span>
+                    <span class="risk-type">{{ translateRiskType(item.riskType) }}</span>
                     <span class="risk-level-badge" :class="`badge-${(item.riskLevel || 'unknown').toLowerCase()}`">{{ levelLabel(item.riskLevel) }}</span>
                   </div>
-                  <div class="risk-title">{{ item.title || item.summary || '未命名风险项' }}</div>
-                  <div class="risk-evidence" v-if="item.reasonCodes?.length">
-                    <span class="evidence-label">命中规则：</span>
-                    <span class="evidence-codes">{{ item.reasonCodes.join('、') }}</span>
+                  <div class="risk-title">{{ item.summary || item.title || '未命名风险项' }}</div>
+                  <div class="risk-evidence" v-if="item.evidenceTitles?.length || item.reasonCodes?.length">
+                    <span class="evidence-label">命中规则与特征：</span>
+                    <span class="evidence-codes">{{ (item.evidenceTitles?.length ? item.evidenceTitles : item.reasonCodes ?? []).join('、') }}</span>
                   </div>
                 </div>
               </div>
@@ -120,7 +120,7 @@
                   </svg>
                 </span>
                 查证证据提取
-                <span class="section-count">{{ evidenceGroups.length }} 处雷同</span>
+                <span class="section-count">{{ evidenceGroups.length }} 处证据</span>
                 <span class="toggle-icon" :class="{ collapsed: evidenceCollapsed }">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="6 9 12 15 18 9"></polyline>
@@ -131,26 +131,39 @@
                 <div v-for="(ev, idx) in evidenceGroups" :key="idx" class="evidence-card">
                   <div class="ev-header">
                     <div class="ev-num">{{ idx + 1 }}</div>
-                    <div class="ev-title">{{ ev.title || '证据片段' }}</div>
-                    <div class="ev-sim">
-                      {{ Math.round((ev.similarity || 0) * 100) }}%
+                    <div class="ev-title">{{ ev.title || '特征片段说明' }}<span v-if="ev.summary" style="margin-left: 8px; color: #86909c; font-size: 12px; font-weight: normal;">{{ ev.summary }}</span></div>
+                    <div class="ev-sim" v-if="ev.similarity !== undefined">
+                      共性度：{{ Math.round((ev.similarity || 0) * 100) }}%
                     </div>
                   </div>
-                  <div class="ev-body">
-                    <div class="ev-col ev-col-a">
+                  <div class="ev-body" v-if="ev.items && ev.items.length > 0">
+                    <div class="ev-col" v-for="(item, i) in ev.items" :key="i" :class="i % 2 === 0 ? 'ev-col-a' : 'ev-col-b'">
+                      <div class="col-label">
+                        <span class="col-dot" :class="i % 2 === 0 ? 'dot-a' : 'dot-b'"></span>
+                        {{ documentNames[i] || item.source || ('来源文档 ' + (i + 1)) }}
+                      </div>
+                      <div class="col-text" v-html="formatContent(item.content)"></div>
+                    </div>
+                  </div>
+                  <!-- 兼容旧格式 -->
+                  <div class="ev-body" v-else-if="ev.contentA || ev.contentB">
+                    <div class="ev-col ev-col-a" v-if="ev.contentA">
                       <div class="col-label">
                         <span class="col-dot dot-a"></span>
                         {{ documentNames[0] || '文档A' }}
                       </div>
                       <div class="col-text" v-html="formatContent(ev.contentA)"></div>
                     </div>
-                    <div class="ev-col ev-col-b">
+                    <div class="ev-col ev-col-b" v-if="ev.contentB">
                       <div class="col-label">
                         <span class="col-dot dot-b"></span>
                         {{ documentNames[1] || '文档B' }}
                       </div>
                       <div class="col-text" v-html="formatContent(ev.contentB)"></div>
                     </div>
+                  </div>
+                  <div class="ev-body empty-evidence" v-else>
+                     未提取文本详情
                   </div>
                 </div>
               </div>
@@ -175,7 +188,7 @@
                   :class="`rule-${(item.riskLevel || 'unknown').toLowerCase()}`"
                 >
                   <span class="rule-level-badge">{{ levelLabel(item.riskLevel) }}</span>
-                  <span class="rule-text">{{ item.title || item.summary || '未知规则' }}</span>
+                  <span class="rule-text">{{ item.summary || item.title || '未知规则' }}</span>
                 </div>
               </div>
             </div>
@@ -248,7 +261,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useAgentStore } from '../store/agentStore';
-import html2pdf from 'html2pdf.js';
+import { exportElementToPdf, exportMarkdownToPdf } from '../utils/pdfExporter';
 
 const store = useAgentStore();
 
@@ -332,11 +345,26 @@ const suggestedActions = computed(() => {
 
 // 风险等级标签
 function levelLabel(level?: string): string {
+  if (!level) return '未知';
   const map: Record<string, string> = {
     high: '高风险', medium: '中风险', low: '低风险', info: '提示',
   };
-  const normalizedLevel = (level || 'unknown').toLowerCase();
-  return map[normalizedLevel] || '未知';
+  const normalizedLevel = level.toLowerCase();
+  return map[normalizedLevel] || '高风险'; // 默认当高风险兜底让用户引起重视
+}
+
+// 翻译风险类型
+function translateRiskType(type?: string): string {
+  if (!type) return '审查项目';
+  const map: Record<string, string> = {
+    collusion: '协同作弊(围标)',
+    plagiarism: '雷同与抄袭',
+    qualification: '资质异常',
+    pricing: '报价特征异常',
+    network: '网络/设备同源',
+    unknown: '综合风险',
+  };
+  return map[type.toLowerCase()] || type;
 }
 
 // 格式化证据内容
@@ -359,19 +387,28 @@ function handleClose() {
 }
 
 async function handleExportPdf() {
+  // 优先使用 Markdown 内容导出 PDF（格式更清晰）
+  const markdownContent = result.value?.report?.markdownContent;
+  if (markdownContent) {
+    try {
+      await exportMarkdownToPdf(markdownContent, `标书审查报告_${result.value?.traceId || Date.now()}`);
+      return;
+    } catch (error) {
+      console.error('Markdown 导出 PDF 失败，降级为 DOM 导出:', error);
+      // 降级到 DOM 导出
+    }
+  }
+
+  // 降级方案：直接导出 modal-body DOM
   const element = document.querySelector('.modal-body') as HTMLElement;
-  if (!element) return;
-  const opt = {
-    margin: 10,
-    filename: `标书审查报告_${result.value?.traceId || Date.now()}.pdf`,
-    image: { type: 'jpeg' as const, quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true },
-    jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const },
-  };
+  if (!element) {
+    console.error('未找到可导出的 DOM 元素');
+    return;
+  }
   try {
-    await html2pdf().set(opt).from(element).save();
+    await exportElementToPdf(element, `标书审查报告_${result.value?.traceId || Date.now()}`);
   } catch (error) {
-    console.error('导出PDF失败:', error);
+    console.error('导出 PDF 失败:', error);
   }
 }
 </script>
@@ -559,7 +596,8 @@ async function handleExportPdf() {
 .col-dot { width: 7px; height: 7px; border-radius: 50%; }
 .dot-a { background: #165dff; }
 .dot-b { background: #00b42a; }
-.col-text { font-size: 12.5px; line-height: 1.7; color: #333; }
+.col-text { font-size: 13px; line-height: 1.8; color: #333; background: #fff; padding: 10px; border-radius: 6px; border: 1px solid #f0f0f0; }
+.empty-evidence { padding: 16px; color: #86909c; font-size: 13px; text-align: center; grid-column: span 2; }
 :deep(mark) { background: #fef0b2; color: inherit; border-radius: 2px; padding: 0 2px; }
 
 /* ============ 规则 ============ */

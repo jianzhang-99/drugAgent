@@ -7,14 +7,19 @@ import com.liang.drugagent.agent.chat.AgentSessionService;
 import com.liang.drugagent.agent.chat.LLMChatService;
 import com.liang.drugagent.agent.common.entity.ChatMessage;
 import com.liang.drugagent.agent.common.entity.ChatSession;
+import com.liang.drugagent.controller.domain.AgentChatContext;
 import com.liang.drugagent.controller.domain.request.agent.*;
 import com.liang.drugagent.controller.domain.response.agent.AgentChatResp;
 import com.liang.drugagent.scene.SceneEnum;
 import com.liang.drugagent.scene.tender_review.facade.TenderReviewSceneService;
+import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
 import com.liang.drugagent.shared.llm.LlmProviderType;
 import com.liang.drugagent.shared.llm.ModelInfo;
 import com.liang.drugagent.shared.model.ThinkingStepProgress;
 import com.liang.drugagent.shared.model.Result;
+import com.liang.drugagent.shared.model.WorkflowResult;
+import com.liang.drugagent.shared.rag.cos.TencentCosStorageService;
+import com.liang.drugagent.shared.rag.entity.OssFile;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +30,11 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import reactor.core.publisher.Flux;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Agent 统一控制器。
@@ -50,6 +59,7 @@ public class AgentController {
     private final AgentMessageService agentMessageService;
     private final LLMChatService llmChatService;
     private final TenderReviewSceneService tenderReviewSceneService;
+    private final TencentCosStorageService cosStorageService;
     private final ObjectMapper objectMapper;
 
     // ==================== 对话接口 ====================
@@ -137,11 +147,28 @@ public class AgentController {
             if (files != null && files.length > 0) {
                 req.setFiles(files);
             }
-            // 构建上下文
-            com.liang.drugagent.controller.domain.AgentChatContext context =
-                    com.liang.drugagent.controller.domain.AgentChatContext.from(req);
-            // 流式执行并映射为 ServerSentEvent
+
+            ChatSession session = agentSessionService.getOrCreateSession(req.getSessionId());
+            String sessionId = session.getId();
+            List<OssFile> uploadedFiles = saveUploadedFiles(sessionId, req);
+            mergeFileIds(req, uploadedFiles);
+
+            List<ChatMessage> recentMessages = agentMessageService.getRecentMessages(sessionId, 20);
+            AgentChatContext context = AgentChatContext.from(req, sessionId);
+            context.setSession(session);
+            context.setHistoryMessages(recentMessages);
+            context.setRecentSummary(session.getSummary());
+            context.setUploadedFiles(uploadedFiles);
+
+            agentMessageService.saveUserMessage(sessionId, req.getQuery(), null);
+            agentSessionService.increaseMessageCount(sessionId, 1);
+
             return tenderReviewSceneService.streamExecute(context, req)
+                    .doOnNext(progress -> {
+                        if (progress != null && progress.isFinalResult()) {
+                            persistStreamFinalResult(sessionId, context, progress);
+                        }
+                    })
                     .map(progress -> ServerSentEvent.<ThinkingStepProgress>builder()
                             .data(progress)
                             .build());
@@ -149,6 +176,109 @@ public class AgentController {
             log.error("[AgentController] 流式文件上传请求处理失败: {}", e.getMessage(), e);
             return Flux.error(e);
         }
+    }
+
+    private List<OssFile> saveUploadedFiles(String sessionId, AgentChatReq req) {
+        if (req.getFiles() == null || req.getFiles().length == 0) {
+            return List.of();
+        }
+        return cosStorageService.saveUploadedFiles(sessionId, req.getFiles());
+    }
+
+    private void mergeFileIds(AgentChatReq req, List<OssFile> uploadedFiles) {
+        if (uploadedFiles == null || uploadedFiles.isEmpty()) {
+            return;
+        }
+        List<String> mergedFileIds = new ArrayList<>();
+        if (req.getFileIds() != null && !req.getFileIds().isEmpty()) {
+            mergedFileIds.addAll(req.getFileIds());
+        }
+        uploadedFiles.stream()
+                .map(OssFile::getId)
+                .filter(id -> id != null && !id.isBlank())
+                .forEach(id -> {
+                    if (!mergedFileIds.contains(id)) {
+                        mergedFileIds.add(id);
+                    }
+                });
+        req.setFileIds(mergedFileIds);
+    }
+
+    private void persistStreamFinalResult(String sessionId,
+                                          AgentChatContext context,
+                                          ThinkingStepProgress progress) {
+        WorkflowResult workflowResult = progress.getResult();
+        if (workflowResult == null) {
+            return;
+        }
+
+        String assistantContent = workflowResult.getAnswer() != null && !workflowResult.getAnswer().isBlank()
+                ? workflowResult.getAnswer()
+                : workflowResult.getSummary();
+
+        String messageType = (workflowResult.getReport() != null || workflowResult.getRiskLevel() != null)
+                ? "assistant_result_card"
+                : "assistant_text";
+
+        try {
+            Map<String, Object> metadata = buildStreamMetadata(context, progress, workflowResult);
+            String metadataJson = objectMapper.writeValueAsString(metadata);
+            agentMessageService.saveAssistantMessage(sessionId, assistantContent, metadataJson, messageType);
+        } catch (Exception ex) {
+            log.warn("[AgentController] 流式结果 metadata 序列化失败，将降级为纯文本消息: {}", ex.getMessage());
+            agentMessageService.saveAssistantMessage(sessionId, assistantContent, null, messageType);
+        }
+
+        agentSessionService.touchSession(sessionId, SceneEnum.TENDER_REVIEW.name());
+        agentSessionService.increaseMessageCount(sessionId, 1);
+
+        String sessionTitle = progress.getSessionTitle() != null && !progress.getSessionTitle().isBlank()
+                ? progress.getSessionTitle()
+                : workflowResult.getSessionTitle();
+        if (sessionTitle != null && !sessionTitle.isBlank()) {
+            agentSessionService.updateSessionTitleIfNeeded(sessionId, sessionTitle);
+        }
+        if (workflowResult.getSummary() != null && !workflowResult.getSummary().isBlank()) {
+            agentSessionService.updateSessionSummary(sessionId, workflowResult.getSummary());
+        }
+    }
+
+    private Map<String, Object> buildStreamMetadata(AgentChatContext context,
+                                                    ThinkingStepProgress progress,
+                                                    WorkflowResult workflowResult) {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("traceId", context.getTraceId());
+        metadata.put("scene", SceneEnum.TENDER_REVIEW.name());
+        metadata.put("summary", workflowResult.getSummary());
+        metadata.put("answer", workflowResult.getAnswer());
+        metadata.put("riskLevel", workflowResult.getRiskLevel());
+        metadata.put("score", workflowResult.getScore());
+        metadata.put("report", workflowResult.getReport());
+        metadata.put("evidenceList", workflowResult.getEvidenceList());
+        metadata.put("evidenceGroups", workflowResult.getEvidenceGroups());
+        metadata.put("steps", workflowResult.getSteps());
+        metadata.put("thinkingSteps", workflowResult.getThinkingSteps());
+        metadata.put("sessionTitle", progress.getSessionTitle() != null ? progress.getSessionTitle() : workflowResult.getSessionTitle());
+        metadata.put("documentIds", progress.getDocumentIds() != null ? progress.getDocumentIds() : workflowResult.getDocumentIds());
+        metadata.put("documentNames", resolveDocumentNames(context, workflowResult));
+        metadata.put("fileIds", progress.getDocumentIds() != null ? progress.getDocumentIds() : workflowResult.getDocumentIds());
+        return metadata;
+    }
+
+    private List<String> resolveDocumentNames(AgentChatContext context, WorkflowResult workflowResult) {
+        if (workflowResult.getDocumentNames() != null && !workflowResult.getDocumentNames().isEmpty()) {
+            return workflowResult.getDocumentNames();
+        }
+        Object tenderReviewDataObj = context.getMetadata().get("tenderReviewData");
+        if (tenderReviewDataObj instanceof TenderReviewData tenderReviewData
+                && tenderReviewData.getDocuments() != null
+                && !tenderReviewData.getDocuments().isEmpty()) {
+            return tenderReviewData.getDocuments().stream()
+                    .map(doc -> doc.getDocumentName() != null ? doc.getDocumentName()
+                            : (doc.getFilename() != null ? doc.getFilename() : doc.getDocumentId()))
+                    .collect(Collectors.toList());
+        }
+        return List.of();
     }
 
     // ==================== 会话管理接口 ====================

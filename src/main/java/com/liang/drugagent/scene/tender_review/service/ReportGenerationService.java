@@ -254,7 +254,7 @@ public class ReportGenerationService {
         }
         return evidenceItems.stream()
                 .filter(item -> item.getTitle() != null && item.getTitle().equals(hit.getRuleName()))
-                .map(item -> "证据点: " + item.getContent())
+                .map(EvidenceItem::getContent)
                 .limit(2)
                 .collect(Collectors.toList());
     }

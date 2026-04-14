@@ -35,12 +35,24 @@ public class WorkflowResult {
     private List<EvidenceGroup> evidenceGroups = new ArrayList<>();
     private List<String> steps = new ArrayList<>();
     private List<ThinkingStep> thinkingSteps = new ArrayList<>();
+    private String traceId;
+    private List<String> documentNames = new ArrayList<>();
     /**
      * 分析覆盖度信息，记录各 LLM 分析器的执行状态。
      * key: 分析器名称（如 W-P1、W-P2 等）
      * value: 分析器状态 SUCCESS / FAILED
      */
     private Map<String, String> analyzerStatus = new LinkedHashMap<>();
+
+    /**
+     * 会话标题，供 SSE 流式接口返回给前端
+     */
+    private String sessionTitle;
+
+    /**
+     * 文档ID列表，供 SSE 流式接口返回给前端
+     */
+    private List<String> documentIds = new ArrayList<>();
 
     public static WorkflowResult of(SceneEnum scene, String answer) {
         WorkflowResult result = new WorkflowResult();

@@ -42,7 +42,7 @@ public class ThinkingStep {
 
     /**
      * 步骤状态：
-     * COMPLETED / FAILED / INFO
+     * COMPLETED / FAILED / INFO / PROCESSING
      */
     private String status;
 

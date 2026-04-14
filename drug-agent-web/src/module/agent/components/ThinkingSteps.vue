@@ -24,7 +24,7 @@
 
     <!-- 步骤列表 -->
     <div class="steps-body" v-show="isExpanded">
-      <div class="steps-track">
+      <transition-group name="step-reveal" tag="div" class="steps-track">
         <div
           v-for="(step, index) in steps"
           :key="step.code + index"
@@ -73,7 +73,7 @@
             <p class="step-detail" v-if="step.detail">{{ step.detail }}</p>
           </div>
         </div>
-      </div>
+      </transition-group>
     </div>
   </div>
 </template>
@@ -192,6 +192,17 @@ function typeLabel(type: string): string {
   display: flex;
   gap: 10px;
   align-items: flex-start;
+}
+
+.step-reveal-enter-active,
+.step-reveal-leave-active {
+  transition: opacity 0.28s ease, transform 0.28s ease;
+}
+
+.step-reveal-enter-from,
+.step-reveal-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
 }
 
 /* 左侧轨道 */

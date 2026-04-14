@@ -175,7 +175,7 @@ public class RiskFusionService {
         result.setScore(finalScore);
         result.setRiskLevel(resolveRiskLevel(finalScore, hasHighPriorityHardRule, synergyBonus > 0));
         result.setReasonCodes(reasonCodes);
-        result.setSummary(buildSummary(finalScore, hits.size(), exemptions.size(), ruleCodes, documentIds.size()));
+        result.setSummary(buildSummary(finalScore, hits, exemptions.size(), documentIds.size()));
         return result;
     }
 
@@ -305,14 +305,33 @@ public class RiskFusionService {
     }
 
     /**
-     * 构建风险简报。
+     * 构建风险简报，包含具体命中的规则名称。
      */
-    private String buildSummary(int score, int hitCount, int exemptionCount, Set<String> ruleCodes, int documentCount) {
-        return "风险融合分值=" + score
-                + "，有效命中=" + hitCount
-                + "，规则类型数=" + ruleCodes.size()
-                + "，文档数=" + documentCount
-                + (exemptionCount > 0 ? "，豁免项=" + exemptionCount : "");
+    private String buildSummary(int score, List<RuleHit> hits, int exemptionCount, int documentCount) {
+        // 提取有效命中的规则名称
+        Set<String> ruleNames = new LinkedHashSet<>();
+        Set<String> ruleCodes = new LinkedHashSet<>();
+        for (RuleHit hit : hits) {
+            if (hit.getRuleName() != null && !hit.getRuleName().isBlank()) {
+                ruleNames.add(hit.getRuleName());
+            }
+            if (hit.getRuleCode() != null) {
+                ruleCodes.add(hit.getRuleCode());
+            }
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("风险融合分值=").append(score);
+        sb.append("，有效命中=").append(hits.size()).append("项");
+        if (!ruleNames.isEmpty()) {
+            sb.append("（").append(String.join("、", ruleNames)).append("）");
+        }
+        sb.append("，规则类型数=").append(ruleCodes.size());
+        sb.append("，文档数=").append(documentCount);
+        if (exemptionCount > 0) {
+            sb.append("，豁免项=").append(exemptionCount);
+        }
+        return sb.toString();
     }
 
     /**

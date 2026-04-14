@@ -12,6 +12,22 @@ export interface Session {
   messages?: Message[];
 }
 
+// ThinkingStepProgress - 流式思考步骤进度（用于 SSE 场景）
+export interface ThinkingStepProgress {
+  /** 步骤编码，如 route / prepare_data / rule_analysis */
+  code: string;
+  /** 步骤标题 */
+  title: string;
+  /** 步骤说明 */
+  detail?: string;
+  /** 步骤类型：ROUTE / EXECUTION / CLARIFICATION / ERROR / FINALIZE */
+  type: string;
+  /** 步骤状态：COMPLETED / FAILED / INFO / PROCESSING */
+  status: string;
+  /** 展示顺序，从 1 开始 */
+  order: number;
+}
+
 // ThinkingStep - 对应后端 ThinkingStep.java
 export interface ThinkingStep {
   /** 步骤编码，如 route / prepare_data / rule_analysis */
@@ -67,6 +83,7 @@ export interface ResultData {
   summary?: string;
   steps?: string[];
   evidenceList?: Evidence[];
+  evidenceGroups?: EvidenceGroup[];
   report?: ReviewReport;
   confidence?: number;
   routeReason?: string;
@@ -106,7 +123,12 @@ export interface EvidenceGroup {
   id?: string;
   type?: string;
   evidenceList?: EvidenceItem[];
+  items?: EvidenceItem[];
   similarity?: number;
+  title?: string;
+  summary?: string;
+  contentA?: string;
+  contentB?: string;
 }
 
 // 后端 RiskItem

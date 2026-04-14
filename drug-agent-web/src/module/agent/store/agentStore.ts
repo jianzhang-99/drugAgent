@@ -24,6 +24,11 @@ import {
   createAssistantMessage,
   createProcessingMessage,
 } from '../utils/messageMapper';
+import {
+  createInitialTenderReviewThinkingSteps,
+  mergeNormalizedThinkingSteps,
+  normalizeThinkingSteps,
+} from '../utils/thinkingStepNormalizer';
 
 export const useAgentStore = defineStore('agent', () => {
   // ==================== 状态定义 ====================
@@ -438,17 +443,7 @@ export const useAgentStore = defineStore('agent', () => {
    * 初始化标书审查思考步骤
    */
   function initTenderReviewThinkingSteps() {
-    thinkingStepsInProgress.value = [
-      { code: 'route', title: '场景识别', type: 'ROUTE', status: 'COMPLETED', order: 1, detail: '检测到上传文件，自动进入标书审查场景' },
-      { code: 'validate_data', title: '数据校验', type: 'EXECUTION', status: 'PROCESSING', order: 2, detail: '检查文件完整性和格式...' },
-      { code: 'prepare_data', title: '文档解析', type: 'EXECUTION', status: 'INFO', order: 3, detail: '解析标书文本与结构化字段...' },
-      { code: 'rule_analysis', title: '规则命中分析', type: 'EXECUTION', status: 'INFO', order: 4, detail: '执行确定性规则，筛出相似特征...' },
-      { code: 'semantic_analysis', title: 'LLM语义分析', type: 'EXECUTION', status: 'INFO', order: 5, detail: '对语义相似片段做补强分析...' },
-      { code: 'apply_exemption', title: '误报豁免', type: 'EXECUTION', status: 'INFO', order: 6, detail: '对可能的误报场景进行降权处理...' },
-      { code: 'risk_fusion', title: '风险融合', type: 'EXECUTION', status: 'INFO', order: 7, detail: '融合规则命中与语义分析结果...' },
-      { code: 'assemble_evidence', title: '证据组装', type: 'EXECUTION', status: 'INFO', order: 8, detail: '组织命中规则对应的证据链...' },
-      { code: 'generate_report', title: '报告生成', type: 'FINALIZE', status: 'INFO', order: 9, detail: '生成最终审查报告...' },
-    ];
+    thinkingStepsInProgress.value = createInitialTenderReviewThinkingSteps();
   }
 
   /**
@@ -490,7 +485,8 @@ export const useAgentStore = defineStore('agent', () => {
     try {
       processingStatus.value = 'processing';
 
-      const res = await agentApi.submit(
+      // 尝试使用 SSE 流式接口
+      const stream = agentApi.submitStream(
         query,
         activeSession.value?.scene,
         activeSessionId.value,
@@ -499,44 +495,115 @@ export const useAgentStore = defineStore('agent', () => {
         currentModel.value,
         files
       );
+      const reader = stream.getReader();
 
-      if (res.data.code === 200 || res.data.code === 0) {
-        removeMessage(processingMsg.id);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-        // 添加助手消息（后端返回的思考步骤会替换前端的占位步骤）
-        const aiMsg = mapResponseToMessage(res.data.data);
-        addMessage(aiMsg);
+        // 只展示已推进到的步骤，并把后端步骤名归一化为前端展示口径
+        if (value.completedSteps?.length || value.currentStep) {
+          thinkingStepsInProgress.value = mergeNormalizedThinkingSteps(
+            thinkingStepsInProgress.value,
+            [...(value.completedSteps || []), value.currentStep]
+          );
 
-        // 实时更新会话标题
-        if (res.data.data?.sessionTitle) {
-          const session = sessions.value.find(s => s.id === activeSessionId.value);
-          if (session) {
-            session.title = res.data.data.sessionTitle;
+          // 同步更新 UI 绑定的 processingMsg
+          if (activeSessionId.value) {
+            const messages = messagesBySession.value[activeSessionId.value];
+            const targetMsg = messages?.find(m => m.id === processingMsg.id);
+            if (targetMsg) {
+              targetMsg.thinkingSteps = [...thinkingStepsInProgress.value];
+            }
           }
+
+          // 更新 processingStatus 的 detail 为当前步骤的 currentDetail
+          processingStatus.value = 'processing';
         }
 
-        // 将返回的 fileIds 存入会话级状态，后续 sendMessage 会自动带上
-        const returnedFileIds: string[] = res.data.data?.fileIds || [];
-        if (returnedFileIds.length > 0 && activeSessionId.value) {
-          const existing = sessionFileIds.value[activeSessionId.value] || [];
-          const merged = Array.from(new Set([...existing, ...returnedFileIds]));
-          sessionFileIds.value[activeSessionId.value] = merged;
-          console.log('[agentStore] 追加会话文件ID, sessionId=' + activeSessionId.value + ', 本次=' + returnedFileIds.length + '个, 累计=' + merged.length + '个');
-        }
+        // 收到 finalResult=true 时，用 result 构建最终响应
+        if (value.finalResult && value.result) {
+          const result = value.result;
+          result.thinkingSteps = normalizeThinkingSteps(result.thinkingSteps);
 
-        return res.data.data;
-      } else {
-        removeMessage(processingMsg.id);
-        const errorMsg = createErrorMessage(res.data.message || '上传失败');
-        addMessage(errorMsg);
+          removeMessage(processingMsg.id);
+
+          // 用 mapResponseToMessage 将结果转换为消息
+          const aiMsg = mapResponseToMessage(result);
+          addMessage(aiMsg);
+
+          // 实时更新会话标题（优先从 SSE 顶层获取，其次从 result 获取）
+          const sessionTitle = value.sessionTitle || result.sessionTitle;
+          if (sessionTitle) {
+            const session = sessions.value.find(s => s.id === activeSessionId.value);
+            if (session) {
+              session.title = sessionTitle;
+            }
+          }
+
+          // 从 SSE 事件顶层提取 documentIds 追加到 sessionFileIds
+          const docIds = value.documentIds || result.documentIds;
+          if (docIds && docIds.length > 0 && activeSessionId.value) {
+            const existing = sessionFileIds.value[activeSessionId.value] || [];
+            const merged = Array.from(new Set([...existing, ...docIds]));
+            sessionFileIds.value[activeSessionId.value] = merged;
+            console.log('[agentStore] 追加会话文件ID, sessionId=' + activeSessionId.value + ', 本次=' + docIds.length + '个, 累计=' + merged.length + '个');
+          }
+
+          // 停止 thinkingStepsInProgress 的更新
+          thinkingStepsInProgress.value = [];
+          return result;
+        }
       }
     } catch (error: unknown) {
-      console.error('上传文件失败:', error);
-      removeMessage(processingMsg.id);
-      const errorMsg = createErrorMessage(
-        error instanceof Error ? error.message : '网络错误，请稍后重试'
-      );
-      addMessage(errorMsg);
+      // SSE 出错，降级为同步接口
+      console.error('[agentStore] submitStream 出错，降级为同步接口:', error);
+
+      try {
+        const res = await agentApi.submit(
+          query,
+          activeSession.value?.scene,
+          activeSessionId.value,
+          'default_user',
+          submittedBy,
+          currentModel.value,
+          files
+        );
+
+        if (res.data.code === 200 || res.data.code === 0) {
+          removeMessage(processingMsg.id);
+
+          const aiMsg = mapResponseToMessage(res.data.data);
+          addMessage(aiMsg);
+
+          if (res.data.data?.sessionTitle) {
+            const session = sessions.value.find(s => s.id === activeSessionId.value);
+            if (session) {
+              session.title = res.data.data.sessionTitle;
+            }
+          }
+
+          const returnedFileIds: string[] = res.data.data?.fileIds || [];
+          if (returnedFileIds.length > 0 && activeSessionId.value) {
+            const existing = sessionFileIds.value[activeSessionId.value] || [];
+            const merged = Array.from(new Set([...existing, ...returnedFileIds]));
+            sessionFileIds.value[activeSessionId.value] = merged;
+            console.log('[agentStore] 追加会话文件ID, sessionId=' + activeSessionId.value + ', 本次=' + returnedFileIds.length + '个, 累计=' + merged.length + '个');
+          }
+
+          return res.data.data;
+        } else {
+          removeMessage(processingMsg.id);
+          const errorMsg = createErrorMessage(res.data.message || '上传失败');
+          addMessage(errorMsg);
+        }
+      } catch (syncError: unknown) {
+        removeMessage(processingMsg.id);
+        const errorMsg = createErrorMessage(
+          syncError instanceof Error ? syncError.message : '网络错误，请稍后重试'
+        );
+        addMessage(errorMsg);
+      }
     } finally {
       uploading.value = false;
       processingStatus.value = 'idle';

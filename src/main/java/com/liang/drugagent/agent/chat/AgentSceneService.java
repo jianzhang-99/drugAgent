@@ -1037,7 +1037,7 @@ public class AgentSceneService {
     }
 
     private String defaultModelFor(LlmProviderType provider) {
-        return LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7-highspeed" : "qwen-plus";
+        return LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7-highspeed" : "qwen-plus-2025-07-28";
     }
 
     private LlmProviderType normalizeProviderType(LlmProviderType providerType) {

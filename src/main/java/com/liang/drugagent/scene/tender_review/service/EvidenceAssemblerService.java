@@ -34,12 +34,13 @@ public class EvidenceAssemblerService {
      */
     public EvidenceAssemblyResult assemble(List<RuleHit> hits,
                                            List<ExemptionHit> exemptionHits,
-                                           RiskFusionResult fusionResult) {
+                                           RiskFusionResult fusionResult,
+                                           Map<String, String> docIdToName) {
         EvidenceAssemblyResult result = new EvidenceAssemblyResult();
         List<EvidenceGroup> groups = new ArrayList<>();
 
         groups.add(buildFusionGroup(fusionResult));
-        groups.addAll(buildRuleGroups(hits));
+        groups.addAll(buildRuleGroups(hits, docIdToName));
         if (exemptionHits != null && !exemptionHits.isEmpty()) {
             groups.add(buildExemptionGroup(exemptionHits));
         }
@@ -72,7 +73,7 @@ public class EvidenceAssemblerService {
         return group;
     }
 
-    private List<EvidenceGroup> buildRuleGroups(List<RuleHit> hits) {
+    private List<EvidenceGroup> buildRuleGroups(List<RuleHit> hits, Map<String, String> docIdToName) {
         if (hits == null || hits.isEmpty()) {
             EvidenceGroup group = new EvidenceGroup();
             group.setGroupKey("rule_hits");
@@ -94,12 +95,12 @@ public class EvidenceAssemblerService {
 
         List<EvidenceGroup> groups = new ArrayList<>();
         for (Map.Entry<String, List<RuleHit>> entry : grouped.entrySet()) {
-            groups.add(buildRuleGroup(entry.getKey(), entry.getValue()));
+            groups.add(buildRuleGroup(entry.getKey(), entry.getValue(), docIdToName));
         }
         return groups;
     }
 
-    private EvidenceGroup buildRuleGroup(String groupKey, List<RuleHit> hits) {
+    private EvidenceGroup buildRuleGroup(String groupKey, List<RuleHit> hits, Map<String, String> docIdToName) {
         EvidenceGroup group = new EvidenceGroup();
         group.setGroupKey(groupKey);
         group.setTitle(resolveGroupTitle(groupKey));
@@ -110,7 +111,7 @@ public class EvidenceAssemblerService {
         for (RuleHit hit : hits) {
             group.getItems().add(new EvidenceItem(
                     resolveEvidenceItemTitle(hit),
-                    buildRuleContent(hit),
+                    buildRuleContent(hit, docIdToName),
                     "rule-engine"
             ));
         }
@@ -141,48 +142,52 @@ public class EvidenceAssemblerService {
                 .collect(Collectors.toList());
     }
 
-    private String buildRuleContent(RuleHit hit) {
+    private String buildRuleContent(RuleHit hit, Map<String, String> docIdToName) {
         StringBuilder builder = new StringBuilder();
         builder.append(hit.getTriggerSummary());
-        builder.append(" | 权重=").append(effectiveWeight(hit));
-        if (hit.getDocumentIds() != null && !hit.getDocumentIds().isEmpty()) {
-            builder.append(" | 文档=").append(String.join(",", hit.getDocumentIds()));
-        }
         if (hit.getEvidences() != null && !hit.getEvidences().isEmpty()) {
             String anchors = hit.getEvidences().stream()
-                    .map(this::summarizeEvidence)
+                    .map(e -> summarizeEvidence(e, docIdToName))
                     .filter(text -> !text.isBlank())
                     .distinct()
                     .limit(3)
-                    .collect(Collectors.joining("; "));
+                    .collect(Collectors.joining("；"));
             if (!anchors.isBlank()) {
-                builder.append(" | 证据=").append(anchors);
+                builder.append("。典型证据：").append(anchors);
             }
         }
         if (Boolean.TRUE.equals(hit.getExempted()) && hit.getExemptionReason() != null && !hit.getExemptionReason().isBlank()) {
-            builder.append(" | 豁免原因=").append(hit.getExemptionReason());
+            builder.append("（已豁免：" + hit.getExemptionReason() + "）");
         }
         return builder.toString();
     }
 
-    private String summarizeEvidence(RuleEvidence evidence) {
+    private String summarizeEvidence(RuleEvidence evidence, Map<String, String> docIdToName) {
         if (evidence == null) {
             return "";
         }
-        List<String> parts = new ArrayList<>();
-        if (evidence.getDocumentId() != null) {
-            parts.add(evidence.getDocumentId());
+        // 用可读文件名替代原始 ID
+        String docLabel = evidence.getDocumentId();
+        if (docIdToName != null && docIdToName.containsKey(evidence.getDocumentId())) {
+            docLabel = docIdToName.get(evidence.getDocumentId());
         }
-        if (evidence.getChapterPath() != null) {
-            parts.add(evidence.getChapterPath());
+        // 只保留章节名和关键值，格式：章节名｜关键值（文档名）
+        String chapter = evidence.getChapterPath() != null ? evidence.getChapterPath() : "";
+        String value = evidence.getMatchedValue();
+        if (value != null && value.length() > 30) {
+            value = value.substring(0, 30) + "…";
         }
-        if (evidence.getMatchedValue() != null) {
-            String value = evidence.getMatchedValue().length() > 40
-                    ? evidence.getMatchedValue().substring(0, 40)
-                    : evidence.getMatchedValue();
-            parts.add(value);
+        StringBuilder sb = new StringBuilder();
+        if (!chapter.isBlank()) {
+            sb.append("《").append(chapter).append("》");
         }
-        return String.join(" / ", parts);
+        if (value != null && !value.isBlank()) {
+            sb.append("出现异常值：").append(value);
+        }
+        if (!docLabel.isBlank()) {
+            sb.append("（来源：").append(docLabel).append("）");
+        }
+        return sb.toString();
     }
 
     private String resolveGroupKey(RuleHit hit) {

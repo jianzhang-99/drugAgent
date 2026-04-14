@@ -113,10 +113,14 @@ const displayScore = computed(() => {
   return 0;
 });
 
-// 一句话结论
+// 一句话结论（优先使用后端返回的具体规则命中摘要，无则用通用文本兜底）
 const conclusionText = computed(() => {
+  // 后端 summary 包含具体规则名称，优先展示
+  const backendSummary = props.data?.summary;
+  if (backendSummary && backendSummary.trim()) {
+    return backendSummary;
+  }
   const level = derivedLevel.value;
-  const count = riskItemCount.value;
   if (level === 'high') return `发现明显围标特征，建议立即人工复核`;
   if (level === 'medium') return `存在疑似特征，建议进行人工核查`;
   if (level === 'low') return `相似度较低，持续关注即可`;

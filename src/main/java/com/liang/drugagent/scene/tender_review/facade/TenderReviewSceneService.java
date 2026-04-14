@@ -13,6 +13,7 @@ import com.liang.drugagent.shared.llm.LlmRequest;
 import com.liang.drugagent.shared.llm.LlmResponse;
 import com.liang.drugagent.shared.llm.LlmService;
 import com.liang.drugagent.shared.model.AgentExecutionResult;
+import com.liang.drugagent.shared.model.ThinkingStep;
 import com.liang.drugagent.shared.model.ThinkingStepEmitter;
 import com.liang.drugagent.shared.model.ThinkingStepProgress;
 import com.liang.drugagent.shared.model.WorkflowResult;
@@ -160,46 +161,93 @@ public class TenderReviewSceneService {
         log.info("[TenderReviewSceneService] 开始流式执行标书审查, sessionId={}",
                 context.getSessionId());
 
-        // 1. 准备标书审查数据（同步）
-        TenderReviewData data = preparationService.prepare(context, req);
-
-        // 2. 校验数据是否满足最低要求
-        if (!preparationService.hasEnoughDocuments(data)) {
-            String specificError = (String) context.getMetadata().get("preparationError");
-            String errorMsg = specificError != null && !specificError.isBlank()
-                    ? specificError
-                    : "当前可用于审查的标书文件不足。请先上传至少2份标书文件，我再继续为你审查围标风险。";
-            log.warn("[TenderReviewSceneService] 标书数据不足，无法进行审查");
-
-            // 返回错误流
-            ThinkingStepProgress errorProgress = ThinkingStepProgress.builder()
-                    .currentCode("error")
-                    .currentTitle("数据不足")
-                    .currentStatus("FAILED")
-                    .currentDetail(errorMsg)
-                    .finalResult(true)
-                    .build();
-            return Flux.just(errorProgress);
-        }
-
-        // 3. 将数据设置到上下文中
-        context.getMetadata().put("tenderReviewData", data);
-
-        log.info("[TenderReviewSceneService] 数据准备完成, docCount={}，开始执行 Workflow",
-                data.getDocuments().size());
-
-        // 4. 创建 Sinks 用于发射进度事件
+        // 先创建 sink，再开始准备数据，避免前端长时间停留在占位步骤。
         Sinks.Many<ThinkingStepProgress> sink = Sinks.many().unicast().onBackpressureBuffer();
-
-        // 5. 在独立线程中执行工作流，实时推送进度
         ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.submit(() -> {
             try {
+                ThinkingStep routeStep = ThinkingStep.builder()
+                        .code("route")
+                        .title("场景识别")
+                        .detail("已识别为标书审查场景，开始校验上传文件并准备审查数据")
+                        .type("ROUTE")
+                        .status("COMPLETED")
+                        .order(1)
+                        .build();
+                ThinkingStep preparationStep = ThinkingStep.builder()
+                        .code("prepare_data")
+                        .title("数据校验与文档解析")
+                        .detail("正在校验文件数量并解析标书内容")
+                        .type("EXECUTION")
+                        .status("PROCESSING")
+                        .order(2)
+                        .build();
+
+                List<ThinkingStep> prefixSteps = new ArrayList<>();
+                prefixSteps.add(routeStep);
+                emitProgress(sink, ThinkingStepProgress.builder()
+                        .currentCode(routeStep.getCode())
+                        .currentTitle(routeStep.getTitle())
+                        .currentStatus(routeStep.getStatus())
+                        .currentDetail(routeStep.getDetail())
+                        .currentStep(routeStep)
+                        .completedSteps(List.of(routeStep))
+                        .finalResult(false)
+                        .build());
+                emitProgress(sink, ThinkingStepProgress.builder()
+                        .currentCode(preparationStep.getCode())
+                        .currentTitle(preparationStep.getTitle())
+                        .currentStatus(preparationStep.getStatus())
+                        .currentDetail(preparationStep.getDetail())
+                        .currentStep(preparationStep)
+                        .completedSteps(List.of(routeStep))
+                        .finalResult(false)
+                        .build());
+
+                TenderReviewData data = preparationService.prepare(context, req);
+                if (!preparationService.hasEnoughDocuments(data)) {
+                    String specificError = (String) context.getMetadata().get("preparationError");
+                    String errorMsg = specificError != null && !specificError.isBlank()
+                            ? specificError
+                            : "当前可用于审查的标书文件不足。请先上传至少2份标书文件，我再继续为你审查围标风险。";
+                    preparationStep.setStatus("FAILED");
+                    preparationStep.setDetail(errorMsg);
+                    emitProgress(sink, ThinkingStepProgress.builder()
+                            .currentCode(preparationStep.getCode())
+                            .currentTitle(preparationStep.getTitle())
+                            .currentStatus(preparationStep.getStatus())
+                            .currentDetail(preparationStep.getDetail())
+                            .currentStep(preparationStep)
+                            .completedSteps(List.of(routeStep))
+                            .finalResult(true)
+                            .build());
+                    sink.tryEmitComplete();
+                    return;
+                }
+
+                context.getMetadata().put("tenderReviewData", data);
+                preparationStep.setStatus("COMPLETED");
+                preparationStep.setDetail("已完成 " + data.getDocuments().size() + " 份标书的数据准备，开始执行审查流程");
+                prefixSteps.add(preparationStep);
+                emitProgress(sink, ThinkingStepProgress.builder()
+                        .currentCode(preparationStep.getCode())
+                        .currentTitle(preparationStep.getTitle())
+                        .currentStatus(preparationStep.getStatus())
+                        .currentDetail(preparationStep.getDetail())
+                        .currentStep(preparationStep)
+                        .completedSteps(new ArrayList<>(prefixSteps))
+                        .finalResult(false)
+                        .build());
+
+                log.info("[TenderReviewSceneService] 数据准备完成, docCount={}，开始执行 Workflow",
+                        data.getDocuments().size());
+
                 tenderReviewWorkflow.executeWithProgress(context, new ThinkingStepEmitter() {
                     @Override
                     public void emit(ThinkingStepProgress progress) {
-                        Sinks.EmitResult result = sink.tryEmitNext(progress);
-                        if (result.isFailure()) {
+                        ThinkingStepProgress mergedProgress = mergePrefixSteps(progress, prefixSteps, context);
+                        Sinks.EmitResult result = sink.tryEmitNext(mergedProgress);
+                        if (result.isFailure() && !result.equals(Sinks.EmitResult.FAIL_ZERO_SUBSCRIBER)) {
                             log.warn("[TenderReviewSceneService] 进度推送失败: {}", result);
                         }
                     }
@@ -209,6 +257,7 @@ public class TenderReviewSceneService {
                         return sink.currentSubscriberCount() == 0;
                     }
                 });
+                sink.tryEmitComplete();
             } catch (Exception e) {
                 log.error("[TenderReviewSceneService] 流式执行异常: {}", e.getMessage(), e);
                 sink.tryEmitError(e);
@@ -219,6 +268,85 @@ public class TenderReviewSceneService {
 
         // 6. 返回流
         return sink.asFlux();
+    }
+
+    private void emitProgress(Sinks.Many<ThinkingStepProgress> sink, ThinkingStepProgress progress) {
+        Sinks.EmitResult result = sink.tryEmitNext(progress);
+        if (result.isFailure() && !result.equals(Sinks.EmitResult.FAIL_ZERO_SUBSCRIBER)) {
+            log.warn("[TenderReviewSceneService] 进度推送失败: {}", result);
+        }
+    }
+
+    private ThinkingStepProgress mergePrefixSteps(ThinkingStepProgress progress,
+                                                  List<ThinkingStep> prefixSteps,
+                                                  AgentChatContext context) {
+        if (progress == null || prefixSteps == null || prefixSteps.isEmpty()) {
+            return progress;
+        }
+
+        List<ThinkingStep> mergedCompletedSteps = new ArrayList<>(prefixSteps);
+        if (progress.getCompletedSteps() != null && !progress.getCompletedSteps().isEmpty()) {
+            mergedCompletedSteps.addAll(progress.getCompletedSteps());
+        }
+
+        List<String> streamFileIds = resolveStreamFileIds(context, progress.getDocumentIds());
+        List<String> documentNames = resolveDocumentNames(context);
+
+        if (progress.isFinalResult() && progress.getResult() != null) {
+            List<ThinkingStep> mergedThinkingSteps = new ArrayList<>(prefixSteps);
+            if (progress.getResult().getThinkingSteps() != null && !progress.getResult().getThinkingSteps().isEmpty()) {
+                mergedThinkingSteps.addAll(progress.getResult().getThinkingSteps());
+            }
+            progress.getResult().setThinkingSteps(mergedThinkingSteps);
+            progress.getResult().setTraceId(context.getTraceId());
+            progress.getResult().setDocumentNames(documentNames);
+            progress.getResult().setDocumentIds(streamFileIds);
+        }
+
+        return ThinkingStepProgress.builder()
+                .currentCode(progress.getCurrentCode())
+                .currentTitle(progress.getCurrentTitle())
+                .currentStatus(progress.getCurrentStatus())
+                .currentDetail(progress.getCurrentDetail())
+                .currentStep(progress.getCurrentStep())
+                .completedSteps(mergedCompletedSteps)
+                .finalResult(progress.isFinalResult())
+                .result(progress.getResult())
+                .sessionTitle(progress.getSessionTitle())
+                .documentIds(streamFileIds)
+                .build();
+    }
+
+    private List<String> resolveDocumentNames(AgentChatContext context) {
+        Object tenderReviewDataObj = context.getMetadata().get("tenderReviewData");
+        if (tenderReviewDataObj instanceof TenderReviewData tenderReviewData
+                && tenderReviewData.getDocuments() != null
+                && !tenderReviewData.getDocuments().isEmpty()) {
+            List<String> documentNames = new ArrayList<>();
+            tenderReviewData.getDocuments().forEach(doc -> {
+                String name = doc.getDocumentName() != null ? doc.getDocumentName()
+                        : (doc.getFilename() != null ? doc.getFilename() : doc.getDocumentId());
+                documentNames.add(name);
+            });
+            return documentNames;
+        }
+        return List.of();
+    }
+
+    private List<String> resolveStreamFileIds(AgentChatContext context, List<String> fallbackIds) {
+        if (context.getUploadedFiles() != null && !context.getUploadedFiles().isEmpty()) {
+            return context.getUploadedFiles().stream()
+                    .map(file -> file.getId())
+                    .filter(id -> id != null && !id.isBlank())
+                    .toList();
+        }
+        if (context.getFileIds() != null && !context.getFileIds().isEmpty()) {
+            return new ArrayList<>(context.getFileIds());
+        }
+        if (fallbackIds != null && !fallbackIds.isEmpty()) {
+            return new ArrayList<>(fallbackIds);
+        }
+        return List.of();
     }
 
     /**
@@ -266,7 +394,7 @@ public class TenderReviewSceneService {
 
         LlmRequest request = LlmRequest.builder()
                 .provider(LlmProviderType.DASHSCOPE)
-                .model("qwen-plus")
+                .model("qwen-plus-2025-07-28")
                 .sessionId(context.getSessionId())
                 .systemPrompt(systemPrompt)
                 .messages(List.of(LlmRequest.ChatMessage.builder()
