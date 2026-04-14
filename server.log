@@ -275,3 +275,11 @@ Standard Commons Logging discovery in action with spring-jcl: please remove comm
 {"level":30,"time":1776151469374,"pid":81200,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
 {"level":30,"time":1776151470488,"pid":81260,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
 {"level":30,"time":1776151470488,"pid":81260,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1776172249742,"pid":1328,"hostname":"TONY","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
+{"level":30,"time":1776172249743,"pid":1328,"hostname":"TONY","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1776172249788,"pid":3140,"hostname":"TONY","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
+{"level":30,"time":1776172249788,"pid":3140,"hostname":"TONY","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1776174718812,"pid":23220,"hostname":"TONY","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
+{"level":30,"time":1776174718812,"pid":23220,"hostname":"TONY","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1776174718949,"pid":21584,"hostname":"TONY","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
+{"level":30,"time":1776174718949,"pid":21584,"hostname":"TONY","msg":"MySQL MCP server running on stdio"}

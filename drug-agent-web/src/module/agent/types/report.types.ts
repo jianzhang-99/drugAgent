@@ -1,308 +1,192 @@
 /**
- * 标书审查报告类型定义
- * 用于结构化展示审查决策报告的六个页面
+ * 标书审查报告类型定义 (V3 标准版)
+ * 严格遵照“产品侧统一标书审查视图”设计的 JSON 字段，抛弃旧的 Page 级切分。
  */
 
 /**
- * 报告整体数据结构
+ * 报告顶层结构
  */
 export interface ReportData {
-  /** Page1 审查结论总览 */
-  page1Summary: Page1Summary;
-  /** Page2 风险总览 */
-  page2RiskOverview: Page2RiskOverview;
-  /** Page3 核心证据 */
-  page3CoreEvidence: Page3CoreEvidence;
-  /** Page4 详细比对 */
-  page4DetailComparison: Page4DetailComparison;
-  /** Page5 处置建议 */
-  page5ActionSuggestions: Page5ActionSuggestions;
-  /** Page6 附录 */
-  page6Appendix: Page6Appendix;
+  /** 审查结论与关键指标（适合首页/看板展示） */
+  executiveSummary: ExecutiveSummary;
+  /** 风险分布总览 */
+  riskOverview: RiskOverview;
+  /** 涉及文档清单 */
+  documents: DocumentIndex[];
+  /** 核心证据链与详细比对 */
+  evidences: EvidenceChain[];
+  /** 行动建议与分工矩阵 */
+  actionPlan: ActionPlan;
+  /** 审查元信息（对应原附录） */
+  metadata: ReportMetadata;
 }
 
 /**
- * Page1 审查结论总览
+ * 1. 结论与大盘指标
  */
-export interface Page1Summary {
-  /** 风险等级：high, medium, low, safe */
-  riskLevel: string;
-  /** 审查结论（一段话） */
-  conclusion: string;
-  /** 建议处置动作 */
-  recommendedAction?: string;
+export interface ExecutiveSummary {
+  /** 风险等级，决定主视觉色调：high, medium, low, safe */
+  riskLevel: 'high' | 'medium' | 'low' | 'safe';
   /** 风险评分 0-100 */
   riskScore: number;
-  /** 核心证据数量 */
-  coreEvidenceCount: number;
-  /** 命中规则数量 */
-  ruleHitCount: number;
-  /** 核心风险 Top 3 */
-  coreRiskTop3: CoreRisk[];
-  /** 风险分布 {类型: 等级} */
-  riskDistribution: Record<string, string>;
-  /** 涉及文档列表 */
-  documents: DocumentInfo[];
+  /** 审查总体结论摘要（例如："本次审查发现关键条款..."） */
+  overallConclusion: string;
+  /** 一句话处置动作建议（例如："建议立即人工复核"） */
+  recommendedAction: string;
+  
+  /** 核心关键指标 */
+  metrics: {
+    /** 核心支撑证据数 */
+    coreEvidenceCount: number;
+    /** 高置信度风险命中条数 */
+    highConfidenceHits: number;
+    /** 去重后的命中的风险大类/规则数 */
+    deduplicatedRules: number;
+    /** 参与比对的文档数 */
+    documentCount: number;
+    /** 参与比对的投标主体数 */
+    partyCount: number;
+  };
 }
 
 /**
- * 核心风险项
+ * 2. 核心风险概览
  */
-export interface CoreRisk {
-  /** 排名 1-3 */
+export interface RiskOverview {
+  /** 核心风险 Top3 列表 */
+  topRisks: TopRiskCard[];
+  /** 风险大类分布（雷达图/列表使用） */
+  distributions: RiskDistribution[];
+}
+
+export interface TopRiskCard {
+  /** 排行：1, 2, 3 */
   rank: number;
-  /** 风险类型 */
+  /** 风险名称（例如："关键条款高度相似"） */
+  riskName: string;
+  /** 风险大类枚举 */
+  riskType: 'pricing' | 'team' | 'text_similarity' | 'template' | 'other';
+  /** 风险等级 */
+  riskLevel: 'high' | 'medium' | 'low';
+  /** 风险业务说明（一两句话） */
+  description: string;
+  /** 关键事实证据一句话 */
+  keyFact: string;
+  /** 系统判定出风险的直接依据 */
+  basis: string;
+  /** 业务侧专属的动作建议 */
+  action: string;
+}
+
+export interface RiskDistribution {
+  /** 风险大类名称，如"文本相似风险" */
   riskType: string;
-  /** 风险标题 */
-  title: string;
-  /** 风险等级 */
-  level: string;
-  /** 风险摘要 */
-  summary: string;
-  /** 建议动作 */
-  action: string;
-}
-
-/**
- * 文档信息
- */
-export interface DocumentInfo {
-  /** 文档ID */
-  docId: string;
-  /** 文档名称 */
-  docName: string;
-  /** 投标方/参与方 */
-  party: string;
-  /** 角色（招标方/投标方） */
-  role: string;
-  /** 内部编号 */
-  internalId: string;
-}
-
-/**
- * Page2 风险总览
- */
-export interface Page2RiskOverview {
-  /** 风险分类列表 */
-  riskCategories: RiskCategory[];
-}
-
-/**
- * 风险分类
- */
-export interface RiskCategory {
-  /** 风险类型编码 */
-  type: string;
-  /** 风险分类名称 */
-  categoryName: string;
-  /** 风险等级 */
-  level: string;
-  /** 命中数量 */
+  /** 该大类最高风险等级，如无问题不应返回或返回 safe */
+  level: 'high' | 'medium' | 'low' | 'safe';
+  /** 该类触发风险条件的次数 */
   hitCount: number;
-  /** 是否需要人工复核 */
-  needHumanReview: boolean;
-  /** 风险解释 */
+  /** 是否需要人工复核介入 */
+  needReview: boolean;
+  /** 风险类别简短说明 */
   explanation: string;
-  /** 代表性证据 */
-  representativeEvidence: string;
-  /** 建议动作 */
-  action: string;
 }
 
 /**
- * Page3 核心证据
+ * 3. 涉及文档信息
  */
-export interface Page3CoreEvidence {
-  /** 证据列表（只展示 3-5 条关键证据） */
-  evidenceList: Evidence[];
-}
-
-/**
- * 证据项
- */
-export interface Evidence {
-  /** 证据编号 */
+export interface DocumentIndex {
+  /** 文档内部唯一 ID */
   id: string;
-  /** 证据类型 */
-  type: string;
-  /** 风险等级 */
-  level: string;
-  /** 可信度 */
-  confidence: string;
+  /** 对外呈现的序号/字母，如 A、B、C */
+  docCode: string;
+  /** 投标主体名称（提取） */
+  partyName: string;
+  /** 文件原有名称 */
+  fileName: string;
+  /** 文档角色：投标文件/技术标/商务标 */
+  docRole: string;
+  /** 参与了多少次核心风险事件 */
+  hitRiskCount: number;
+  /** 具体涉及到的风险类型名列表 */
+  involvedRisks: string[];
+}
+
+/**
+ * 4. 证据链条 (包含沉浸式 Diff 所需数据)
+ */
+export interface EvidenceChain {
+  /** 证据编号 E01, E02 等 */
+  evidenceId: string;
   /** 证据标题 */
   title: string;
-  /** 证据解释 */
-  explanation: string;
-  /** 关键发现 */
-  keyFindings: Record<string, any>;
-  /** 判定依据 */
-  basis: string;
-  /** 建议动作 */
+  /** 证据所属形态分类 */
+  type: 'text_diff' | 'price_diff' | 'team_diff' | 'structure_diff' | 'other';
+  /** 该项证据对结论的支撑力度 */
+  level: 'high' | 'medium' | 'low';
+  /** 重点摘要描述，不堆砌长文 */
+  summary: string;
+  /** 人工复核指南/系统分析结果 */
+  analysis: string;
+  
+  /** 双文档对比的实质差异数据 */
+  diffPayload: EvidenceDiffPayload;
+}
+
+export interface EvidenceDiffPayload {
+  /** 比对中的甲侧实体 ID */
+  docA_id: string;
+  /** 比对中的乙侧实体 ID */
+  docB_id: string;
+  /** 甲侧源数据/文本 (或者项目金额、人员名字) */
+  contentA: string;
+  /** 乙侧源数据/文本 (或者项目金额、人员名字) */
+  contentB: string;
+  
+  /** (针对文本/结构时) 格式化后的相似度（如 "96%"） */
+  similarityScore?: string;
+  /** （针对价差/特定字段时）具体差异（如 "差额 500"） */
+  divergence?: string;
+  
+  /** 高亮及界面状态的信号灯 */
+  diffVerdict: 'exact_match' | 'fuzzy_match' | 'anomaly_gap' | 'safe' | 'warning';
+}
+
+/**
+ * 5. 处置建议与任务矩阵
+ */
+export interface ActionPlan {
+  /** 一级：立即执行或阻断 */
+  level1Actions: string[];
+  /** 二级：进一步外围核验 */
+  level2Actions: string[];
+  /** 三级：事后追溯留档 */
+  level3Actions: string[];
+  
+  /** 推荐的任务到人分配矩阵 */
+  responsibilityMatrix: TaskRoleAssign[];
+}
+
+export interface TaskRoleAssign {
+  /** 要执行的动作 */
   action: string;
+  /** 被分配的角色 */
+  role: string; // '风控专员' | '评审专家' | '招采员' 等
+  /** 任务优先级 */
+  priority: 'high' | 'medium' | 'low';
+  /** 补充说明 */
+  remark?: string;
 }
 
 /**
- * Page4 详细比对
+ * 6. 后台/附加元信息
  */
-export interface Page4DetailComparison {
-  /** 报价对比 */
-  priceComparison: PriceComparison;
-  /** 团队对比 */
-  teamComparison: TeamComparison;
-  /** 文本高亮对比列表 */
-  textHighlights: TextHighlight[];
-}
-
-/**
- * 报价对比
- */
-export interface PriceComparison {
-  /** 表头 */
-  headers: string[];
-  /** 报价行数据 */
-  rows: PriceRow[];
-}
-
-/**
- * 报价行
- */
-export interface PriceRow {
-  /** 项目名称 */
-  item: string;
-  /** 文档A报价 */
-  docA: string;
-  /** 文档B报价 */
-  docB: string;
-  /** 差异 */
-  diff: string;
-  /** 判定 */
-  verdict: string;
-}
-
-/**
- * 团队对比
- */
-export interface TeamComparison {
-  /** 表头 */
-  headers: string[];
-  /** 团队行数据 */
-  rows: TeamRow[];
-}
-
-/**
- * 团队行
- */
-export interface TeamRow {
-  /** 角色 */
-  role: string;
-  /** 文档A团队成员 */
-  docA: string;
-  /** 文档B团队成员 */
-  docB: string;
-  /** 判定 */
-  verdict: string;
-}
-
-/**
- * 文本高亮对比
- */
-export interface TextHighlight {
-  /** 分类 */
-  category: string;
-  /** 文本A */
-  textA: string;
-  /** 文本B */
-  textB: string;
-  /** 相似度 */
-  similarity: string;
-  /** 判定 */
-  verdict: string;
-  /** 判定说明 */
-  analysis?: string;
-}
-
-/**
- * Page5 处置建议
- */
-export interface Page5ActionSuggestions {
-  /** 一级动作（立即执行） */
-  level1: ActionLevel;
-  /** 二级动作（进一步核验） */
-  level2: ActionLevel;
-  /** 三级动作（必要时追溯） */
-  level3: ActionLevel;
-  /** 留痕建议 */
-  retentionAdvice?: string[];
-}
-
-/**
- * 动作级别
- */
-export interface ActionLevel {
-  /** 标题 */
-  title: string;
-  /** 该层级动作目标 */
-  objective?: string;
-  /** 动作列表 */
-  actions: Action[];
-}
-
-/**
- * 动作项
- */
-export interface Action {
-  /** 动作描述 */
-  action: string;
-  /** 责任角色 */
-  role: string;
-  /** 优先级 */
-  priority: string;
-}
-
-/**
- * Page6 附录
- */
-export interface Page6Appendix {
-  /** 规则清单 */
-  ruleList: RuleInfo[];
-  /** 原始证据片段 */
-  evidenceFragments: EvidenceFragment[];
-  /** 任务信息 */
-  taskInfo: TaskInfo;
-}
-
-/**
- * 规则信息
- */
-export interface RuleInfo {
-  /** 规则ID */
-  ruleId: string;
-  /** 规则编码 */
-  ruleCode: string;
-  /** 规则描述 */
-  description: string;
-}
-
-/**
- * 证据片段
- */
-export interface EvidenceFragment {
-  /** 片段ID */
-  fragmentId: string;
-  /** 内容 */
-  content: string;
-  /** 来源 */
-  source: string;
-}
-
-/**
- * 任务信息
- */
-export interface TaskInfo {
-  /** 任务ID */
+export interface ReportMetadata {
   taskId: string;
-  /** 审查时间 */
-  reviewTime: string;
-  /** 模型版本 */
-  modelVersion: string;
+  reportId: string;
+  generatedAt: string;
+  projectTarget: string; // "审查对象"
+  reviewType: string;    // "审查类型"
+  reviewScope: string;
+  systemVersion: string;
+  hitRules?: Array<{ ruleCode: string; ruleName: string; hitCount: number; remark?: string; }>;
 }

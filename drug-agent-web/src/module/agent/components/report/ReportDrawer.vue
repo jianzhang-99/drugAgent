@@ -20,26 +20,13 @@
             </div>
 
             <div class="header-actions">
-              <el-radio-group v-model="activeTab" size="small" class="tab-group">
-                <el-radio-button label="summary">审查结论</el-radio-button>
-                <el-radio-button label="risk">风险总览</el-radio-button>
-                <el-radio-button label="evidence">核心证据</el-radio-button>
-                <el-radio-button label="comparison">详细比对</el-radio-button>
-                <el-radio-button label="action">处置建议</el-radio-button>
-                <el-radio-button label="appendix">附录</el-radio-button>
-              </el-radio-group>
               <button class="export-btn" @click="handleExportPdf">导出 PDF</button>
               <button class="close-btn" @click="handleClose" aria-label="关闭">×</button>
             </div>
           </div>
 
-          <div class="modal-body">
-            <ReportSummary v-if="activeTab === 'summary'" :data="reportData?.page1Summary" />
-            <RiskOverview v-else-if="activeTab === 'risk'" :data="reportData?.page2RiskOverview" />
-            <CoreEvidence v-else-if="activeTab === 'evidence'" :data="reportData?.page3CoreEvidence" />
-            <DetailComparison v-else-if="activeTab === 'comparison'" :data="reportData?.page4DetailComparison" />
-            <ActionSuggestions v-else-if="activeTab === 'action'" :data="reportData?.page5ActionSuggestions" />
-            <Appendix v-else-if="activeTab === 'appendix'" :data="reportData?.page6Appendix" />
+          <div class="modal-body doc-wrapper">
+            <FormalReportDocument :data="reportData || undefined" />
           </div>
         </div>
       </div>
@@ -52,25 +39,18 @@ import { computed, ref } from 'vue';
 import { useAgentStore } from '../../store/agentStore';
 import type { DrugAgentResp, EvidenceGroup, RiskItem } from '../../types/agent';
 import type {
-  Action,
-  Page1Summary,
-  Page2RiskOverview,
-  Page3CoreEvidence,
-  Page4DetailComparison,
-  Page5ActionSuggestions,
-  Page6Appendix,
   ReportData,
-  RiskCategory,
+  ExecutiveSummary,
+  RiskOverview as RiskOverviewType,
+  DocumentIndex,
+  EvidenceChain,
+  ActionPlan,
+  ReportMetadata
 } from '../../types/report.types';
-import ReportSummary from './ReportSummary.vue';
-import RiskOverview from './RiskOverview.vue';
-import CoreEvidence from './CoreEvidence.vue';
-import DetailComparison from './DetailComparison.vue';
-import ActionSuggestions from './ActionSuggestions.vue';
-import Appendix from './Appendix.vue';
+import FormalReportDocument from './FormalReportDocument.vue';
+import { exportElementToPdf } from '../../utils/pdfExporter';
 
 const store = useAgentStore();
-const activeTab = ref('summary');
 
 const visible = computed({
   get: () => !!store.currentResult,
@@ -96,40 +76,39 @@ async function handleExportPdf() {
   const data = reportData.value;
   if (!result || !data) return;
 
-  const topRisks = (data.page1Summary.coreRiskTop3 || [])
+  const topRisks = (data.riskOverview.topRisks || [])
     .map(
       (risk) => `
         <div class="risk-card">
           <div class="risk-top">
             <span>风险 ${risk.rank}</span>
-            <span class="badge">${levelLabel(risk.level)}</span>
+            <span class="badge">${levelLabel(risk.riskLevel)}</span>
           </div>
-          <h3>${escapeHtml(risk.title)}</h3>
-          <p>${escapeHtml(risk.summary)}</p>
+          <h3>${escapeHtml(risk.riskName)}</h3>
+          <p>${escapeHtml(risk.description)}</p>
           <div class="muted">建议动作：${escapeHtml(risk.action)}</div>
         </div>
       `
     )
     .join('');
 
-  const actions = collectActions(data.page5ActionSuggestions)
-    .slice(0, 6)
+  const actions = (data.actionPlan.level1Actions || [])
     .map(
       (item, index) => `
-        <li><strong>${index + 1}.</strong> ${escapeHtml(item.action)}<span class="muted">（${escapeHtml(item.role)}｜${escapeHtml(item.priority)}）</span></li>
+        <li><strong>${index + 1}.</strong> ${escapeHtml(item)}</li>
       `
     )
     .join('');
 
-  const documents = (data.page1Summary.documents || [])
+  const documents = (data.documents || [])
     .map(
-      (doc, index) => `
+      (doc) => `
         <div class="doc-card">
-          <div class="doc-tag">${String.fromCharCode(65 + index)}</div>
+          <div class="doc-tag">${doc.docCode}</div>
           <div>
-            <div class="doc-party">${escapeHtml(doc.party)}</div>
-            <div>${escapeHtml(doc.docName)}</div>
-            <div class="muted">${escapeHtml(doc.role)}｜内部编号：${escapeHtml(doc.internalId)}</div>
+            <div class="doc-party">${escapeHtml(doc.partyName)}</div>
+            <div>${escapeHtml(doc.fileName)}</div>
+            <div class="muted">${escapeHtml(doc.docRole)}</div>
           </div>
         </div>
       `
@@ -178,15 +157,15 @@ async function handleExportPdf() {
     </div>
     <section class="hero">
       <div>
-        <div class="level">${levelLabel(data.page1Summary.riskLevel)}</div>
-        <div class="hero-title">${escapeHtml(data.page1Summary.conclusion)}</div>
-        <div class="hero-action">${escapeHtml(data.page1Summary.recommendedAction || '')}</div>
+        <div class="level">${levelLabel(data.executiveSummary.riskLevel)}</div>
+        <div class="hero-title">${escapeHtml(data.executiveSummary.overallConclusion)}</div>
+        <div class="hero-action">${escapeHtml(data.executiveSummary.recommendedAction || '')}</div>
       </div>
       <div class="metrics">
-        <div class="metric"><span class="metric-label">风险分</span><span class="metric-value">${data.page1Summary.riskScore}</span></div>
-        <div class="metric"><span class="metric-label">涉及文档</span><span class="metric-value">${data.page1Summary.documents?.length || 0}</span></div>
-        <div class="metric"><span class="metric-label">核心证据</span><span class="metric-value">${data.page1Summary.coreEvidenceCount}</span></div>
-        <div class="metric"><span class="metric-label">命中规则</span><span class="metric-value">${data.page1Summary.ruleHitCount}</span></div>
+        <div class="metric"><span class="metric-label">风险分</span><span class="metric-value">${data.executiveSummary.riskScore}</span></div>
+        <div class="metric"><span class="metric-label">涉及文档</span><span class="metric-value">${data.executiveSummary.metrics.documentCount}</span></div>
+        <div class="metric"><span class="metric-label">核心证据</span><span class="metric-value">${data.executiveSummary.metrics.coreEvidenceCount}</span></div>
+        <div class="metric"><span class="metric-label">命中规则</span><span class="metric-value">${data.executiveSummary.metrics.deduplicatedRules}</span></div>
       </div>
     </section>
     <section class="section">
@@ -204,288 +183,232 @@ async function handleExportPdf() {
   </body>
   </html>`;
 
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) return;
-  printWindow.document.write(html);
-  printWindow.document.close();
-  printWindow.focus();
-  setTimeout(() => printWindow.print(), 500);
+  // 创建临时容器用于 PDF 导出
+  const container = document.createElement('div');
+  container.innerHTML = html;
+  container.style.position = 'absolute';
+  container.style.left = '-9999px';
+  container.style.top = '0';
+  container.style.width = '210mm';
+  document.body.appendChild(container);
+
+  try {
+    await exportElementToPdf(container, `标书审查报告_${result.traceId || Date.now()}`);
+  } finally {
+    document.body.removeChild(container);
+  }
 }
 
 function transformReportToReportData(result: DrugAgentResp): ReportData {
   const riskItems = result.report?.riskItems || [];
   const evidenceGroups = result.evidenceGroups || [];
 
-  const page1Summary: Page1Summary = {
-    riskLevel: normalizeLevel(result.riskLevel || result.report?.overview?.riskLevel),
-    conclusion:
-      result.summary ||
-      result.report?.overview?.summary ||
-      result.report?.conclusion ||
-      '本次比对已完成，但暂未生成明确审查结论。',
-    recommendedAction: buildDecisionAction(result),
-    riskScore: result.score || result.report?.overview?.score || 0,
-    coreEvidenceCount: Math.min(evidenceGroups.length || result.evidenceList?.length || 0, 5),
-    ruleHitCount: result.report?.overview?.rawHitCount || riskItems.length,
-    coreRiskTop3: riskItems.slice(0, 3).map((item, index) => ({
-      rank: index + 1,
-      riskType: resolveRiskType(item),
-      title: item.title || '未命名风险',
-      level: normalizeLevel(item.riskLevel),
-      summary: item.summary || '存在需要重点复核的异常线索。',
-      action: item.recommendations?.[0] || categoryAction(resolveRiskType(item)),
-    })),
-    riskDistribution: buildRiskDistribution(riskItems),
-    documents: (result.documentNames || []).map((name, index) => ({
-      docId: result.documentIds?.[index] || `doc_${index}`,
-      docName: name,
-      party: inferPartyName(name, index),
-      role: `对比文档 ${index + 1}`,
-      internalId: result.documentIds?.[index] || `UPLOAD-${index}`,
-    })),
-  };
-
-  const page2RiskOverview: Page2RiskOverview = {
-    riskCategories: buildRiskCategories(riskItems, result),
-  };
-
-  const page3CoreEvidence: Page3CoreEvidence = {
-    evidenceList: evidenceGroups.slice(0, 5).map((group, index) => ({
-      id: `E${String(index + 1).padStart(2, '0')}`,
-      type: resolveEvidenceType(group),
-      level: inferEvidenceLevel(group),
-      confidence: inferConfidence(group),
-      title: group.title || `核心证据 ${index + 1}`,
-      explanation: group.summary || '该证据能够支撑当前风险判断。',
-      keyFindings: buildEvidenceFindings(group),
-      basis: buildEvidenceBasis(group),
-      action: categoryAction(resolveEvidenceCategory(group)),
-    })),
-  };
-
-  const page4DetailComparison: Page4DetailComparison = {
-    priceComparison: buildPriceComparison(result),
-    teamComparison: buildTeamComparison(result),
-    textHighlights: buildTextHighlights(result),
-  };
-
-  const page5ActionSuggestions: Page5ActionSuggestions = {
-    level1: {
-      title: '一级动作｜立即执行',
-      objective: '快速判断是否需要升级处理',
-      actions: [
-        {
-          action: '人工复核核心证据，优先确认报价异常、团队重合和关键条款相似是否成立。',
-          role: '评标专家',
-          priority: '高',
-        },
-        {
-          action: '核查投标主体是否由独立团队编制，确认是否满足升级处理条件。',
-          role: '风控专员',
-          priority: '高',
-        },
-      ],
-    },
-    level2: {
-      title: '二级动作｜进一步核验',
-      objective: '补强证据链',
-      actions: [
-        {
-          action: '核查工商关联关系、人员社保归属、授权关系和联系方式。',
-          role: '风控专员',
-          priority: '高',
-        },
-        {
-          action: '补充查看历史投标记录和同类项目资料。',
-          role: '招采管理员',
-          priority: '中',
-        },
-      ],
-    },
-    level3: {
-      title: '三级动作｜必要时追溯',
-      objective: '形成完整判断依据',
-      actions: [
-        {
-          action: '对升级事项完成合规留档，并保留后续核验过程记录。',
-          role: '合规负责人',
-          priority: '中',
-        },
-      ],
-    },
-    retentionAdvice: [
-      '保留本次报告、关键证据片段和人工复核记录。',
-      '对升级事项同步保存外围核验材料和历史投标记录。',
-    ],
-  };
-
-  const page6Appendix: Page6Appendix = {
-    ruleList: riskItems.map((item, index) => ({
-      ruleId: `R${String(index + 1).padStart(3, '0')}`,
-      ruleCode: item.reasonCodes?.[0] || `RULE-${index + 1}`,
-      description: item.summary || item.title || '风险说明',
-    })),
-    evidenceFragments: evidenceGroups.flatMap((group, index) =>
-      (group.items || []).slice(0, 2).map((item, subIndex) => ({
-        fragmentId: `${group.id || `frag_${index}`}_${subIndex + 1}`,
-        content: item.content || '暂无原始片段',
-        source: item.source || group.title || '原文',
-      }))
-    ),
-    taskInfo: {
-      taskId: result.traceId || '-',
-      reviewTime: new Date().toLocaleString('zh-CN'),
-      modelVersion: 'fallback-report-v2',
-    },
-  };
-
-  return {
-    page1Summary,
-    page2RiskOverview,
-    page3CoreEvidence,
-    page4DetailComparison,
-    page5ActionSuggestions,
-    page6Appendix,
-  };
-}
-
-function buildRiskDistribution(riskItems: RiskItem[]) {
-  const distribution: Record<string, string> = {
-    报价风险: 'safe',
-    团队风险: 'safe',
-    文本相似风险: 'safe',
-    模板同源风险: 'safe',
-    其他辅助风险: 'safe',
-  };
-
-  riskItems.forEach((item) => {
-    const type = resolveRiskType(item);
-    const level = normalizeLevel(item.riskLevel);
-    const label = categoryName(type);
-    if (severity(level) > severity(distribution[label])) {
-      distribution[label] = level;
-    }
-  });
-
-  return distribution;
-}
-
-function buildRiskCategories(riskItems: RiskItem[], result: DrugAgentResp): RiskCategory[] {
-  const categories = ['pricing', 'team', 'text_similarity', 'template', 'auxiliary'];
-  return categories.map((type) => {
-    const items = riskItems.filter((item) => resolveRiskType(item) === type);
-    const topItem = items[0];
-    const level = items.reduce((current, item) => {
-      const next = normalizeLevel(item.riskLevel);
-      return severity(next) > severity(current) ? next : current;
-    }, 'safe');
+  // 构建涉及文档的真实风险统计
+  const docs = (result.documentNames || []).map((name, index) => {
+    const docId = result.documentIds?.[index] || `doc_${index}`;
+    // 统计该文档涉及的风险和证据
+    const relatedRisks = riskItems.filter(item => {
+      const itemText = `${item.title || ''} ${item.summary || ''}`;
+      return itemText.includes(name) || item.evidenceTitles?.some(t => t.includes(name));
+    });
+    const relatedEvidence = evidenceGroups.filter(g =>
+      g.items?.some(item => item.source?.includes(name)) ||
+      groupTitleIncludes(g, name)
+    );
+    const riskTypes = [...new Set([
+      ...relatedRisks.map(r => resolveRiskType(r)),
+      ...relatedEvidence.map(g => resolveEvidenceCategory(g))
+    ])];
 
     return {
-      type,
-      categoryName: categoryName(type),
-      level,
-      hitCount: items.length,
-      needHumanReview: items.length > 0,
-      explanation:
-        topItem?.summary ||
-        `${categoryName(type)}当前${
-          items.length ? `命中 ${items.length} 条线索，建议结合证据链人工复核。` : '未见明显异常。'
-        }`,
-      representativeEvidence:
-        topItem?.evidenceTitles?.join('；') ||
-        result.evidenceGroups?.find((group) => resolveEvidenceCategory(group) === type)?.summary ||
-        '当前未提取到代表性证据。',
-      action: topItem?.recommendations?.[0] || categoryAction(type),
+      id: docId,
+      docCode: String.fromCharCode(65 + index),
+      partyName: inferPartyName(name, index),
+      fileName: name,
+      docRole: '投标文件',
+      hitRiskCount: relatedRisks.length + relatedEvidence.length,
+      involvedRisks: riskTypes.map(t => categoryName(t))
     };
   });
-}
 
-function buildPriceComparison(result: DrugAgentResp): Page4DetailComparison['priceComparison'] {
-  const pricingGroups = (result.evidenceGroups || []).filter(
-    (group) => resolveEvidenceCategory(group) === 'pricing'
-  );
+  // 计算真实风险分布
+  const distributions = buildRiskDistribution(riskItems, evidenceGroups);
+
+  const executiveSummary: ExecutiveSummary = {
+    riskLevel: normalizeLevel(result.riskLevel || result.report?.overview?.riskLevel) as any,
+    riskScore: result.score || result.report?.overview?.score || 0,
+    overallConclusion: result.summary || result.report?.overview?.summary || '本次比对已完成，但暂未生成明确审查结论。',
+    recommendedAction: buildDecisionAction(result),
+    metrics: {
+      coreEvidenceCount: evidenceGroups.length,
+      highConfidenceHits: riskItems.filter(i => normalizeLevel(i.riskLevel) === 'high').length,
+      deduplicatedRules: [...new Set(riskItems.map(i => resolveRiskType(i)))].length,
+      documentCount: docs.length,
+      partyCount: docs.length
+    }
+  };
+
+  // 构建 Top 风险，优先使用真实证据信息
+  const topRisks = riskItems.slice(0, 3).map((item, index) => {
+    const evidenceForRisk = evidenceGroups.filter(g =>
+      `${g.title || ''} ${g.summary || ''}`.includes(item.title || '')
+    )[0];
+    const realKeyFact = evidenceForRisk
+      ? `相似度${evidenceForRisk.similarity ? Math.round(evidenceForRisk.similarity * 100) : '-'}%，${evidenceForRisk.summary || ''}`
+      : item.summary || '存在需要重点复核的异常线索';
+
+    return {
+      rank: index + 1,
+      riskName: item.title || '未命名风险',
+      riskType: resolveRiskType(item) as any,
+      riskLevel: normalizeLevel(item.riskLevel) as any,
+      description: item.summary || '存在需要重点复核的异常线索。',
+      keyFact: realKeyFact,
+      basis: item.reasonCodes?.join('；') || categoryName(resolveRiskType(item)),
+      action: item.recommendations?.[0] || categoryAction(resolveRiskType(item))
+    };
+  });
+
+  const riskOverview: RiskOverviewType = {
+    topRisks,
+    distributions
+  };
+
+  const actionPlan: ActionPlan = {
+    level1Actions: [
+      '人工复核核心证据，优先确认报价异常、团队重合和关键条款相似是否成立。',
+      '核查投标主体是否由独立团队编制，确认是否满足升级处理条件。'
+    ],
+    level2Actions: [
+      '核查工商关联关系、人员社保归属、授权关系和联系方式。',
+      '补充查看历史投标记录和同类项目资料。'
+    ],
+    level3Actions: [
+      '对升级事项完成合规留档，并保留后续核验过程记录。'
+    ],
+    responsibilityMatrix: [
+      { action: '人工复核核心证据', role: '评标专家', priority: 'high', remark: '优先确认报价异常、团队重合' },
+      { action: '核查主体关联关系', role: '风控专员', priority: 'high', remark: '工商、社保、授权链' },
+      { action: '历史记录追溯', role: '招采管理员', priority: 'medium', remark: '查看同类项目投标记录' }
+    ]
+  };
+
+  const evidences: EvidenceChain[] = evidenceGroups.map((group, index) => ({
+    evidenceId: `E${String(index + 1).padStart(2, '0')}`,
+    title: group.title || '异常证据',
+    type: resolveEvidenceType(group),
+    level: inferEvidenceLevel(group),
+    summary: group.summary || '',
+    analysis: categoryAction(resolveEvidenceCategory(group)),
+    diffPayload: {
+      docA_id: '',
+      docB_id: '',
+      contentA: group.items?.[0]?.content || group.contentA || '',
+      contentB: group.items?.[1]?.content || group.contentB || '',
+      similarityScore: group.similarity ? `${Math.round(group.similarity * 100)}%` : undefined,
+      divergence: undefined,
+      diffVerdict: group.similarity && group.similarity > 0.9 ? 'warning' : group.similarity ? 'fuzzy_match' : 'safe'
+    }
+  }));
+
+  const metadata: ReportMetadata = {
+    taskId: result.traceId || '-',
+    reportId: result.report?.reportId || '-',
+    generatedAt: new Date().toLocaleString('zh-CN'),
+    projectTarget: result.report?.projectName || (result.documentNames?.[0] || '-').split(/[_－-]/)[0],
+    reviewType: docs.length > 2 ? '多文档比对' : '双文档比对',
+    reviewScope: `${docs.length} 份文件，${docs.length} 家投标主体`,
+    systemVersion: 'v3-standard',
+    hitRules: riskItems.map((item, index) => ({
+      ruleCode: item.reasonCodes?.[0] || `RULE-${index + 1}`,
+      ruleName: item.title || '风险规则',
+      hitCount: 1,
+      remark: item.summary || ''
+    }))
+  };
 
   return {
-    headers: ['项目', '文档 A', '文档 B', '差异/说明', '判定'],
-    rows: pricingGroups.map((group) => ({
-      item: group.title || '报价异常项',
-      docA: group.items?.[0]?.content || group.contentA || '-',
-      docB: group.items?.[1]?.content || group.contentB || '-',
-      diff: group.summary || '见证据说明',
-      verdict: group.similarity && group.similarity > 0.85 ? '高度异常' : '异常',
-    })),
+    executiveSummary,
+    riskOverview,
+    documents: docs,
+    evidences,
+    actionPlan,
+    metadata
   };
 }
-
-function buildTeamComparison(result: DrugAgentResp): Page4DetailComparison['teamComparison'] {
-  const teamGroups = (result.evidenceGroups || []).filter(
-    (group) => resolveEvidenceCategory(group) === 'team'
-  );
-
-  return {
-    headers: ['角色/字段', '文档 A', '文档 B', '判定'],
-    rows: teamGroups.map((group) => ({
-      role: group.title || '核心岗位',
-      docA: group.items?.[0]?.content || group.contentA || '-',
-      docB: group.items?.[1]?.content || group.contentB || '-',
-      verdict: '异常',
-    })),
+function buildRiskDistribution(riskItems: RiskItem[], evidenceGroups: EvidenceGroup[]): RiskOverviewType['distributions'] {
+  const typeMap: Record<string, { label: string; extractor: (item: RiskItem | EvidenceGroup) => boolean }> = {
+    pricing: { label: '报价风险', extractor: (item) => resolveRiskType(item as RiskItem) === 'pricing' || resolveEvidenceCategory(item as EvidenceGroup) === 'pricing' },
+    team: { label: '团队风险', extractor: (item) => resolveRiskType(item as RiskItem) === 'team' || resolveEvidenceCategory(item as EvidenceGroup) === 'team' },
+    text_similarity: { label: '文本相似风险', extractor: (item) => resolveRiskType(item as RiskItem) === 'text_similarity' || resolveEvidenceCategory(item as EvidenceGroup) === 'text_similarity' },
+    template: { label: '模板同源风险', extractor: (item) => resolveRiskType(item as RiskItem) === 'template' || resolveEvidenceCategory(item as EvidenceGroup) === 'template' },
+    auxiliary: { label: '其他辅助风险', extractor: (item) => resolveRiskType(item as RiskItem) === 'auxiliary' || resolveEvidenceCategory(item as EvidenceGroup) === 'auxiliary' },
   };
-}
 
-function buildTextHighlights(result: DrugAgentResp): Page4DetailComparison['textHighlights'] {
-  return (result.evidenceGroups || [])
-    .filter((group) => ['text_similarity', 'template'].includes(resolveEvidenceCategory(group)))
-    .slice(0, 6)
-    .map((group) => ({
-      category: group.title || resolveEvidenceType(group),
-      textA: group.contentA || group.items?.[0]?.content || '',
-      textB: group.contentB || group.items?.[1]?.content || '',
-      similarity: group.similarity ? `${Math.round(group.similarity * 100)}%` : '-',
-      verdict: group.similarity && group.similarity > 0.9 ? '高度相似' : '存在相似',
-      analysis: group.summary || '建议结合上下文继续人工复核。',
-    }));
-}
+  const distributions: RiskOverviewType['distributions'] = [];
+  const allItems = [...riskItems, ...evidenceGroups];
 
-function buildEvidenceFindings(group: EvidenceGroup) {
-  return {
-    证据类型: resolveEvidenceType(group),
-    证据片段数: group.items?.length || 0,
-    相似度: group.similarity ? `${Math.round(group.similarity * 100)}%` : '未提供',
-  };
-}
+  for (const [type, config] of Object.entries(typeMap)) {
+    const matchedItems = allItems.filter(item => config.extractor(item));
+    if (matchedItems.length === 0) continue; // 只展示真实命中的风险
 
-function buildEvidenceBasis(group: EvidenceGroup) {
-  const parts = [group.title, group.summary].filter(Boolean);
-  return parts.length ? parts.join('；') : '基于结构化证据分组与内容比对结果判定。';
-}
+    const levels = matchedItems.map(item => {
+      if ('riskLevel' in item) return normalizeLevel(item.riskLevel);
+      if ('similarity' in item) return inferEvidenceLevel(item);
+      return 'safe';
+    });
+    const maxLevel = levels.reduce((max, l) => severity(l) > severity(max) ? l : max, 'safe');
 
-function buildDecisionAction(result: DrugAgentResp) {
-  const level = normalizeLevel(result.riskLevel || result.report?.overview?.riskLevel);
-  if (level === 'high') return '建议立即启动人工复核，并优先核查主体关联关系、人员归属和报价形成依据。';
-  if (level === 'medium') return '建议尽快开展人工核验，补充核查关键条款和历史投标记录。';
-  return '建议保留结果并做抽样复核。';
-}
-
-function inferPartyName(name: string, index: number) {
-  const parts = name.replace(/\.(pdf|doc|docx|txt)$/i, '').split(/[_－-]/);
-  const candidate = parts.find((part) => part && !part.includes('投标人') && !part.includes('标书'));
-  return candidate?.trim() || `投标方${String.fromCharCode(65 + index)}`;
-}
-
-function resolveEvidenceType(group: EvidenceGroup) {
-  return categoryName(resolveEvidenceCategory(group));
-}
-
-function resolveEvidenceCategory(group: EvidenceGroup) {
-  const text = `${group.title || ''} ${group.summary || ''}`.toLowerCase();
-  if (text.includes('报价')) return 'pricing';
-  if (text.includes('团队') || text.includes('联系人') || text.includes('人员')) return 'team';
-  if (text.includes('模板') || text.includes('同源') || text.includes('错误复现')) return 'template';
-  if (text.includes('雷同') || text.includes('相似') || text.includes('条款') || text.includes('方案')) {
-    return 'text_similarity';
+    distributions.push({
+      riskType: config.label,
+      level: maxLevel as any,
+      hitCount: matchedItems.length,
+      needReview: matchedItems.length > 0,
+      explanation: matchedItems[0] && 'summary' in matchedItems[0]
+        ? matchedItems[0].summary
+        : `${config.label}当前命中 ${matchedItems.length} 条线索，建议结合证据链人工复核。`
+    });
   }
-  return 'auxiliary';
+
+  return distributions;
+}
+
+
+
+function levelLabel(level?: string) {
+  return {
+    high: '高风险',
+    medium: '中风险',
+    low: '低风险',
+    safe: '未见明显异常',
+  }[normalizeLevel(level)] || '未见明显异常';
+}
+
+function severity(level?: string) {
+  return {
+    safe: 0,
+    low: 1,
+    medium: 2,
+    high: 3,
+  }[normalizeLevel(level)] || 0;
+}
+
+function escapeHtml(value: string | undefined | null) {
+  if (!value) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function normalizeLevel(level?: string) {
+  if (!level) return 'safe';
+  const value = level.toLowerCase();
+  if (value.includes('high') || value.includes('高')) return 'high';
+  if (value.includes('medium') || value.includes('中')) return 'medium';
+  if (value.includes('low') || value.includes('低')) return 'low';
+  return 'safe';
 }
 
 function resolveRiskType(item: RiskItem) {
@@ -493,10 +416,32 @@ function resolveRiskType(item: RiskItem) {
   if ((item.riskType || '').toLowerCase() === 'pricing' || title.includes('报价')) return 'pricing';
   if (title.includes('团队') || title.includes('人员') || title.includes('联系人')) return 'team';
   if (title.includes('模板') || title.includes('同源') || title.includes('错误复现')) return 'template';
-  if (title.includes('雷同') || title.includes('相似') || title.includes('条款') || title.includes('方案')) {
-    return 'text_similarity';
-  }
+  if (title.includes('雷同') || title.includes('相似') || title.includes('条款') || title.includes('方案')) return 'text_similarity';
   return 'auxiliary';
+}
+
+function resolveEvidenceCategory(group: EvidenceGroup) {
+  const text = `${group.title || ''} ${group.summary || ''}`.toLowerCase();
+  if (text.includes('报价')) return 'pricing';
+  if (text.includes('团队') || text.includes('联系人') || text.includes('人员')) return 'team';
+  if (text.includes('模板') || text.includes('同源') || text.includes('错误复现')) return 'template';
+  if (text.includes('雷同') || text.includes('相似') || text.includes('条款') || text.includes('方案')) return 'text_similarity';
+  return 'auxiliary';
+}
+
+function resolveEvidenceType(group: EvidenceGroup): EvidenceChain['type'] {
+  const category = resolveEvidenceCategory(group);
+  if (category === 'pricing') return 'price_diff';
+  if (category === 'team') return 'team_diff';
+  if (category === 'template') return 'structure_diff';
+  if (category === 'text_similarity') return 'text_diff';
+  return 'other';
+}
+
+function inferEvidenceLevel(group: EvidenceGroup): 'high' | 'medium' | 'low' {
+  if (group.similarity && group.similarity > 0.9) return 'high';
+  if (group.similarity && group.similarity > 0.75) return 'medium';
+  return 'low';
 }
 
 function categoryName(type: string) {
@@ -519,56 +464,24 @@ function categoryAction(type: string) {
   }[type] || '结合外围材料补强证据链，再决定是否升级处理。';
 }
 
-function normalizeLevel(level?: string) {
-  if (!level) return 'safe';
-  const value = level.toLowerCase();
-  if (value.includes('high') || value.includes('高')) return 'high';
-  if (value.includes('medium') || value.includes('中')) return 'medium';
-  if (value.includes('low') || value.includes('低')) return 'low';
-  return 'safe';
+function inferPartyName(name: string, index: number) {
+  const parts = name.replace(/\.(pdf|doc|docx|txt)$/i, '').split(/[_－-]/);
+  const candidate = parts.find((part) => part && !part.includes('投标人') && !part.includes('标书'));
+  return candidate?.trim() || `投标方${String.fromCharCode(65 + index)}`;
 }
 
-function inferEvidenceLevel(group: EvidenceGroup) {
-  if (group.similarity && group.similarity > 0.9) return 'high';
-  if (group.similarity && group.similarity > 0.75) return 'medium';
-  return 'low';
+function buildDecisionAction(result: DrugAgentResp) {
+  const level = normalizeLevel(result.riskLevel || result.report?.overview?.riskLevel);
+  if (level === 'high') return '立即人工复核';
+  if (level === 'medium') return '补充核验';
+  return '正常流转';
 }
 
-function inferConfidence(group: EvidenceGroup) {
-  if (group.similarity && group.similarity > 0.9) return '高';
-  if (group.similarity && group.similarity > 0.75) return '中';
-  return '中';
-}
-
-function levelLabel(level?: string) {
-  return {
-    high: '高风险',
-    medium: '中风险',
-    low: '低风险',
-    safe: '未见明显异常',
-  }[normalizeLevel(level)] || '未见明显异常';
-}
-
-function severity(level?: string) {
-  return {
-    safe: 0,
-    low: 1,
-    medium: 2,
-    high: 3,
-  }[normalizeLevel(level)] || 0;
-}
-
-function collectActions(page?: Page5ActionSuggestions): Action[] {
-  if (!page) return [];
-  return [page.level1, page.level2, page.level3].flatMap((level) => level?.actions || []);
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+function groupTitleIncludes(group: EvidenceGroup, name: string): boolean {
+  if (!name) return false;
+  const lowerName = name.toLowerCase();
+  return (group.title || '').toLowerCase().includes(lowerName) ||
+         (group.summary || '').toLowerCase().includes(lowerName);
 }
 </script>
 
@@ -674,8 +587,17 @@ function escapeHtml(value: string) {
 }
 
 .modal-body {
-  overflow: auto;
-  padding: 22px;
+  overflow: hidden;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  background: #f1f5f9;
+}
+
+.doc-wrapper {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
 }
 
 .modal-fade-enter-active,

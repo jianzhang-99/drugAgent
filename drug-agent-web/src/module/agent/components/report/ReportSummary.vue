@@ -1,519 +1,542 @@
 <template>
-  <div v-if="data" class="report-summary">
-    <section class="hero-card" :class="`hero-${levelCode}`">
-      <div class="hero-main">
-        <div class="hero-kicker">审查结论</div>
-        <div class="hero-level">
-          <span class="level-dot"></span>
-          <span>{{ levelLabel(levelCode) }}</span>
+  <div v-if="data" class="report-dashboard">
+    <!-- 首层：核心KPI仪表盘 -->
+    <div class="dashboard-header">
+      <div class="kpi-card gauge-card" :class="`border-${levelCode}`">
+        <div class="kpi-title">综合判定与评分</div>
+        <div class="gauge-container">
+          <v-chart class="chart" :option="gaugeOption" autoresize />
         </div>
-        <h2 class="hero-title">{{ data.conclusion }}</h2>
-        <p v-if="data.recommendedAction" class="hero-action">{{ data.recommendedAction }}</p>
+        <div class="kpi-conclusion" :class="`text-${levelCode}`">
+          {{ data.overallConclusion }}
+        </div>
       </div>
 
-      <div class="hero-metrics">
-        <div class="metric-card emphasis">
-          <span class="metric-label">风险分</span>
-          <span class="metric-value">{{ data.riskScore }}</span>
-        </div>
-        <div class="metric-card">
-          <span class="metric-label">涉及文档</span>
-          <span class="metric-value">{{ data.documents?.length || 0 }}</span>
-        </div>
-        <div class="metric-card">
-          <span class="metric-label">核心证据</span>
-          <span class="metric-value">{{ data.coreEvidenceCount }}</span>
-        </div>
-        <div class="metric-card">
-          <span class="metric-label">命中规则</span>
-          <span class="metric-value">{{ data.ruleHitCount }}</span>
+      <div class="kpi-card radar-card">
+        <div class="kpi-title">多维风险感知画像</div>
+        <div class="radar-container">
+          <v-chart class="chart" :option="radarOption" autoresize />
         </div>
       </div>
-    </section>
 
-    <section v-if="data.coreRiskTop3?.length" class="panel">
-      <div class="panel-header">
-        <span class="panel-title">核心风险 Top 3</span>
-        <span class="panel-tip">先看最能支撑结论的风险项</span>
-      </div>
-      <div class="risk-grid">
-        <article
-          v-for="risk in data.coreRiskTop3"
-          :key="risk.rank"
-          class="risk-card"
-          :class="`risk-${normalizeLevel(risk.level)}`"
-        >
-          <div class="risk-top">
-            <span class="risk-rank">风险 {{ risk.rank }}</span>
-            <span class="risk-badge">{{ levelLabel(normalizeLevel(risk.level)) }}</span>
+      <div class="kpi-stats-col">
+        <div class="stat-card">
+          <div class="stat-icon docs-icon"></div>
+          <div class="stat-info">
+            <div class="stat-label">对比标书总数</div>
+            <div class="stat-value">{{ data.metrics?.documentCount || 0 }}<span class="stat-unit">份</span></div>
           </div>
-          <h3 class="risk-title">{{ risk.title }}</h3>
-          <div class="risk-type">{{ riskTypeLabel(risk.riskType) }}</div>
-          <p class="risk-summary">{{ risk.summary }}</p>
-          <div class="risk-action">
-            <span class="action-label">建议动作</span>
-            <span class="action-value">{{ risk.action }}</span>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon risk-icon"></div>
+          <div class="stat-info">
+            <div class="stat-label">命中疑似风险项目</div>
+            <div class="stat-value">{{ data.metrics?.deduplicatedRules || 0 }}<span class="stat-unit">项</span></div>
           </div>
-        </article>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon evidence-icon"></div>
+          <div class="stat-info">
+            <div class="stat-label">提取核心证据链</div>
+            <div class="stat-value">{{ data.metrics?.coreEvidenceCount || 0 }}<span class="stat-unit">组</span></div>
+          </div>
+        </div>
       </div>
-    </section>
+    </div>
 
-    <section class="panel">
-      <div class="panel-header">
-        <span class="panel-title">风险分布概览</span>
-        <span class="panel-tip">帮助判断风险由哪些维度构成</span>
+    <!-- 预警提示区：全局处置建议 -->
+    <div v-if="data.recommendedAction" class="global-alert" :class="`alert-${levelCode}`">
+      <div class="alert-icon">⚠️</div>
+      <div class="alert-content">
+        <strong>行动建议：</strong>{{ data.recommendedAction }}
       </div>
-      <div class="distribution-grid">
+    </div>
+
+    <!-- 第二层：Top 3 高危告警卡片 (Alert Cards) -->
+    <section v-if="riskOverview?.topRisks?.length" class="alert-cards-container">
+      <div class="section-heading">最高危风险提取</div>
+      <div class="cards-grid">
         <div
-          v-for="(level, label) in data.riskDistribution"
-          :key="label"
-          class="distribution-item"
-          :class="`dist-${normalizeLevel(level)}`"
+          v-for="risk in riskOverview.topRisks"
+          :key="risk.rank"
+          class="alert-card"
+          :class="`bg-${normalizeLevel(risk.riskLevel)}`"
         >
-          <span class="distribution-label">{{ label }}</span>
-          <span class="distribution-value">{{ levelLabel(normalizeLevel(level)) }}</span>
+          <div class="card-left-banner" :class="`ribbon-${normalizeLevel(risk.riskLevel)}`"></div>
+          <div class="card-content">
+            <div class="card-header">
+              <span class="rank-badge">NO.{{ risk.rank }}</span>
+              <span class="type-tag">{{ riskTypeLabel(risk.riskType) }}</span>
+              <div class="level-indicator" :class="`text-${normalizeLevel(risk.riskLevel)}`">
+                <span class="dot" :class="`bg-dot-${normalizeLevel(risk.riskLevel)}`"></span>
+                {{ levelLabel(normalizeLevel(risk.riskLevel)) }}
+              </div>
+            </div>
+            <h3 class="card-title">{{ risk.riskName }}</h3>
+            <div class="card-snippet">
+              <span class="snippet-quote">“</span>
+              {{ risk.description }}
+              <span class="snippet-quote">”</span>
+            </div>
+            <div class="card-action">
+              <span class="action-icon">💡</span> {{ risk.action }}
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
-    <section v-if="data.documents?.length" class="panel">
-      <div class="panel-header">
-        <span class="panel-title">涉及文档</span>
-        <span class="panel-tip">主视图优先展示业务信息，内部编号保留在次级层</span>
-      </div>
-      <div class="document-grid">
-        <article v-for="(doc, index) in data.documents" :key="doc.docId" class="doc-card">
-          <div class="doc-tag">{{ String.fromCharCode(65 + index) }}</div>
-          <div class="doc-body">
-            <div class="doc-party">{{ doc.party }}</div>
-            <div class="doc-name">{{ doc.docName }}</div>
-            <div class="doc-role">{{ doc.role }}</div>
-            <div class="doc-id">内部编号：{{ doc.internalId }}</div>
+    <!-- 第三层：涉及的实体文档 -->
+    <section v-if="documents?.length" class="documents-section">
+      <div class="section-heading">审查文档索引</div>
+      <div class="docs-grid">
+        <div v-for="(doc, index) in documents" :key="doc.id" class="doc-item">
+          <div class="doc-avatar">{{ doc.docCode || String.fromCharCode(65 + index) }}</div>
+          <div class="doc-detail">
+            <div class="doc-party">{{ doc.partyName }}</div>
+            <div class="doc-filename">{{ doc.fileName }}</div>
           </div>
-        </article>
+        </div>
       </div>
     </section>
   </div>
-
-  <div v-else class="empty-state">暂无审查结论数据</div>
+  <div v-else class="empty-state">暂无审查数据</div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { Page1Summary } from '../../types/report.types';
+import { use } from 'echarts/core';
+import { RadarChart, GaugeChart } from 'echarts/charts';
+import { TitleComponent, TooltipComponent, LegendComponent } from 'echarts/components';
+import { CanvasRenderer } from 'echarts/renderers';
+import VChart from 'vue-echarts';
+import type { ExecutiveSummary, RiskOverview, DocumentIndex } from '../../types/report.types';
+
+use([CanvasRenderer, RadarChart, GaugeChart, TitleComponent, TooltipComponent, LegendComponent]);
 
 interface Props {
-  data?: Page1Summary;
+  data?: ExecutiveSummary;
+  riskOverview?: RiskOverview;
+  documents?: DocumentIndex[];
 }
 
 const props = defineProps<Props>();
-
 const levelCode = computed(() => normalizeLevel(props.data?.riskLevel));
 
+// 仪表盘图表配置
+const gaugeOption = computed(() => {
+  const score = props.data?.riskScore || 0;
+  const color = getLevelColor(levelCode.value);
+  return {
+    series: [
+      {
+        type: 'gauge',
+        startAngle: 180,
+        endAngle: 0,
+        center: ['50%', '75%'],
+        radius: '100%',
+        min: 0,
+        max: 100,
+        splitNumber: 10,
+        axisLine: {
+          lineStyle: {
+            width: 14,
+            color: [
+              [0.3, '#52c41a'],
+              [0.7, '#faad14'],
+              [1, '#f5222d']
+            ]
+          }
+        },
+        pointer: { icon: 'path://M12.8,0.7l12,40.1H0.7L12.8,0.7z', length: '12%', width: 14, offsetCenter: [0, '-40%'], itemStyle: { color: 'auto' } },
+        axisTick: { length: 12, lineStyle: { color: 'auto', width: 2 } },
+        splitLine: { length: 16, lineStyle: { color: 'auto', width: 3 } },
+        axisLabel: { color: '#464646', fontSize: 12, distance: -40, formatter: (value: number) => (value % 20 === 0 ? value + '' : '') },
+        title: { offsetCenter: [0, '-15%'], fontSize: 14 },
+        detail: {
+          fontSize: 36,
+          offsetCenter: [0, '5%'],
+          valueAnimation: true,
+          formatter: '{value}',
+          color: color
+        },
+        data: [{ value: score, name: '风险指数' }]
+      }
+    ]
+  };
+});
+
+// 雷达图配置
+const radarOption = computed(() => {
+  const distributions = props.riskOverview?.distributions || [];
+  const dimensions = [
+    { name: '报价风险', max: 3 },
+    { name: '团队风险', max: 3 },
+    { name: '文本雷同', max: 3 },
+    { name: '模板同源', max: 3 },
+    { name: '其他线索', max: 3 }
+  ];
+  
+  const values = dimensions.map(d => {
+    let key = d.name;
+    if (key === '文本雷同') key = '文本相似风险';
+    if (key === '模板同源') key = '模板同源风险';
+    if (key === '其他线索') key = '其他辅助风险';
+    const dist = distributions.find(x => x.riskType === key);
+    return severity(dist?.level || 'safe');
+  });
+
+  return {
+    tooltip: {
+      trigger: 'item' // 开启 hover 提示
+    },
+    radar: {
+      indicator: dimensions,
+      shape: 'polygon',
+      splitArea: { areaStyle: { color: ['#f8fafc', '#ecf2f8', '#e2e8f0', '#cbd5e1'] } },
+      axisLine: { lineStyle: { color: '#94a3b8' } },
+      splitLine: { lineStyle: { color: '#94a3b8' } },
+      name: { textStyle: { color: '#334155', fontWeight: 'bold' } }
+    },
+    series: [
+      {
+        name: '风险分布',
+        type: 'radar',
+        data: [
+          {
+            value: values,
+            name: '当前提取风险',
+            areaStyle: { color: 'rgba(239, 68, 68, 0.2)' },
+            lineStyle: { color: '#ef4444', width: 2 },
+            itemStyle: { color: '#ef4444' }
+          }
+        ]
+      }
+    ]
+  };
+});
+
+// 工具函数
 function normalizeLevel(level?: string): string {
   if (!level) return 'safe';
-  const value = level.toLowerCase();
-  if (value.includes('high') || value.includes('高')) return 'high';
-  if (value.includes('medium') || value.includes('中')) return 'medium';
-  if (value.includes('low') || value.includes('低')) return 'low';
-  if (value.includes('safe') || value.includes('正常') || value.includes('未见')) return 'safe';
+  const v = level.toLowerCase();
+  if (v.includes('high') || v.includes('高')) return 'high';
+  if (v.includes('medium') || v.includes('中')) return 'medium';
+  if (v.includes('low') || v.includes('低')) return 'low';
   return 'safe';
 }
 
+function getLevelColor(code: string) {
+  if (code === 'high') return '#f5222d';
+  if (code === 'medium') return '#faad14';
+  if (code === 'low') return '#52c41a';
+  return '#1890ff';
+}
+
+function severity(level?: string) {
+  const code = normalizeLevel(level);
+  if (code === 'high') return 3;
+  if (code === 'medium') return 2;
+  if (code === 'low') return 1;
+  return 0;
+}
+
 function levelLabel(level?: string): string {
-  return {
-    high: '高风险',
-    medium: '中风险',
-    low: '低风险',
-    safe: '未见明显异常',
-  }[normalizeLevel(level)] || '未见明显异常';
+  const code = normalizeLevel(level);
+  return { high: '极高风险', medium: '中度核查', low: '异常提示', safe: '未见异常' }[code] || '未见异常';
 }
 
 function riskTypeLabel(type?: string): string {
-  const normalized = (type || '').toLowerCase();
-  if (normalized === 'pricing') return '报价风险';
-  if (normalized === 'team') return '团队风险';
-  if (normalized === 'text_similarity' || normalized === 'plagiarism') return '文本相似风险';
-  if (normalized === 'template') return '模板同源风险';
-  if (normalized === 'auxiliary') return '其他辅助风险';
-  return '综合风险';
+  const n = (type || '').toLowerCase();
+  if (n === 'pricing') return '报价响应';
+  if (n === 'team') return '人员团队';
+  if (n === 'text_similarity' || n === 'plagiarism') return '文本内容';
+  if (n === 'template') return '模板格式';
+  return '辅助线索';
 }
 </script>
 
 <style scoped>
-.report-summary {
+/* 全局排版 */
+.report-dashboard {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 24px;
 }
 
-.hero-card,
-.panel {
-  border-radius: 20px;
-  border: 1px solid #dde4ee;
-  background:
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.95), transparent 38%),
-    linear-gradient(180deg, #ffffff, #f8fafc);
-  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.06);
-}
-
-.hero-card {
+/* 顶部 Dashboard 网格布局 */
+.dashboard-header {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.9fr);
+  grid-template-columns: 1.1fr 1.3fr 0.6fr;
   gap: 20px;
-  padding: 24px;
 }
 
-.hero-high {
-  border-color: #fecaca;
-  background:
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.92), transparent 38%),
-    linear-gradient(135deg, #fff5f5, #fffaf7 55%, #ffffff);
-}
-
-.hero-medium {
-  border-color: #fde68a;
-  background:
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.92), transparent 38%),
-    linear-gradient(135deg, #fffaf0, #fffef8 55%, #ffffff);
-}
-
-.hero-low,
-.hero-safe {
-  border-color: #bfdbfe;
-  background:
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.92), transparent 38%),
-    linear-gradient(135deg, #f3f7ff, #fbfdff 55%, #ffffff);
-}
-
-.hero-main {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.hero-kicker {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: #64748b;
-}
-
-.hero-level {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  width: fit-content;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.86);
-  color: #0f172a;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.level-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: #ef4444;
-}
-
-.hero-medium .level-dot {
-  background: #f59e0b;
-}
-
-.hero-low .level-dot,
-.hero-safe .level-dot {
-  background: #2563eb;
-}
-
-.hero-title {
-  margin: 0;
-  font-size: 24px;
-  line-height: 1.45;
-  color: #0f172a;
-}
-
-.hero-action {
-  margin: 0;
-  padding: 14px 16px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.76);
-  color: #334155;
-  line-height: 1.7;
-}
-
-.hero-metrics {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.metric-card {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-height: 112px;
-  padding: 16px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-}
-
-.metric-card.emphasis {
-  background: linear-gradient(180deg, #0f172a, #1e293b);
-}
-
-.metric-card.emphasis .metric-label,
-.metric-card.emphasis .metric-value {
-  color: #f8fafc;
-}
-
-.metric-label {
-  font-size: 12px;
-  color: #64748b;
-}
-
-.metric-value {
-  font-size: 34px;
-  font-weight: 800;
-  color: #0f172a;
-}
-
-.panel {
-  padding: 20px;
-}
-
-.panel-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.panel-title {
-  font-size: 17px;
-  font-weight: 800;
-  color: #0f172a;
-}
-
-.panel-tip {
-  font-size: 12px;
-  color: #64748b;
-}
-
-.risk-grid,
-.document-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.risk-card,
-.doc-card {
-  border-radius: 18px;
+.kpi-card {
+  background: #ffffff;
+  border-radius: 20px;
   border: 1px solid #e2e8f0;
-  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  padding: 24px;
+  box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.05);
+  display: flex;
+  flex-direction: column;
+}
+
+.kpi-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+/* 仪表盘 */
+.gauge-card.border-high { border-top: 4px solid #f5222d; }
+.gauge-card.border-medium { border-top: 4px solid #faad14; }
+.gauge-card.border-safe { border-top: 4px solid #52c41a; }
+
+.gauge-container {
+  height: 180px;
+  width: 100%;
+}
+.chart {
+  width: 100%;
+  height: 100%;
+}
+
+.kpi-conclusion {
+  text-align: center;
+  font-weight: bold;
+  font-size: 18px;
+  margin-top: -10px;
+}
+.text-high { color: #f5222d; }
+.text-medium { color: #faad14; }
+.text-safe, .text-low { color: #52c41a; }
+
+/* 雷达图 */
+.radar-container {
+  height: 220px;
+  width: 100%;
+  margin-top: -20px;
+}
+
+/* 右侧关键数据指标列列排版 */
+.kpi-stats-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.stat-card {
+  flex: 1;
+  background: #f8fafc;
+  border-radius: 16px;
   padding: 16px;
-}
-
-.risk-high {
-  border-color: #fecaca;
-}
-
-.risk-medium {
-  border-color: #fde68a;
-}
-
-.risk-low,
-.risk-safe {
-  border-color: #bfdbfe;
-}
-
-.risk-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 16px;
+  border: 1px solid #f1f5f9;
 }
-
-.risk-rank,
-.risk-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.risk-rank {
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
   background: #e2e8f0;
-  color: #334155;
+}
+.docs-icon { background: linear-gradient(135deg, #dbeafe, #bfdbfe); }
+.risk-icon { background: linear-gradient(135deg, #fee2e2, #fecaca); }
+.evidence-icon { background: linear-gradient(135deg, #fef3c7, #fde68a); }
+
+.stat-label {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 2px;
+}
+.stat-value {
+  font-size: 24px;
+  font-weight: 900;
+  color: #0f172a;
+}
+.stat-unit {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-left: 4px;
 }
 
-.risk-badge {
-  background: #fee2e2;
+/* 预警提示区 */
+.global-alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: #fffbfa;
+  border: 1px solid #ffd8bf;
+}
+.alert-high { background: #fff1f0; border-color: #ffa39e; }
+.alert-medium { background: #fffbe6; border-color: #ffe58f; }
+
+.alert-content {
+  color: #1f2937;
+  font-size: 15px;
+}
+.alert-content strong {
   color: #b91c1c;
 }
 
-.risk-title {
-  margin: 0 0 6px;
+/* 告警卡片区 */
+.section-heading {
   font-size: 18px;
-  color: #0f172a;
+  font-weight: 800;
+  color: #1e293b;
+  margin-bottom: 16px;
+  padding-left: 12px;
+  border-left: 4px solid #3b82f6;
 }
 
-.risk-type {
-  font-size: 12px;
-  color: #64748b;
-  margin-bottom: 10px;
-}
-
-.risk-summary {
-  margin: 0 0 14px;
-  color: #334155;
-  line-height: 1.7;
-  min-height: 68px;
-}
-
-.risk-action {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-top: 12px;
-  border-top: 1px dashed #dbe3ee;
-}
-
-.action-label {
-  font-size: 12px;
-  font-weight: 700;
-  color: #64748b;
-}
-
-.action-value {
-  color: #0f172a;
-  line-height: 1.6;
-}
-
-.distribution-grid {
+.cards-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
 }
 
-.distribution-item {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 16px;
-  border-radius: 16px;
-  border: 1px solid #e2e8f0;
+.alert-card {
+  position: relative;
   background: #ffffff;
-}
-
-.dist-high {
-  background: linear-gradient(180deg, #fff5f5, #ffffff);
-}
-
-.dist-medium {
-  background: linear-gradient(180deg, #fffaf0, #ffffff);
-}
-
-.dist-low,
-.dist-safe {
-  background: linear-gradient(180deg, #f3f7ff, #ffffff);
-}
-
-.distribution-label {
-  font-size: 13px;
-  color: #475569;
-}
-
-.distribution-value {
-  font-size: 18px;
-  font-weight: 800;
-  color: #0f172a;
-}
-
-.doc-card {
+  border-radius: 16px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
   display: flex;
-  gap: 14px;
-  align-items: flex-start;
 }
 
-.doc-tag {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #0f172a;
-  color: #ffffff;
-  font-size: 15px;
-  font-weight: 800;
+.card-left-banner {
+  width: 6px;
   flex-shrink: 0;
 }
+.ribbon-high { background: #ef4444; }
+.ribbon-medium { background: #f59e0b; }
+.ribbon-safe, .ribbon-low { background: #3b82f6; }
+.bg-high { background: linear-gradient(180deg, rgba(254, 226, 226, 0.3), #fff); }
 
-.doc-body {
+.card-content {
+  padding: 20px;
+  flex: 1;
+}
+
+.card-header {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 12px;
+}
+.rank-badge {
+  background: #1e293b;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: bold;
+}
+.type-tag {
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+.level-indicator {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: bold;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.bg-dot-high { background: #ef4444; }
+.bg-dot-medium { background: #f59e0b; }
+.bg-dot-safe { background: #10b981; }
+
+.card-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 12px;
+  line-height: 1.4;
+}
+
+.card-snippet {
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 8px;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 16px;
+  position: relative;
+}
+.snippet-quote {
+  color: #cbd5e1;
+  font-weight: bold;
+  font-family: serif;
+}
+
+.card-action {
+  font-size: 13px;
+  color: #334155;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
   gap: 6px;
 }
+.action-icon {
+  font-size: 16px;
+}
 
+/* 文档索引网格 */
+.docs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+.doc-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+.doc-avatar {
+  background: #3b82f6;
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+}
 .doc-party {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 14px;
   color: #0f172a;
+  font-weight: bold;
 }
-
-.doc-name,
-.doc-role {
-  color: #334155;
-}
-
-.doc-id {
+.doc-filename {
   font-size: 12px;
-  color: #94a3b8;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
 }
 
-.empty-state {
-  padding: 32px;
-  text-align: center;
-  color: #94a3b8;
-}
-
-@media (max-width: 1100px) {
-  .hero-card {
+@media (max-width: 1024px) {
+  .dashboard-header, .cards-grid {
     grid-template-columns: 1fr;
-  }
-
-  .risk-grid,
-  .document-grid,
-  .distribution-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 720px) {
-  .hero-card,
-  .panel {
-    padding: 16px;
-  }
-
-  .hero-metrics,
-  .risk-grid,
-  .document-grid,
-  .distribution-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .panel-header {
-    flex-direction: column;
-    align-items: flex-start;
   }
 }
 </style>

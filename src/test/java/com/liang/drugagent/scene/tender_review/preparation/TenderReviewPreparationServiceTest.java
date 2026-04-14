@@ -277,7 +277,7 @@ class TenderReviewPreparationServiceTest {
         TenderReviewData result = preparationService.prepare(context, req);
 
         assertNull(result);
-        assertEquals("当前还没有检测到可审查的标书文件。请先上传至少2份标书文件，我再继续为你审查围标风险。",
+        assertEquals("还没检测到可审查的标书文件。想帮你审查围标风险，只需要上传至少2份标书就能开始。",
                 context.getMetadata().get("preparationError"));
     }
 
@@ -303,7 +303,7 @@ class TenderReviewPreparationServiceTest {
         TenderReviewData result = preparationService.prepare(context, req);
 
         assertNull(result);
-        assertEquals("当前还没有检测到可审查的标书文件。请先上传至少2份标书文件，我再继续为你审查围标风险。",
+        assertEquals("还没检测到可审查的标书文件。想帮你审查围标风险，只需要上传至少2份标书就能开始。",
                 context.getMetadata().get("preparationError"));
     }
 
