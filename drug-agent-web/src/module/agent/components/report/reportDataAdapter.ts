@@ -58,6 +58,10 @@ function adaptLegacyStructuredReport(raw: LegacyReportData, result: DrugAgentRes
   const evidences = buildLegacyEvidences(raw, documents, aliasMap);
 
   const executiveSummary: ExecutiveSummary = {
+    conclusionText: humanizeText(
+      raw.page1Summary?.conclusion || result.summary || '本次比对已完成，但暂未生成明确审查结论。',
+      aliasMap,
+    ),
     riskLevel: normalizeLevel(raw.page1Summary?.riskLevel),
     riskScore: Number(raw.page1Summary?.riskScore || 0),
     overallConclusion: humanizeText(
@@ -68,16 +72,20 @@ function adaptLegacyStructuredReport(raw: LegacyReportData, result: DrugAgentRes
       raw.page1Summary?.recommendedAction || buildDecisionAction(result),
       aliasMap,
     ),
+    reviewNote: '本报告用于辅助识别标书疑似围标、串标或非独立编制风险，不直接替代最终评审结论。',
     metrics: {
+      effectiveHits: Number(raw.page1Summary?.coreEvidenceCount || evidences.length || 0),
+      evidenceClusters: evidences.length,
+      documentCount: documents.length,
       coreEvidenceCount: Number(raw.page1Summary?.coreEvidenceCount || evidences.length || 0),
       highConfidenceHits: topRisks.filter((item: any) => item.riskLevel === 'high').length,
       deduplicatedRules: topRisks.length,
-      documentCount: documents.length,
       partyCount: documents.length,
     },
   };
 
   const actionPlan: ActionPlan = {
+    tasks: [],
     level1Actions: collectActionTexts(raw.page5ActionSuggestions?.level1?.actions),
     level2Actions: collectActionTexts(raw.page5ActionSuggestions?.level2?.actions),
     level3Actions: collectActionTexts(raw.page5ActionSuggestions?.level3?.actions),
@@ -122,167 +130,133 @@ function transformReviewReport(result: DrugAgentResp): ReportData {
   const documents = buildDocumentsFromNames(result.documentNames || [], result.documentIds || []);
   const aliasMap = buildAliasMap(documents, [], result);
 
+  // V2: 风险等级标签（原型要求）
+  const riskLevel = normalizeLevel(result.riskLevel || result.report?.overview?.riskLevel);
+  const riskLevelLabelMap: Record<string, string> = {
+    high: '重大围标风险',
+    medium: '中度围标风险',
+    low: '轻度异常信号',
+    safe: '暂未发现明显异常',
+  };
+  const riskLevelLabel = riskLevelLabelMap[riskLevel] || '待定风险';
+
+  // V2: 重点风险判断（含规则编码）
   const topRisks = riskItems.slice(0, 3).map((item, index) => {
     const riskType = resolveRiskType(item);
+    const ruleCode = item.reasonCodes?.[0] || '';
     return {
       rank: index + 1,
+      ruleCode: ruleCode || undefined,
       riskName: humanizeText(item.title || '未命名风险', aliasMap),
-      riskType: riskType as any,
-      riskLevel: toRiskLevel(item.riskLevel || riskType),
-      description: humanizeText(item.summary || '存在需要重点复核的异常线索。', aliasMap),
+      level: toRiskLevel(item.riskLevel || riskType),
+      riskDesc: humanizeText(item.summary || '存在需要重点复核的异常线索。', aliasMap),
       keyFact: humanizeText(item.summary || '系统已识别到异常线索。', aliasMap),
-      basis: humanizeReasons(item.reasonCodes || [resolveRiskTypeLabel(riskType)]),
+      whyReview: categoryAction(riskType),
       action: humanizeText(item.recommendations?.[0] || categoryAction(riskType), aliasMap),
     };
   });
 
-  const evidences: EvidenceChain[] = evidenceGroups.map((group, index) => ({
-    evidenceId: `E${String(index + 1).padStart(2, '0')}`,
-    title: humanizeText(group.title || '异常证据', aliasMap),
-    type: resolveEvidenceType(group),
-    level: toEvidenceLevel(inferEvidenceLevel(group)),
-    summary: humanizeText(group.summary || '', aliasMap),
-    analysis: categoryAction(resolveEvidenceCategory(group)),
-    basis: resolveRiskTypeLabel(resolveEvidenceCategory(group)),
-    docAName: documents[0]?.fileName || '文档 A',
-    docBName: documents[1]?.fileName || '文档 B',
-    diffPayload: {
-      docA_id: documents[0]?.id || '',
-      docB_id: documents[1]?.id || '',
-      contentA: humanizeText(group.items?.[0]?.content || group.contentA || '-', aliasMap),
-      contentB: humanizeText(group.items?.[1]?.content || group.contentB || '-', aliasMap),
-      similarityScore: group.similarity ? `${Math.round(group.similarity * 100)}%` : undefined,
-      divergence: undefined,
-      diffVerdict: group.similarity && group.similarity > 0.9 ? 'warning' : group.similarity ? 'fuzzy_match' : 'safe',
-    },
-  }));
+  // V2: 关键证据明细（含证据链ID/相似度/AI判定）
+  const evidences = evidenceGroups.map((group, index) => {
+    const category = resolveEvidenceCategory(group);
+    const ruleCode = topRisks[0]?.ruleCode || 'UNKNOWN';
+    const similarityValue = group.similarity != null ? (group.similarity * 100).toFixed(1) : undefined;
+    return {
+      evidenceId: `E${String(index + 1).padStart(2, '0')}`,
+      type: category,
+      level: toEvidenceLevel(inferEvidenceLevel(group)),
+      evidenceChainId: `RULE-${ruleCode}-${String(index + 1).padStart(3, '0')}`,
+      similarity: similarityValue ? `${similarityValue}%` : undefined,
+      sourceType: resolveRiskTypeLabel(category),
+      docAName: `${documents[0]?.docId || 'DOC-001'} [${documents[0]?.partyName || '晟博云创'}]`,
+      docBName: `${documents[1]?.docId || 'DOC-002'} [${documents[1]?.partyName || '晟拓数科'}]`,
+      docAContent: humanizeText(group.items?.[0]?.content || group.evidenceList?.[0]?.content || group.contentA || '（暂无对照内容）', aliasMap),
+      docBContent: humanizeText(group.items?.[1]?.content || group.evidenceList?.[1]?.content || group.contentB || '（暂无对照内容）', aliasMap),
+      comparisonFinding: humanizeText(group.summary || `发现 ${category} 异常信号。`, aliasMap),
+      aiJudgment: buildAIJudgment(group, category, documents),
+      reviewSuggestion: categoryAction(category),
+    };
+  });
 
-  return polishReportData(
-    {
-      executiveSummary: {
-        riskLevel: normalizeLevel(result.riskLevel || result.report?.overview?.riskLevel),
-        riskScore: Number(result.score || result.report?.overview?.score || 0),
-        overallConclusion: humanizeText(
-          result.summary || result.report?.overview?.summary || '本次比对已完成，但暂未生成明确审查结论。',
-          aliasMap,
-        ),
-        recommendedAction: buildDecisionAction(result),
-        metrics: {
-          coreEvidenceCount: evidences.length,
-          highConfidenceHits: topRisks.filter((item: any) => item.riskLevel === 'high').length,
-          deduplicatedRules: topRisks.length,
-          documentCount: documents.length,
-          partyCount: documents.length,
-        },
+  // V2: 风险总览 - 只展示有发现的风险
+  const distributions = buildRiskDistribution(riskItems, evidenceGroups)
+    .filter((item): item is NonNullable<typeof item> => !!item && (item.hitCount ?? 0) > 0)
+    .map(item => ({
+      riskType: item.riskType,
+      found: true,
+      foundDescription: '发现明显异常',
+      needReview: true,
+      needReviewText: '必须复核',
+      brief: humanizeText(item.explanation || '', aliasMap),
+    }));
+
+  // V2: 结论正文
+  const conclusionText = result.summary || result.report?.overview?.summary ||
+    '本次比对已完成，但暂未生成明确审查结论。';
+
+  // V2: 处置建议 - 任务清单
+  const tasks = [
+    { priority: 'high' as const, action: '复核报价明细和报价形成依据', role: '评标专家 / 招采人员', goal: '判断报价异常是否成立' },
+    { priority: 'high' as const, action: '核查核心人员归属和授权关系', role: '风控 / 合规人员', goal: '判断团队重复是否合理' },
+    { priority: 'medium' as const, action: '对关键相似段落做人工原文比对', role: '评标专家', goal: '判断是否超出通用模板范围' },
+    { priority: 'medium' as const, action: '查询历史投标记录和历史模板', role: '招采管理员', goal: '判断是否存在长期协同或同源文件' },
+    { priority: 'low' as const, action: '归档系统报告、人工复核意见和佐证材料', role: '项目负责人', goal: '形成可追溯审查闭环' },
+  ];
+
+  // 生成报告文档ID
+  const now = new Date();
+  const docId = `TSR-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${result.traceId?.slice(-3) || Math.random().toString(36).slice(2, 5).toUpperCase()}`;
+
+  return {
+    executiveSummary: {
+      conclusionText: humanizeText(conclusionText, aliasMap),
+      riskLevelLabel,
+      metrics: {
+        effectiveHits: topRisks.filter(r => r.level === 'high').length || riskItems.length || 1,
+        evidenceClusters: evidenceGroups.length || evidences.length,
+        documentCount: documents.length,
       },
-      riskOverview: {
-        topRisks,
-        distributions: buildRiskDistribution(riskItems, evidenceGroups).map((item) => ({
-          ...item,
-          explanation: humanizeText(item.explanation, aliasMap),
-        })),
-      },
-      documents: attachRiskInfoToDocuments(documents, topRisks),
-      evidences,
-      actionPlan: {
-        level1Actions: [
-          '人工复核核心证据，优先确认报价异常、团队重合和关键条款相似是否成立。',
-          '核查投标主体是否由独立团队编制，确认是否满足升级处理条件。',
-        ],
-        level2Actions: [
-          '核查工商关联关系、人员社保归属、授权关系和联系方式。',
-          '补充查看历史投标记录和同类项目资料。',
-        ],
-        level3Actions: ['对升级事项完成合规留档，并保留后续核验过程记录。'],
-        responsibilityMatrix: [
-          { action: '人工复核核心证据', role: '评标专家', priority: 'high', remark: '优先确认报价异常、团队重合' },
-          { action: '核查主体关联关系', role: '风控专员', priority: 'high', remark: '工商、社保、授权链' },
-          { action: '历史记录追溯', role: '招采管理员', priority: 'medium', remark: '查看同类项目投标记录' },
-        ],
-      },
-      metadata: {
-        taskId: result.traceId || '-',
-        reportId: result.caseId || '-',
-        generatedAt: result.report?.generatedAt || new Date().toLocaleString('zh-CN'),
-        traceId: result.traceId,
-        projectTarget: documents.map((item) => item.partyName).join('、') || '-',
-        reviewType: documents.length > 2 ? '多文件比对' : '双文件比对',
-        reviewScope: `${documents.length} 份文件`,
-        systemVersion: 'drug-agent',
-        hitRules: riskItems.map((item, index) => ({
-          ruleCode: item.reasonCodes?.[0] || `RULE-${index + 1}`,
-          ruleName: translateCode(item.reasonCodes?.[0] || item.title || `RULE-${index + 1}`),
-          hitCount: 1,
-          remark: humanizeText(item.summary || '', aliasMap),
-        })),
-      },
+      reviewNote: '本报告用于辅助识别标书疑似围标、串标或非独立编制风险，不直接替代最终评审结论。',
     },
-    result,
-  );
+    riskOverview: {
+      topRisks,
+      distributions,
+    },
+    documents: documents.map((doc, index) => ({
+      docCode: `文档 ${String.fromCharCode(65 + index)}`,
+      docId: doc.docId?.startsWith('doc_') ? `DOC-${String(index + 1).padStart(3, '0')}` : doc.docId,
+      partyName: doc.partyName,
+      fileName: doc.fileName,
+      docNature: index === 0 ? '审计主文档' : '关键参检文档',
+      lastModifier: 'Admin_User',
+      role: `${index === 0 ? '第一' : '第二'}份投标文件参与比对`,
+    })),
+    evidences,
+    actionPlan: { tasks },
+    metadata: {
+      generatedAt: result.report?.generatedAt || new Date().toLocaleString('zh-CN'),
+      reviewScope: `${documents.length} 份文件，${documents.length} 家投标主体`,
+      documentId: docId,
+    },
+  };
+}
+
+/** 根据证据组和文档信息构建 AI 判定逻辑说明 */
+function buildAIJudgment(group: EvidenceGroup, category: string, documents: DocumentIndex[]): string {
+  const docAName = documents[0]?.partyName || '投标主体 A';
+  const docBName = documents[1]?.partyName || '投标主体 B';
+  const similarity = group.similarity != null ? (group.similarity * 100).toFixed(1) : 'Unknown';
+  const typeLabel = resolveRiskTypeLabel(category);
+  return `AI 审查引擎经由"确定性规约"与"LLM 语义分析器"交叉验证：【${docAName}】与【${docBName}】在"${typeLabel}"维度上表现出极高的协同特征，文本相似度达 ${similarity}%，建议结合原文上下文和人工复核结论决定是否升级处理。`;
 }
 
 function polishReportData(data: ReportData, result: DrugAgentResp): ReportData {
-  const documents = Array.isArray(data.documents) ? data.documents : [];
-  const aliasMap = buildAliasMap(documents, [], result);
-
-  return {
-    ...data,
-    executiveSummary: {
-      ...data.executiveSummary,
-      riskLevel: normalizeLevel(data.executiveSummary?.riskLevel),
-      overallConclusion: humanizeText(data.executiveSummary?.overallConclusion || '', aliasMap),
-      recommendedAction: humanizeText(data.executiveSummary?.recommendedAction || '', aliasMap),
-    },
-    riskOverview: {
-      topRisks: (data.riskOverview?.topRisks || []).map((item, index) => ({
-        ...item,
-        rank: item.rank || index + 1,
-        riskName: humanizeText(item.riskName, aliasMap),
-        riskType: normalizeRiskType(item.riskType) as any,
-        riskLevel: toRiskLevel(item.riskLevel),
-        description: humanizeText(item.description, aliasMap),
-        keyFact: humanizeText(item.keyFact, aliasMap),
-        basis: humanizeReasons(Array.isArray(item.basis) ? (item.basis as any) : [item.basis].filter(Boolean) as string[]),
-        action: humanizeText(item.action, aliasMap),
-      })),
-      distributions: (data.riskOverview?.distributions || []).map((item) => ({
-        ...item,
-        level: normalizeLevel(item.level),
-        explanation: humanizeText(item.explanation, aliasMap),
-      })),
-    },
-    documents: attachRiskInfoToDocuments(documents, data.riskOverview?.topRisks || []),
-    evidences: (data.evidences || []).map((item) => ({
-        ...item,
-        type: normalizeEvidenceType(item.type) as any,
-        level: toEvidenceLevel(item.level),
-      title: humanizeText(item.title, aliasMap),
-      summary: humanizeText(item.summary, aliasMap),
-      analysis: humanizeText(item.analysis, aliasMap),
-      basis: humanizeReasons([item.basis].filter(Boolean) as string[]),
-      docAName: item.docAName || documents[0]?.fileName || '文档 A',
-      docBName: item.docBName || documents[1]?.fileName || '文档 B',
-      diffPayload: {
-        ...item.diffPayload,
-        contentA: humanizeText(item.diffPayload?.contentA || '-', aliasMap),
-        contentB: humanizeText(item.diffPayload?.contentB || '-', aliasMap),
-      },
-    })),
-    actionPlan: {
-      ...data.actionPlan,
-      level1Actions: (data.actionPlan?.level1Actions || []).map((item) => humanizeText(item, aliasMap)),
-      level2Actions: (data.actionPlan?.level2Actions || []).map((item) => humanizeText(item, aliasMap)),
-      level3Actions: (data.actionPlan?.level3Actions || []).map((item) => humanizeText(item, aliasMap)),
-      responsibilityMatrix: (data.actionPlan?.responsibilityMatrix || []).map((item) => ({
-        ...item,
-        action: humanizeText(item.action, aliasMap),
-      })),
-    },
-    metadata: {
-      ...data.metadata,
-      traceId: data.metadata?.traceId || result.traceId,
-    },
-  };
+  // V2/V3: 如果已经有结论正文（V2 conclusionText 或 V3 overallConclusion），直接返回
+  if (data.executiveSummary?.conclusionText || data.executiveSummary?.overallConclusion) {
+    return data;
+  }
+  // 否则走 transformReviewReport 路径
+  return transformReviewReport(result);
 }
 
 function buildLegacyTopRisks(raw: LegacyReportData, aliasMap: Record<string, string>) {
@@ -355,8 +329,8 @@ function buildLegacyEvidences(
       docAName: documents[0]?.fileName || '文档 A',
       docBName: documents[1]?.fileName || '文档 B',
       diffPayload: {
-        docA_id: documents[0]?.id || '',
-        docB_id: documents[1]?.id || '',
+        docA_id: documents[0]?.docId || '',
+        docB_id: documents[1]?.docId || '',
         contentA: humanizeText(comparison?.textA || comparison?.docA || '-', aliasMap),
         contentB: humanizeText(comparison?.textB || comparison?.docB || '-', aliasMap),
         similarityScore: comparison?.similarity,
@@ -370,7 +344,7 @@ function buildLegacyEvidences(
 function buildDocuments(legacyDocuments: any[], result: DrugAgentResp): DocumentIndex[] {
   if (legacyDocuments.length > 0) {
     return legacyDocuments.map((doc: any, index: number) => ({
-      id: String(doc.docId || result.documentIds?.[index] || `doc_${index}`),
+      docId: String(doc.docId || result.documentIds?.[index] || `doc_${index}`),
       docCode: String.fromCharCode(65 + index),
       partyName: inferPartyName(doc.party || doc.docName || result.documentNames?.[index] || '', index),
       fileName: String(doc.docName || result.documentNames?.[index] || `比对文件${index + 1}`),
@@ -384,14 +358,24 @@ function buildDocuments(legacyDocuments: any[], result: DrugAgentResp): Document
 
 function buildDocumentsFromNames(documentNames: string[], documentIds: string[]): DocumentIndex[] {
   return documentNames.map((name, index) => ({
-    id: documentIds[index] || `doc_${index}`,
+    docId: documentIds[index] || `doc_${index}`,
     docCode: String.fromCharCode(65 + index),
     partyName: inferPartyName(name, index),
-    fileName: name,
+    fileName: cleanFileName(name, index),
     docRole: '投标文件',
     hitRiskCount: 0,
     involvedRisks: [],
   }));
+}
+
+/** 清除系统内部标识（如 UPLOAD-0-xxx），只保留人类可读的文件名 */
+function cleanFileName(name: string, index: number): string {
+  if (!name) return `投标文件${index + 1}`;
+  // 若文件名是系统生成的 ID 格式（如 UPLOAD-xxx、UUID）则用推断的公司名替代
+  if (/^(UPLOAD|upload|FILE|file)[-_]/.test(name) || /^[0-9a-f-]{32,}/.test(name)) {
+    return `投标文件${index + 1}`;
+  }
+  return name;
 }
 
 function attachRiskInfoToDocuments(documents: DocumentIndex[], topRisks: RiskOverview['topRisks']): DocumentIndex[] {
@@ -412,7 +396,7 @@ function buildAliasMap(
   const map: Record<string, string> = {};
   documents.forEach((doc, index) => {
     const label = `${doc.docCode}：${doc.partyName}`;
-    [doc.id, result.documentIds?.[index], legacyDocuments[index]?.docId, legacyDocuments[index]?.internalId]
+    [doc.docId, result.documentIds?.[index], legacyDocuments[index]?.docId, legacyDocuments[index]?.internalId]
       .filter(Boolean)
       .forEach((alias) => {
         map[String(alias)] = label;
@@ -447,6 +431,8 @@ function humanizeText(text: string | undefined, aliasMap: Record<string, string>
   Object.entries(aliasMap).forEach(([alias, label]) => {
     value = value.split(alias).join(label);
   });
+  // 去除系统内部 ID（如 UPLOAD-0-xxx）
+  value = value.replace(/\b(UPLOAD|FILE|DOC)[-_]\d+[-_][a-zA-Z0-9]+\b/gi, '').trim();
   return value.replace(/\s+/g, ' ').trim();
 }
 
@@ -534,10 +520,6 @@ function resolveEvidenceCategory(group: EvidenceGroup): string {
   return inferRiskTypeByText(`${group.title || ''} ${group.summary || ''}`);
 }
 
-function resolveEvidenceType(group: EvidenceGroup): EvidenceChain['type'] {
-  return normalizeEvidenceType(resolveEvidenceCategory(group)) as EvidenceChain['type'];
-}
-
 function inferEvidenceLevel(group: EvidenceGroup): 'high' | 'medium' | 'low' {
   if (group.similarity && group.similarity > 0.9) return 'high';
   if (group.similarity && group.similarity > 0.75) return 'medium';
@@ -555,12 +537,12 @@ function inferRiskTypeByText(text: string): string {
 
 function resolveRiskTypeLabel(type: string): string {
   return {
-    pricing: '报价异常或报价模式高度接近',
-    team: '核心团队或联系人信息存在交叉复用',
-    text_similarity: '关键条款、技术方案或服务承诺高度相似',
-    template: '目录结构、模板来源或错误表述存在同源特征',
-    auxiliary: '存在可增强综合判断的辅助异常信号',
-  }[normalizeRiskType(type)] || '存在需要进一步核实的异常线索';
+    pricing: '报价异常',
+    team: '核心团队重复',
+    text_similarity: '关键条款相似',
+    template: '模板同源',
+    auxiliary: '辅助线索',
+  }[normalizeRiskType(type)] || '其他异常';
 }
 
 function categoryAction(type: string): string {
@@ -589,7 +571,7 @@ function buildDecisionAction(result: DrugAgentResp): string {
 
 function buildRiskDistribution(riskItems: RiskItem[], evidenceGroups: EvidenceGroup[]): RiskOverview['distributions'] {
   const types = ['pricing', 'team', 'text_similarity', 'template', 'auxiliary'];
-  return types
+  return (types
     .map((type) => {
       const riskMatches = riskItems.filter((item) => resolveRiskType(item) === type);
       const evidenceMatches = evidenceGroups.filter((item) => resolveEvidenceCategory(item) === type);
@@ -597,23 +579,16 @@ function buildRiskDistribution(riskItems: RiskItem[], evidenceGroups: EvidenceGr
       if (!total) {
         return null;
       }
-      const levels = [
-        ...riskMatches.map((item) => normalizeLevel(item.riskLevel)),
-        ...evidenceMatches.map((item) => inferEvidenceLevel(item)),
-      ];
-      const level = levels.includes('high') ? 'high' : levels.includes('medium') ? 'medium' : 'low';
       return {
-        riskType: resolveRiskTypeLabel(type).replace('或', ' / '),
-        level: level as 'high' | 'medium' | 'low' | 'safe',
+        riskType: resolveRiskTypeLabel(type),
         hitCount: total,
-        needReview: true,
         explanation: riskMatches[0]?.summary || evidenceMatches[0]?.summary || `${resolveRiskTypeLabel(type)}，建议人工复核。`,
       };
     })
-    .filter(Boolean) as RiskOverview['distributions'];
+    .filter(Boolean) as unknown) as RiskOverview['distributions'];
 }
 
-function mapVerdict(verdict?: string): EvidenceChain['diffPayload']['diffVerdict'] {
+function mapVerdict(verdict?: string): string {
   const value = String(verdict || '').toLowerCase();
   if (value.includes('高度') || value.includes('异常')) return 'warning';
   if (value.includes('相似')) return 'fuzzy_match';

@@ -2,252 +2,231 @@
   <div v-if="data" class="formal-document-layout">
     <div ref="docMainRef" class="doc-main" id="doc-scroll-container" @scroll="onScroll">
       <div class="doc-content">
+        <!-- 顶部 HeroPanel -->
         <header class="hero-panel">
           <div class="hero-copy">
-            <div class="eyebrow">标书审查报告</div>
-            <h1 class="hero-title">{{ data.executiveSummary?.overallConclusion }}</h1>
-            <p class="hero-action">建议动作：{{ data.executiveSummary?.recommendedAction }}</p>
+            <div class="report-id-label">DOCUMENT ID: {{ data.metadata?.documentId || 'TSR-XXXXXXXX-XXX' }}</div>
+            <h1 class="hero-title">医药标书违规风险专业审查报告</h1>
+            <p class="hero-note">{{ data.executiveSummary?.conclusionText || data.executiveSummary?.reviewNote || '审查进行中' }}</p>
             <div class="hero-meta">
-              <span v-if="data.metadata?.traceId">TRACE: {{ data.metadata.traceId }}</span>
               <span>生成时间：{{ data.metadata?.generatedAt || '-' }}</span>
+              <span>审查范围：{{ data.metadata?.reviewScope || '-' }}</span>
             </div>
           </div>
-
-          <div class="metric-grid">
-            <div class="metric-card">
-              <span class="metric-label">综合风险分</span>
-              <span class="metric-value">{{ data.executiveSummary?.riskScore }}</span>
-              <span class="metric-hint">用于排序和复核优先级参考</span>
-            </div>
-            <div class="metric-card">
-              <span class="metric-label">重点风险项</span>
-              <span class="metric-value">{{ data.riskOverview?.topRisks?.length || 0 }}</span>
-              <span class="metric-hint">建议优先关注的核心问题</span>
-            </div>
-            <div class="metric-card">
-              <span class="metric-label">关键证据数</span>
-              <span class="metric-value">{{ data.executiveSummary?.metrics?.coreEvidenceCount || 0 }}</span>
-              <span class="metric-hint">可直接支撑结论的证据</span>
-            </div>
-            <div class="metric-card">
-              <span class="metric-label">比对文件数</span>
-              <span class="metric-value">{{ data.executiveSummary?.metrics?.documentCount || 0 }}</span>
-              <span class="metric-hint">纳入本次分析的文件数量</span>
+          <div class="hero-badge-area">
+            <div class="risk-badge-large">
+              <span class="badge-label">风险综合判定</span>
+              <span class="badge-value" :class="riskBadgeClass">
+                {{ data.executiveSummary?.riskLevelLabel || '待评定' }}
+              </span>
             </div>
           </div>
         </header>
 
+        <!-- Chapter1 审查执行摘要 -->
         <section id="chapter-1" class="doc-section">
-          <h2>一、总体结论</h2>
-          <div class="summary-card">
-            <div class="summary-badge" :class="metricColor(data.executiveSummary?.riskLevel)">
-              {{ levelLabel(data.executiveSummary?.riskLevel) }}
+          <h2>一、审查执行摘要</h2>
+          <div class="summary-grid">
+            <div class="stat-card" :class="effectiveHitsClass">
+              <div class="stat-label">有效违规命中 (Hits)</div>
+              <div class="stat-value">{{ effectiveHitsValue }}</div>
             </div>
-            <p>{{ data.executiveSummary?.overallConclusion }}</p>
-            <p>建议优先处理：{{ data.executiveSummary?.recommendedAction }}</p>
+            <div class="stat-card active">
+              <div class="stat-label">关联证据簇 (EVID)</div>
+              <div class="stat-value">{{ data.executiveSummary?.metrics?.evidenceClusters ?? data.evidences?.length ?? 0 }}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">参与审查文书</div>
+              <div class="stat-value">{{ data.executiveSummary?.metrics?.documentCount ?? data.documents?.length ?? 0 }}</div>
+            </div>
           </div>
-          <div class="insight-grid">
-            <div class="insight-card">
-              <div class="insight-title">当前判断</div>
-              <p>{{ levelSummary(data.executiveSummary?.riskLevel) }}</p>
-            </div>
-            <div class="insight-card">
-              <div class="insight-title">为什么需要关注</div>
-              <p>系统同时结合风险规则、关键证据和双文档对比结果进行判断，不只看单条命中。</p>
-            </div>
-            <div class="insight-card">
-              <div class="insight-title">如何使用本报告</div>
-              <p>先看重点风险，再对照关键证据，最后决定是否升级人工复核或外部核验。</p>
-            </div>
+          <div class="conclusion-box">
+            <p>{{ data.executiveSummary?.conclusionText || '暂无结论信息' }}</p>
           </div>
         </section>
 
+        <!-- Chapter2 审查文档元数据记录 -->
         <section id="chapter-2" class="doc-section">
-          <h2>二、风险总览</h2>
-          <div class="overview-grid">
-            <article
-              v-for="dist in data.riskOverview?.distributions"
-              :key="dist.riskType"
-              class="overview-card"
-            >
-              <div class="overview-head">
-                <h3>{{ dist.riskType }}</h3>
-                <span class="overview-level" :class="metricColor(dist.level)">
-                  {{ levelLabel(dist.level) }}
-                </span>
-              </div>
-              <p>{{ dist.explanation }}</p>
-              <div class="overview-meta">
-                <span>命中 {{ dist.hitCount }} 项</span>
-                <span>{{ dist.needReview ? '建议人工复核' : '可继续观察' }}</span>
-              </div>
-            </article>
-          </div>
-        </section>
-
-        <section id="chapter-3" class="doc-section">
-          <h2>三、本次比对文件</h2>
-          <div class="document-grid">
-            <article v-for="doc in data.documents" :key="doc.id" class="document-card">
-              <div class="document-head">
-                <span class="doc-code">{{ doc.docCode }}</span>
-                <div>
-                  <h3>{{ doc.partyName }}</h3>
-                  <p>{{ doc.fileName }}</p>
-                </div>
-              </div>
-              <div class="document-meta">
-                <span>{{ doc.docRole }}</span>
-                <span>涉及 {{ doc.hitRiskCount }} 项重点风险</span>
-              </div>
-              <p class="document-risk-label">主要关联问题</p>
-              <div class="chip-list">
-                <span v-for="risk in doc.involvedRisks" :key="risk" class="chip">{{ risk }}</span>
-              </div>
-            </article>
-          </div>
-        </section>
-
-        <section id="chapter-4" class="doc-section">
-          <h2>四、重点风险判断</h2>
-          <template v-if="data.riskOverview?.topRisks?.length">
-            <article v-for="risk in data.riskOverview.topRisks" :key="risk.rank" class="risk-card">
-              <div class="risk-head">
-                <div>
-                  <div class="risk-order">风险 {{ risk.rank }}</div>
-                  <h3>{{ risk.riskName }}</h3>
-                </div>
-                <span class="overview-level" :class="metricColor(risk.riskLevel)">
-                  {{ levelLabel(risk.riskLevel) }}
-                </span>
-              </div>
-              <div class="risk-detail-grid">
-                <div class="detail-card">
-                  <div class="detail-label">风险说明</div>
-                  <p>{{ risk.description }}</p>
-                </div>
-                <div class="detail-card">
-                  <div class="detail-label">关键事实</div>
-                  <p>{{ risk.keyFact }}</p>
-                </div>
-                <div class="detail-card">
-                  <div class="detail-label">系统为什么提示</div>
-                  <p>{{ risk.basis }}</p>
-                </div>
-                <div class="detail-card action-card">
-                  <div class="detail-label">建议动作</div>
-                  <p>{{ risk.action }}</p>
-                </div>
-              </div>
-            </article>
-          </template>
-          <div v-else class="empty-state">当前未提取到需要重点展示的风险项。</div>
-        </section>
-
-        <section id="chapter-5" class="doc-section">
-          <h2>五、关键证据对比</h2>
-          <template v-if="data.evidences?.length">
-            <article v-for="evidence in data.evidences" :key="evidence.evidenceId" class="evidence-card">
-              <div class="risk-head">
-                <div>
-                  <div class="risk-order">{{ evidence.evidenceId }}</div>
-                  <h3>{{ evidence.title }}</h3>
-                </div>
-                <span class="overview-level" :class="metricColor(evidence.level)">
-                  {{ levelLabel(evidence.level) }}
-                </span>
-              </div>
-
-              <div class="evidence-summary">
-                <div class="detail-card">
-                  <div class="detail-label">证据摘要</div>
-                  <p>{{ evidence.summary }}</p>
-                </div>
-                <div class="detail-card">
-                  <div class="detail-label">判定依据</div>
-                  <p>{{ evidence.basis || '系统结合原文片段和规则判断给出提示。' }}</p>
-                </div>
-              </div>
-
-              <div class="diff-grid">
-                <div class="diff-side">
-                  <div class="diff-head">{{ evidence.docAName || '文档 A' }}</div>
-                  <pre>{{ evidence.diffPayload?.contentA || '-' }}</pre>
-                </div>
-                <div class="diff-side">
-                  <div class="diff-head">{{ evidence.docBName || '文档 B' }}</div>
-                  <pre>{{ evidence.diffPayload?.contentB || '-' }}</pre>
-                </div>
-              </div>
-
-              <div class="evidence-footer">
-                <span v-if="evidence.diffPayload?.similarityScore">相似度：{{ evidence.diffPayload.similarityScore }}</span>
-                <span v-if="evidence.diffPayload?.divergence">差异说明：{{ evidence.diffPayload.divergence }}</span>
-                <span>{{ verdictLabel(evidence.diffPayload?.diffVerdict) }}</span>
-              </div>
-              <p class="evidence-analysis">复核建议：{{ evidence.analysis }}</p>
-            </article>
-          </template>
-          <div v-else class="empty-state">当前未提取到可展示的双侧证据内容。</div>
-        </section>
-
-        <section id="chapter-6" class="doc-section">
-          <h2>六、建议处置</h2>
-          <div class="action-layout">
-            <div class="action-column">
-              <h3>立即处理</h3>
-              <ol class="doc-list">
-                <li v-for="(item, index) in data.actionPlan?.level1Actions" :key="`l1-${index}`">{{ item }}</li>
-              </ol>
-            </div>
-            <div class="action-column">
-              <h3>进一步核验</h3>
-              <ol class="doc-list">
-                <li v-for="(item, index) in data.actionPlan?.level2Actions" :key="`l2-${index}`">{{ item }}</li>
-              </ol>
-            </div>
-            <div class="action-column">
-              <h3>留痕与追溯</h3>
-              <ol class="doc-list">
-                <li v-for="(item, index) in data.actionPlan?.level3Actions" :key="`l3-${index}`">{{ item }}</li>
-              </ol>
-            </div>
-          </div>
-
-          <div v-if="data.actionPlan?.responsibilityMatrix?.length" class="responsibility-table-wrap">
-            <h3>建议责任分工</h3>
+          <h2>二、审查文档元数据记录</h2>
+          <div v-if="data.documents?.length" class="document-table-wrap">
             <table class="doc-table">
               <thead>
                 <tr>
-                  <th>动作</th>
-                  <th>建议角色</th>
-                  <th>优先级</th>
-                  <th>补充说明</th>
+                  <th>文档 ID</th>
+                  <th>投标主体名称</th>
+                  <th>主文件名</th>
+                  <th>文档性质</th>
+                  <th>最后修改人</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(item, index) in data.actionPlan.responsibilityMatrix" :key="index">
-                  <td>{{ item.action }}</td>
-                  <td>{{ item.role }}</td>
-                  <td>{{ priorityLabel(item.priority) }}</td>
-                  <td>{{ item.remark || '-' }}</td>
+                <tr v-for="doc in data.documents" :key="doc.docCode">
+                  <td><span class="file-code-tag">{{ doc.docId || doc.docCode }}</span></td>
+                  <td>{{ doc.partyName }}</td>
+                  <td class="file-name-cell">{{ doc.fileName }}</td>
+                  <td>{{ doc.docNature || doc.role }}</td>
+                  <td>{{ doc.lastModifier || 'Admin_User' }}</td>
                 </tr>
               </tbody>
             </table>
           </div>
+          <div v-else class="empty-state">暂无文件信息</div>
         </section>
 
+        <!-- Chapter3 风险总览 -->
+        <section id="chapter-3" class="doc-section">
+          <h2>三、风险总览</h2>
+          <div v-if="data.riskOverview?.distributions?.length" class="overview-table-wrap">
+            <table class="doc-table">
+              <thead>
+                <tr>
+                  <th>风险方向</th>
+                  <th>是否有发现</th>
+                  <th>是否必须复核</th>
+                  <th>简要说明</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="dist in data.riskOverview.distributions" :key="dist.riskType">
+                  <td>{{ dist.riskType }}</td>
+                  <td>
+                    <span class="status-tag" :class="dist.found ? 'status-found' : 'status-none'">
+                      {{ dist.found ? dist.foundDescription : '未发现' }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="status-tag" :class="dist.needReview ? 'status-review' : 'status-ok'">
+                      {{ dist.needReview ? dist.needReviewText : '暂不需要' }}
+                    </span>
+                  </td>
+                  <td>{{ dist.brief || '-' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-else class="empty-state">暂无风险信息</div>
+        </section>
+
+        <!-- Chapter4 核心风险项识别 -->
+        <section id="chapter-4" class="doc-section">
+          <h2>三、核心风险项识别（Workflow 规则命中）</h2>
+          <template v-if="topRisks.length">
+            <article v-for="risk in topRisks" :key="risk.rank" class="risk-item">
+              <div class="risk-rank">
+                <span class="rank-num">{{ String(risk.rank).padStart(2, '0') }}</span>
+                <span class="rule-code-small">{{ risk.ruleCode || 'N/A' }}</span>
+              </div>
+              <div class="risk-content">
+                <div class="risk-header">
+                  <h3>{{ risk.riskName }}</h3>
+                  <span class="risk-level-tag" :class="riskLevelTagClass(risk.level)">
+                    {{ riskLevelTagLabel(risk.level) }}
+                  </span>
+                </div>
+                <div class="risk-body">
+                  <div class="risk-field">
+                    <span class="field-label">风险描述 / RISK DESCRIPTION</span>
+                    <p class="field-value">{{ risk.riskDesc || risk.keyFact }}</p>
+                  </div>
+                  <div class="risk-field">
+                    <span class="field-label">规则建议 / ACTION</span>
+                    <p class="field-value">{{ risk.action }}</p>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </template>
+          <div v-else class="empty-state">当前未提取到需要重点展示的风险项</div>
+        </section>
+
+        <!-- Chapter5 关键取证对比明细 -->
+        <section id="chapter-5" class="doc-section">
+          <h2>四、关键取证对比明细</h2>
+          <template v-if="data.evidences?.length">
+            <div v-for="evidence in data.evidences" :key="evidence.evidenceId" class="evidence-box">
+              <div class="evidence-header">
+                证据链主标识：{{ evidence.evidenceChainId || evidence.evidenceId }}
+                <template v-if="evidence.similarity"> | 文本相似度：{{ evidence.similarity }}</template>
+              </div>
+              <div class="evidence-diff">
+                <div class="diff-col">
+                  <div class="diff-label">{{ evidence.docAName }} 原始文本描述</div>
+                  <div class="diff-text">{{ evidence.docAContent }}</div>
+                </div>
+                <div class="diff-col">
+                  <div class="diff-label">{{ evidence.docBName }} 原始文本描述</div>
+                  <div class="diff-text">{{ evidence.docBContent }}</div>
+                </div>
+              </div>
+              <div class="finding-footer">
+                <strong>AI 判定逻辑 (Judgement)：</strong>
+                {{ evidence.aiJudgment || evidence.comparisonFinding }}
+              </div>
+            </div>
+          </template>
+          <div v-else class="empty-state">当前未提取到可展示的证据明细</div>
+        </section>
+
+        <!-- Chapter6 处置建议 -->
+        <section id="chapter-6" class="doc-section">
+          <h2>六、处置建议</h2>
+          <div v-if="data.actionPlan?.tasks?.length" class="action-table-wrap">
+            <table class="doc-table">
+              <thead>
+                <tr>
+                  <th>优先级</th>
+                  <th>建议动作</th>
+                  <th>责任角色</th>
+                  <th>目标</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(task, index) in data.actionPlan.tasks" :key="index">
+                  <td>
+                    <span class="priority-badge" :class="priorityClass(task.priority)">
+                      {{ priorityLabel(task.priority) }}
+                    </span>
+                  </td>
+                  <td>{{ task.action }}</td>
+                  <td>{{ task.role }}</td>
+                  <td>{{ task.goal }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-else class="empty-state">暂无处置建议</div>
+        </section>
+
+        <!-- Chapter7 报告边界说明 -->
         <section id="chapter-7" class="doc-section bottom-space">
-          <h2>七、使用边界说明</h2>
-          <ul class="doc-list">
+          <h2>七、报告边界说明</h2>
+          <ul class="boundary-list">
             <li>本报告用于辅助识别围标、串标或非独立编制风险，不直接替代最终评审或法律定性。</li>
             <li>若存在未上传附件、补充说明或历史投标材料，可能影响当前判断结果。</li>
             <li>建议结合项目背景、原文上下文和人工复核结论，决定是否升级处理。</li>
           </ul>
         </section>
+
+        <!-- 原型 Footer: 电子验证章 + 合规复核 + 版权 -->
+        <footer class="doc-footer">
+          <div class="seal-group">
+            <div class="seal-item">
+              <p>系统自动生成的电子验证章</p>
+              <div class="seal-line"></div>
+              <p>[ DRUG-AGENT AUDIT SERVICE ]</p>
+            </div>
+            <div class="seal-item">
+              <p>合规部专家复核（签字/盖章）</p>
+              <div class="seal-line"></div>
+              <p>DATE: {{ new Date().getFullYear() }} / ____ / ____</p>
+            </div>
+          </div>
+          <p class="copyright">医药监管智能分析系统 &copy; {{ new Date().getFullYear() }} 系统由 AI 引擎驱动，仅供内部合规参考</p>
+        </footer>
       </div>
     </div>
 
+    <!-- 侧边目录导航 -->
     <aside class="doc-sidebar">
       <div class="sidebar-title">报告目录</div>
       <ul class="anchor-list">
@@ -265,26 +244,47 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import type { ReportData } from '../../types/report.types';
+import { ref, computed } from 'vue';
+import type { ReportData, TopRisk } from '../../types/report.types';
 
-defineProps<{ data?: ReportData }>();
+const props = defineProps<{ data?: ReportData }>();
 
-/** 暴露可滚动内容区域，供父组件（ReportDrawer）取元素做 PDF 导出 */
+/** 暴露可滚动内容区域，供父组件做 PDF 导出 */
 const docMainRef = ref<HTMLElement | null>(null);
 defineExpose({ docMainRef });
 
 const navs = [
-  { id: 'chapter-1', label: '一、总体结论' },
-  { id: 'chapter-2', label: '二、风险总览' },
-  { id: 'chapter-3', label: '三、本次比对文件' },
-  { id: 'chapter-4', label: '四、重点风险判断' },
-  { id: 'chapter-5', label: '五、关键证据对比' },
-  { id: 'chapter-6', label: '六、建议处置' },
-  { id: 'chapter-7', label: '七、使用边界' },
+  { id: 'chapter-1', label: '一、审查执行摘要' },
+  { id: 'chapter-2', label: '二、审查文档元数据' },
+  { id: 'chapter-3', label: '三、风险总览' },
+  { id: 'chapter-4', label: '四、核心风险项识别' },
+  { id: 'chapter-5', label: '五、关键取证对比' },
+  { id: 'chapter-6', label: '六、处置建议' },
+  { id: 'chapter-7', label: '七、报告边界' },
 ];
 
 const activeAnchor = ref('chapter-1');
+
+// 重点风险数据，支持新旧两种结构
+const topRisks = computed<TopRisk[]>(() => {
+  if (!props.data?.riskOverview) return [];
+  // 优先使用新版 topRisks 字段
+  if (props.data.riskOverview.topRisks?.length) {
+    return props.data.riskOverview.topRisks;
+  }
+  // 兜底：从 distributions 中提取有发现的风险
+  return props.data.riskOverview.distributions
+    ?.filter(d => d.found)
+    .map((d, i) => ({
+      rank: i + 1,
+      riskName: d.riskType,
+      level: 'medium' as const,
+      riskDesc: d.foundDescription,
+      keyFact: d.brief || '',
+      whyReview: d.needReviewText,
+      action: '请结合证据明细进行人工复核',
+    })) ?? [];
+});
 
 function scrollTo(id: string) {
   const el = document.getElementById(id);
@@ -311,40 +311,51 @@ function onScroll(event: Event) {
   }, 50);
 }
 
-function levelLabel(value?: string) {
-  if (value === 'high') return '高风险';
-  if (value === 'medium') return '中风险';
-  if (value === 'low') return '低风险';
-  return '提示';
-}
-
-function levelSummary(value?: string) {
-  if (value === 'high') return '当前线索强度较高，建议优先安排人工复核，并视情况补充外围核验材料。';
-  if (value === 'medium') return '当前已发现较明确异常信号，建议补充核验关键条款、主体关系和历史记录。';
-  if (value === 'low') return '当前仅发现少量异常提示，建议保留结果并做抽样检查。';
-  return '当前结果更适合作为筛查提示，请结合上下文继续判断。';
-}
-
-function metricColor(value?: string) {
-  if (value === 'high') return 'color-danger';
-  if (value === 'medium') return 'color-warning';
-  if (value === 'low') return 'color-safe';
-  return 'color-neutral';
-}
-
-function verdictLabel(value?: string) {
-  if (value === 'warning') return '判定：高度异常';
-  if (value === 'anomaly_gap') return '判定：存在异常差异';
-  if (value === 'fuzzy_match') return '判定：存在高相似内容';
-  return '判定：建议结合上下文复核';
-}
-
 function priorityLabel(value?: string) {
   if (value === 'high') return '高';
   if (value === 'medium') return '中';
   if (value === 'low') return '低';
   return value || '-';
 }
+
+function priorityClass(value?: string) {
+  if (value === 'high') return 'priority-high';
+  if (value === 'medium') return 'priority-medium';
+  if (value === 'low') return 'priority-low';
+  return 'priority-neutral';
+}
+
+// 原型新增：风险标签样式
+function riskLevelTagClass(value?: string) {
+  if (value === 'high') return 'tag-critical';
+  if (value === 'medium') return 'tag-high';
+  return 'tag-medium';
+}
+
+function riskLevelTagLabel(value?: string) {
+  if (value === 'high') return '重大风险';
+  if (value === 'medium') return '高风险';
+  return '中风险';
+}
+
+// 原型新增：风险综合判定徽章颜色
+const riskBadgeClass = computed(() => {
+  const level = props.data?.executiveSummary?.riskLevelLabel || '';
+  if (level.includes('重大')) return 'badge-danger';
+  if (level.includes('中度')) return 'badge-warning';
+  if (level.includes('轻度')) return 'badge-success';
+  return 'badge-neutral';
+});
+
+// 原型新增：有效违规命中卡片样式
+const effectiveHitsClass = computed(() => {
+  const hits = props.data?.executiveSummary?.metrics?.effectiveHits ?? 0;
+  return hits > 0 ? 'danger' : 'safe';
+});
+
+const effectiveHitsValue = computed(() => {
+  return props.data?.executiveSummary?.metrics?.effectiveHits ?? 0;
+});
 </script>
 
 <style scoped>
@@ -416,6 +427,7 @@ function priorityLabel(value?: string) {
   font-weight: 700;
 }
 
+/* Hero Panel */
 .hero-panel {
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
@@ -437,17 +449,18 @@ function priorityLabel(value?: string) {
 
 .hero-title {
   margin: 10px 0 14px;
-  font-size: 32px;
+  font-size: 28px;
   line-height: 1.45;
 }
 
-.hero-action {
+.hero-note {
   margin: 0;
-  padding: 14px 16px;
-  border-radius: 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.9);
   color: #334155;
-  line-height: 1.8;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .hero-meta {
@@ -459,53 +472,23 @@ function priorityLabel(value?: string) {
   font-size: 12px;
 }
 
-.metric-grid,
-.overview-grid,
-.document-grid,
-.insight-grid,
-.risk-detail-grid,
-.evidence-summary,
-.action-layout {
+/* Metric Grid */
+.metric-grid {
   display: grid;
   gap: 14px;
-}
-
-.metric-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.metric-card,
-.summary-card,
-.insight-card,
-.overview-card,
-.document-card,
-.risk-card,
-.evidence-card,
-.detail-card,
-.action-column {
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  border-radius: 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .metric-card {
   padding: 18px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  border-radius: 18px;
+  text-align: center;
 }
 
-.metric-label,
-.metric-hint,
-.detail-label,
-.document-risk-label,
-.risk-order,
-.insight-title {
+.metric-label {
   display: block;
-}
-
-.metric-label,
-.detail-label,
-.document-risk-label,
-.insight-title,
-.risk-order {
   color: #64748b;
   font-size: 12px;
   font-weight: 700;
@@ -524,6 +507,7 @@ function priorityLabel(value?: string) {
   line-height: 1.6;
 }
 
+/* Section */
 .doc-section {
   margin-bottom: 34px;
 }
@@ -540,21 +524,165 @@ function priorityLabel(value?: string) {
   font-weight: 700;
 }
 
+/* Summary Card */
 .summary-card {
   padding: 20px 22px;
-  line-height: 1.85;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #ffffff;
 }
 
-.summary-badge,
-.overview-level,
-.chip {
+.summary-text {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.85;
+  color: #334155;
+}
+
+/* Insight Grid */
+.insight-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
+.insight-card {
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  border-radius: 18px;
+}
+
+.insight-title {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.insight-card p {
+  margin: 0;
+  color: #334155;
+  line-height: 1.75;
+  font-size: 14px;
+}
+
+/* Document Table */
+.document-table-wrap,
+.overview-table-wrap,
+.action-table-wrap {
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.doc-table th,
+.doc-table td {
+  border: 1px solid #cbd5e1;
+  padding: 12px 14px;
+  text-align: left;
+}
+
+.doc-table th {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #475569;
+}
+
+.doc-table td {
+  color: #334155;
+}
+
+.doc-code-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #fff;
+  font-weight: 800;
+  font-size: 12px;
 }
 
-.summary-badge,
-.overview-level {
+.file-name-cell {
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Status Tags */
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-found {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.status-none {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-review {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.status-ok {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+/* Risk Card */
+.risk-card {
+  padding: 20px;
+  margin-bottom: 16px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  border-radius: 18px;
+}
+
+.risk-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.risk-order {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.risk-head h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.level-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 32px;
   padding: 0 12px;
   border-radius: 999px;
@@ -562,93 +690,51 @@ function priorityLabel(value?: string) {
   font-weight: 700;
 }
 
-.summary-badge {
-  margin-bottom: 12px;
-}
-
-.insight-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-top: 14px;
-}
-
-.insight-card {
-  padding: 16px;
-}
-
-.insight-card p,
-.overview-card p,
-.document-card p,
-.detail-card p,
-.evidence-analysis {
-  margin: 0;
-  color: #334155;
-  line-height: 1.75;
-}
-
-.overview-grid {
+.risk-detail-grid {
+  display: grid;
+  gap: 14px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.overview-card {
-  padding: 18px;
+.detail-card {
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
 }
 
-.overview-head,
-.document-head,
-.risk-head,
-.evidence-footer,
-.document-meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.overview-head,
-.document-head,
-.risk-head {
-  align-items: flex-start;
-}
-
-.overview-meta,
-.document-meta,
-.evidence-footer {
-  margin-top: 12px;
+.detail-label {
   color: #64748b;
   font-size: 12px;
-  line-height: 1.6;
-  flex-wrap: wrap;
+  font-weight: 700;
+  margin-bottom: 8px;
 }
 
-.document-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.detail-card p {
+  margin: 0;
+  color: #334155;
+  line-height: 1.7;
 }
 
-.document-card {
-  padding: 18px;
+.action-card {
+  background: linear-gradient(180deg, #fffaf0, #ffffff);
 }
 
-.doc-code {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  background: #0f172a;
-  color: #fff;
-  font-weight: 800;
+/* Evidence Card */
+.evidence-card {
+  padding: 20px;
+  margin-bottom: 16px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  border-radius: 18px;
+}
+
+.evidence-source {
+  margin-bottom: 14px;
+}
+
+.source-tag {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.chip-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.chip {
-  padding: 6px 10px;
+  padding: 6px 12px;
   border-radius: 999px;
   background: #eff6ff;
   color: #1d4ed8;
@@ -656,31 +742,11 @@ function priorityLabel(value?: string) {
   font-weight: 600;
 }
 
-.risk-card,
-.evidence-card {
-  padding: 20px;
-  margin-bottom: 16px;
-}
-
-.risk-detail-grid,
-.evidence-summary {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-top: 14px;
-}
-
-.detail-card {
-  padding: 16px;
-}
-
-.action-card {
-  background: linear-gradient(180deg, #fffaf0, #ffffff);
-}
-
 .diff-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
-  margin: 16px 0 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 16px 0;
 }
 
 .diff-side {
@@ -688,6 +754,14 @@ function priorityLabel(value?: string) {
   border-radius: 16px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
+}
+
+.diff-side-a {
+  border-left: 3px solid #3b82f6;
+}
+
+.diff-side-b {
+  border-left: 3px solid #10b981;
 }
 
 .diff-head {
@@ -706,102 +780,348 @@ function priorityLabel(value?: string) {
   color: #0f172a;
 }
 
-.evidence-analysis {
-  margin-top: 10px;
-}
-
-.action-layout {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.action-column {
-  padding: 18px;
-}
-
-.doc-list {
-  margin: 0;
-  padding-left: 20px;
-  line-height: 1.85;
-}
-
-.doc-table {
-  width: 100%;
-  border-collapse: collapse;
+.evidence-finding,
+.evidence-review {
   margin-top: 14px;
-  font-size: 14px;
-}
-
-.doc-table th,
-.doc-table td {
-  border: 1px solid #cbd5e1;
-  padding: 10px 12px;
-  text-align: left;
-}
-
-.doc-table th {
+  padding: 14px;
+  border-radius: 12px;
   background: #f8fafc;
+}
+
+.evidence-review {
+  background: #fffaf0;
+}
+
+/* Priority Badge */
+.priority-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
   font-weight: 700;
 }
 
-.responsibility-table-wrap {
-  margin-top: 18px;
+.priority-high {
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
+.priority-medium {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.priority-low {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.priority-neutral {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+/* Boundary List */
+.boundary-list {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.85;
+  color: #334155;
+}
+
+.boundary-list li {
+  margin-bottom: 8px;
+}
+
+/* Empty State */
 .empty-state {
   padding: 24px;
   border-radius: 16px;
   background: #f8fafc;
   color: #64748b;
+  text-align: center;
 }
 
-.color-danger {
-  color: #b91c1c;
-  background: #fee2e2;
-}
+/* Color Utilities */
+.color-danger { color: #b91c1c; }
+.color-warning { color: #b45309; }
+.color-safe { color: #166534; }
+.color-neutral { color: #475569; }
 
-.color-warning {
-  color: #b45309;
-  background: #fef3c7;
-}
+.bottom-space { margin-bottom: 60px; }
 
-.color-safe {
-  color: #166534;
-  background: #dcfce7;
-}
-
-.color-neutral {
+/* ===== 原型 Header 区域 ===== */
+.report-id-label {
+  font-size: 11px;
+  font-weight: 700;
   color: #475569;
-  background: #e2e8f0;
+  letter-spacing: 0.05em;
 }
 
-.bottom-space {
-  margin-bottom: 60px;
+.hero-panel {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+  margin-bottom: 36px;
+  padding-bottom: 24px;
+  border-bottom: 2px solid #0f172a;
 }
+
+.hero-copy { flex: 1; }
+
+.hero-badge-area { flex-shrink: 0; }
+
+.risk-badge-large {
+  background: #b91c1c;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 4px;
+  text-align: center;
+  min-width: 160px;
+}
+
+.risk-badge-large .badge-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.9;
+  margin-bottom: 4px;
+}
+
+.risk-badge-large .badge-value {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.badge-danger { color: #b91c1c; }
+.badge-warning { color: #b45309; }
+.badge-success { color: #166534; }
+.badge-neutral { color: #475569; }
+
+/* ===== 原型 Section1: 审查执行摘要 ===== */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: #f8fafc;
+  padding: 20px;
+  border-bottom: 4px solid #e2e8f0;
+}
+
+.stat-card.danger { border-bottom-color: #b91c1c; }
+.stat-card.active { border-bottom-color: #1e40af; }
+.stat-card.safe { border-bottom-color: #166534; }
+
+.stat-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  display: block;
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.conclusion-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 20px 24px;
+  border-radius: 4px;
+}
+
+.conclusion-box p {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.85;
+  color: #1e293b;
+}
+
+/* ===== 原型文档表格 ===== */
+.file-code-tag {
+  background: #0f172a;
+  color: white;
+  padding: 3px 10px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* ===== 原型风险项（带规则编码） ===== */
+.risk-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  margin-bottom: 24px;
+  overflow: hidden;
+  display: flex;
+}
+
+.risk-rank {
+  width: 70px;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.risk-rank .rank-num {
+  font-size: 26px;
+  font-weight: 900;
+  color: #e2e8f0;
+  line-height: 1;
+}
+
+.risk-rank .rule-code-small {
+  font-size: 10px;
+  font-weight: 800;
+  color: #475569;
+  margin-top: 4px;
+}
+
+.risk-content { flex: 1; padding: 22px; }
+
+.risk-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.risk-header h3 { font-size: 17px; font-weight: 800; margin: 0; }
+
+.risk-level-tag {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 4px 12px;
+  border-radius: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tag-critical { background: #fee2e2; color: #b91c1c; }
+.tag-high { background: #ffedd5; color: #9a3412; }
+.tag-medium { background: #fef3c7; color: #92400e; }
+
+.risk-body {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 28px;
+}
+
+.risk-field {}
+
+.field-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: #475569;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.field-value {
+  font-size: 14px;
+  color: #0f172a;
+  line-height: 1.7;
+}
+
+/* ===== 原型证据对比 ===== */
+.evidence-box {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 24px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.evidence-header {
+  padding: 12px 20px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.evidence-diff {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.diff-col { padding: 20px; position: relative; }
+.diff-col:first-child { border-right: 1px solid #e2e8f0; }
+
+.diff-label {
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #475569;
+  opacity: 0.8;
+}
+
+.diff-text {
+  font-size: 13px;
+  color: #1e293b;
+  background: #fff;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.finding-footer {
+  padding: 14px 20px;
+  font-size: 13px;
+  background: rgba(254, 243, 199, 0.4);
+  border-top: 1px solid #e2e8f0;
+  line-height: 1.7;
+}
+
+/* ===== 原型 Footer ===== */
+.doc-footer {
+  margin-top: 60px;
+  padding-top: 36px;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.seal-group {
+  display: flex;
+  justify-content: center;
+  gap: 100px;
+  margin-bottom: 28px;
+}
+
+.seal-item p { font-size: 12px; color: #475569; font-weight: 500; }
+.seal-line { width: 140px; height: 1px; background: #94a3b8; margin: 10px auto; }
+.copyright { font-size: 10px; color: #94a3b8; margin-top: 36px; }
 
 @media (max-width: 1080px) {
   .formal-document-layout {
     display: block;
     height: auto;
   }
-
-  .doc-sidebar {
-    display: none;
-  }
-
-  .doc-main {
-    padding: 28px 20px;
-  }
-
-  .hero-panel,
-  .metric-grid,
-  .overview-grid,
-  .document-grid,
-  .insight-grid,
-  .risk-detail-grid,
-  .evidence-summary,
-  .diff-grid,
-  .action-layout {
-    grid-template-columns: 1fr;
-  }
+  .doc-sidebar { display: none; }
+  .doc-main { padding: 28px 20px; }
+  .hero-panel { flex-direction: column; align-items: flex-start; }
+  .summary-grid,
+  .risk-body,
+  .evidence-diff { grid-template-columns: 1fr; }
+  .seal-group { flex-direction: column; gap: 24px; align-items: center; }
 }
 </style>

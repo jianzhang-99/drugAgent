@@ -14,13 +14,13 @@
                 </svg>
               </div>
               <div class="header-titles">
-                <h3>标书审查决策报告</h3>
-                <span class="trace-badge">TRACE: {{ store.currentResult?.traceId || '—' }}</span>
+                <h3>标书审查报告</h3>
+                <span class="meta-info" v-if="reportData?.metadata">生成时间：{{ reportData.metadata.generatedAt }}</span>
               </div>
             </div>
 
             <div class="header-actions">
-              <button class="export-btn" @click="handleExportPdf">导出 PDF</button>
+              <button class="export-btn" @click="handleExportPdf" :disabled="isExporting">{{ isExporting ? '导出中...' : '导出 PDF' }}</button>
               <button class="close-btn" @click="handleClose" aria-label="关闭">×</button>
             </div>
           </div>
@@ -36,6 +36,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { ElMessage } from 'element-plus';
 import { useAgentStore } from '../../store/agentStore';
 import type { DrugAgentResp } from '../../types/agent';
 import type { ReportData } from '../../types/report.types';
@@ -47,6 +48,9 @@ const store = useAgentStore();
 
 /** FormalReportDocument 组件实例引用，用于获取内容区域 DOM */
 const reportDocRef = ref<InstanceType<typeof FormalReportDocument> | null>(null);
+
+/** PDF 导出中状态 */
+const isExporting = ref(false);
 
 const visible = computed({
   get: () => !!store.currentResult,
@@ -65,14 +69,21 @@ function handleClose() {
 }
 
 async function handleExportPdf() {
+  if (isExporting.value) return;
   const result = store.currentResult as DrugAgentResp | null;
   if (!result) return;
 
-  // 直接取已渲染的报告 DOM，不再手写 HTML 模板
-  const contentEl = reportDocRef.value?.docMainRef;
-  if (!contentEl) return;
-
-  await exportReportToPdf(contentEl, `标书审查报告_${result.traceId || Date.now()}`);
+  isExporting.value = true;
+  try {
+    const contentEl = reportDocRef.value?.docMainRef;
+    if (!contentEl) throw new Error('报告内容不存在');
+    await exportReportToPdf(contentEl, `标书审查报告_${result.traceId || Date.now()}`);
+  } catch (e) {
+    console.error('PDF导出失败:', e);
+    ElMessage.error('PDF导出失败，请稍后重试');
+  } finally {
+    isExporting.value = false;
+  }
 }
 </script>
 
