@@ -127,6 +127,12 @@ export interface EvidenceChain {
   summary: string;
   /** 人工复核指南/系统分析结果 */
   analysis: string;
+  /** 对用户可读的判定依据 */
+  basis?: string;
+  /** 对比文件 A 名称 */
+  docAName?: string;
+  /** 对比文件 B 名称 */
+  docBName?: string;
   
   /** 双文档对比的实质差异数据 */
   diffPayload: EvidenceDiffPayload;
@@ -184,9 +190,78 @@ export interface ReportMetadata {
   taskId: string;
   reportId: string;
   generatedAt: string;
+  traceId?: string;
   projectTarget: string; // "审查对象"
   reviewType: string;    // "审查类型"
   reviewScope: string;
   systemVersion: string;
   hitRules?: Array<{ ruleCode: string; ruleName: string; hitCount: number; remark?: string; }>;
+}
+
+/**
+ * 以下类型为兼容旧版报告组件保留。
+ */
+
+export interface Page2RiskOverview {
+  riskCategories: Array<{
+    type: string;
+    categoryName: string;
+    level: string;
+    hitCount: number;
+    needHumanReview: boolean;
+    explanation: string;
+    representativeEvidence: string;
+    action: string;
+  }>;
+}
+
+export interface Page3CoreEvidence {
+  evidenceList: Array<{
+    id: string;
+    type: string;
+    level: string;
+    confidence: string;
+    title: string;
+    explanation: string;
+    keyFindings: Record<string, unknown>;
+    basis: string;
+    action: string;
+  }>;
+}
+
+export interface ActionLevelItem {
+  action: string;
+  role: string;
+  priority: string;
+}
+
+export interface ActionLevel {
+  title: string;
+  objective: string;
+  actions: ActionLevelItem[];
+}
+
+export interface Page5ActionSuggestions {
+  level1?: ActionLevel;
+  level2?: ActionLevel;
+  level3?: ActionLevel;
+  retentionAdvice?: string[];
+}
+
+export interface Page6Appendix {
+  ruleList?: Array<{
+    ruleId: string;
+    ruleCode: string;
+    description: string;
+  }>;
+  evidenceFragments?: Array<{
+    fragmentId: string;
+    content: string;
+    source: string;
+  }>;
+  taskInfo?: {
+    taskId: string;
+    reviewTime: string;
+    modelVersion: string;
+  };
 }

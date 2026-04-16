@@ -68,7 +68,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { ActionLevel, Page5ActionSuggestions } from '../../types/report.types';
+import type { ActionLevel, ActionLevelItem, Page5ActionSuggestions } from '../../types/report.types';
 
 interface Props {
   data?: Page5ActionSuggestions;
@@ -86,7 +86,7 @@ const levels = computed(() =>
 
 const roleRows = computed(() =>
   levels.value.flatMap((level) =>
-    (level?.actions || []).map((action) => ({
+    (level?.actions || []).map((action: ActionLevelItem) => ({
       action: action.action,
       role: action.role,
       priority: action.priority,

@@ -181,3 +181,21 @@ public class XxxReq {}
 ## 8. 一句话协作准则
 
 在这个仓库里，优先做"边界清晰、流程稳定、便于扩展"的设计，而不是"短期能跑但不断堆逻辑"的实现。
+
+---
+
+## 9. 本地环境配置
+
+### 9.1 Maven 配置
+
+本地 Maven 使用自定义配置文件和本地仓库：
+
+| 配置项 | 路径 |
+|--------|------|
+| settings.xml | `/Users/liangjiajian/.m2/settings_ppy.xml` |
+| 本地仓库 | `/Users/liangjiajian/.m2/AIDUNDUN_repository` |
+
+执行 Maven 命令时需指定配置文件：
+```bash
+mvn clean install -s /Users/liangjiajian/.m2/settings_ppy.xml
+```

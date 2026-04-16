@@ -70,7 +70,8 @@ public class ReportGenerationService {
         report.setScene(tenderCase == null ? "tender_review" : tenderCase.getScene());
         report.setGeneratedAt(OffsetDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
         report.setOverview(buildOverview(data, rawHits, effectiveHits, exemptionHits, fusionResult, evidenceAssemblyResult));
-        report.setRiskItems(buildRiskItems(effectiveHits, fusionResult, evidenceAssemblyResult));
+        Map<String, String> docIdToName = buildDocIdToName(data);
+        report.setRiskItems(buildRiskItems(effectiveHits, fusionResult, evidenceAssemblyResult, docIdToName));
         report.setManagementSummary(buildManagementSummary(data, fusionResult, effectiveHits, exemptionHits));
         String topRisk = report.getRiskItems() != null && !report.getRiskItems().isEmpty()
                 ? report.getRiskItems().get(0).getTitle() : "重点风险项";
@@ -123,7 +124,8 @@ public class ReportGenerationService {
 
     private List<ReviewReport.RiskItem> buildRiskItems(List<RuleHit> effectiveHits,
                                                        RiskFusionResult fusionResult,
-                                                       EvidenceAssemblyResult evidenceAssemblyResult) {
+                                                       EvidenceAssemblyResult evidenceAssemblyResult,
+                                                       Map<String, String> docIdToName) {
         if (effectiveHits == null || effectiveHits.isEmpty()) {
             ReviewReport.RiskItem item = new ReviewReport.RiskItem();
             item.setRiskType("overall");
@@ -145,7 +147,7 @@ public class ReportGenerationService {
             item.setRiskType(fallback(hit.getRiskType(), "collusion"));
             item.setRiskLevel(translateRiskLevel(resolveItemRiskLevel(hit, fusionResult)));
             item.setTitle(fallback(hit.getRuleName(), fallback(hit.getRuleCode(), "未知风险主题")));
-            item.setSummary(buildRiskItemSummary(hit));
+            item.setSummary(buildRiskItemSummary(hit, docIdToName));
             item.getReasonCodes().addAll(resolveReasonCodes(hit, fusionResult));
             item.getEvidenceTitles().addAll(resolveEvidenceTitles(hit, evidenceItems));
             item.getRecommendations().addAll(resolveRecommendations(hit));
@@ -197,8 +199,8 @@ public class ReportGenerationService {
         java.util.Map<String, String> explanations = new java.util.LinkedHashMap<>();
         explanations.put("overall", fusionResult == null
                 ? "暂无详细综合风险解释。"
-                : "综合风险等级为 " + translateRiskLevel(fallback(fusionResult.getRiskLevel(), "UNKNOWN"))
-                + "，主要判罚依据为: " + summarizeReasonCodes(fusionResult.getReasonCodes()) + "。");
+                : "综合风险等级判定为「" + translateRiskLevel(fallback(fusionResult.getRiskLevel(), "UNKNOWN"))
+                + "」，主要基于" + summarizeReasonCodes(fusionResult.getReasonCodes()) + "等因素综合研判。");
         explanations.put("evidence", buildEvidenceExplanation(evidenceAssemblyResult));
         explanations.put("exemption", exemptionHits == null || exemptionHits.isEmpty()
                 ? "当前审查任务未触发任何豁免机制。"
@@ -228,16 +230,24 @@ public class ReportGenerationService {
                 + "。";
     }
 
-    private String buildRiskItemSummary(RuleHit hit) {
+    private String buildRiskItemSummary(RuleHit hit, Map<String, String> docIdToName) {
         StringBuilder builder = new StringBuilder();
-        builder.append(fallback(hit.getTriggerSummary(), "触发单项规则命中"));
-        if (effectiveWeight(hit) != null) {
-            builder.append("；评估权重=").append(effectiveWeight(hit));
-        }
+        builder.append(fallback(hit.getTriggerSummary(), "系统识别到异常线索"));
         if (hit.getDocumentIds() != null && !hit.getDocumentIds().isEmpty()) {
-            builder.append("；涉及标书=").append(String.join(", ", hit.getDocumentIds()));
+            builder.append("，涉及").append(resolveReadableDocumentNames(hit.getDocumentIds(), docIdToName));
+        }
+        if (effectiveWeight(hit) != null) {
+            builder.append("，风险关注度").append(riskAttentionLabel(effectiveWeight(hit)));
         }
         return builder.toString();
+    }
+
+    private String riskAttentionLabel(Integer weight) {
+        if (weight == null) return "待评估";
+        if (weight >= 85) return "高";
+        if (weight >= 60) return "较高";
+        if (weight >= 30) return "中等";
+        return "较低";
     }
 
     private String buildCoreRiskTitle(RuleHit hit) {
@@ -334,18 +344,15 @@ public class ReportGenerationService {
     private String buildEvidenceBasis(RuleHit hit, RiskFusionResult fusionResult) {
         List<String> parts = new ArrayList<>();
         if (hit != null && hit.getRuleCode() != null) {
-            parts.add("命中规则 " + hit.getRuleCode());
+            parts.add("系统通过「" + resolveDisplayLabel(hit.getRuleCode()) + "」规则识别");
         }
-        if (effectiveWeight(hit) != null) {
-            parts.add("风险权重 " + effectiveWeight(hit));
-        }
-        if (hit != null && hit.getConfidence() != null) {
-            parts.add("置信度 " + String.format("%.0f%%", hit.getConfidence() * 100));
+        if (hit != null && hit.getConfidence() != null && hit.getConfidence() >= 0.8) {
+            parts.add("判定置信度较高");
         }
         if (fusionResult != null && fusionResult.getReasonCodes() != null && !fusionResult.getReasonCodes().isEmpty()) {
-            parts.add("融合原因码 " + String.join("、", fusionResult.getReasonCodes()));
+            parts.add("综合依据包括" + summarizeReasonCodes(fusionResult.getReasonCodes()));
         }
-        return parts.isEmpty() ? "基于规则命中与证据片段交叉判定。" : String.join("；", parts);
+        return parts.isEmpty() ? "基于规则命中与证据片段交叉判定。" : String.join("，", parts) + "。";
     }
 
     private String resolveConfidence(RuleHit hit) {
@@ -513,7 +520,8 @@ public class ReportGenerationService {
             return "已保留的规则命中和证据编排结果";
         }
         return reasonCodes.stream()
-                .map(code -> code.toLowerCase(Locale.ROOT))
+                .map(this::translateReasonCode)
+                .distinct()
                 .collect(Collectors.joining("、"));
     }
 
@@ -656,10 +664,10 @@ public class ReportGenerationService {
             builder.append("### [证据组-").append(String.format("%02d", index++)).append("] ")
                     .append(safeText(group.getTitle(), "未命名证据组")).append("\n\n");
             builder.append("- **证据类型**: ").append(safeText(group.getSource(), safeText(group.getGroupKey(), "系统聚合"))).append("\n");
-            builder.append("- **命中内容**: `").append(safeInlineContent(firstEvidenceContent(items))).append("`").append("\n");
+            builder.append("- **命中内容**: ").append(safeInlineContent(firstEvidenceContent(items))).append("\n");
             builder.append("- **涉及文档 1**: ").append(resolveEvidenceDocument(data, items, 0)).append("\n");
             builder.append("- **涉及文档 2**: ").append(resolveEvidenceDocument(data, items, 1)).append("\n");
-            builder.append("- **交叉印证说明**: ").append(safeText(group.getSummary(), "系统已将同类异常线索聚合为同一证据组，可支持人工回溯。")).append("\n");
+            builder.append("- **交叉印证**: ").append(safeText(group.getSummary(), "系统已将同类异常线索聚合为同一证据组，可支持人工回溯。")).append("\n");
             builder.append("- **复核关注点**: 建议结合文件形成时间、编制主体、报价逻辑及附件一致性进一步复核。").append("\n\n");
         }
     }
@@ -736,9 +744,9 @@ public class ReportGenerationService {
 
     private String resolveBasis(ReviewReport.RiskItem item) {
         if (item == null || item.getReasonCodes() == null || item.getReasonCodes().isEmpty()) {
-            return "基于文本相似特征、结构重复特征、报价异常或关联关系线索综合判断。";
+            return "系统结合文本相似特征、结构重复特征、报价异常或关联关系线索进行综合研判。";
         }
-        return "基于规则编码 " + String.join("、", item.getReasonCodes()) + " 及关联证据链综合判断。";
+        return "系统识别到" + summarizeReasonCodes(item.getReasonCodes()) + "，并结合关联证据链进行综合研判。";
     }
 
     private String resolveImpact(ReviewReport.RiskItem item) {
@@ -773,10 +781,12 @@ public class ReportGenerationService {
         if (hit == null) {
             return "该项已纳入系统降权处理，不单独作为风险结论依据。";
         }
-        return "动作=" + safeText(hit.getAction(), "降权处理")
-                + "，原始权重=" + safeNumber(hit.getBeforeWeight())
-                + "，调整后权重=" + safeNumber(hit.getAfterWeight())
-                + "。";
+        int before = safeNumber(hit.getBeforeWeight());
+        int after = safeNumber(hit.getAfterWeight());
+        if (after == 0) {
+            return "该项经豁免判定后已从风险清单中移除，不影响最终结论。";
+        }
+        return "该项原始风险权重为 " + before + "，经豁免判定后降至 " + after + "，对最终结论影响有限。";
     }
 
     private String normalizeFirstAction(String action, String topRisk) {
@@ -803,6 +813,37 @@ public class ReportGenerationService {
 
     private String safeInlineContent(String value) {
         return safeText(value, "暂无证据内容").replace("`", "'");
+    }
+
+    private String resolveReadableDocumentNames(List<String> documentIds, Map<String, String> docIdToName) {
+        if (documentIds == null || documentIds.isEmpty()) {
+            return "待补充";
+        }
+        return documentIds.stream()
+                .map(docId -> {
+                    if (docIdToName != null && docIdToName.containsKey(docId)) {
+                        return docIdToName.get(docId);
+                    }
+                    return docId;
+                })
+                .distinct()
+                .collect(Collectors.joining("、"));
+    }
+
+    private String translateReasonCode(String code) {
+        if (code == null || code.isBlank()) {
+            return "系统综合判断";
+        }
+        return switch (code) {
+            case "MULTI_RULE_CO_OCCURRENCE" -> "同一批文件同时命中多类异常信号";
+            case "MULTI_HIT_ACCUMULATION" -> "同类异常多次出现，说明不是单点偶发";
+            case "CROSS_DOCUMENT_VALIDATION", "CROSS_DOCUMENT_EVIDENCE" -> "异常在多份文件之间形成交叉印证";
+            case "EVIDENCE_SUFFICIENT" -> "当前证据数量和强度足以支撑进一步复核";
+            case "HIGH_PRIORITY_RULE" -> "命中了高优先级风险规则";
+            case "SYNERGY_BONUS" -> "多条异常共同增强了整体风险判断";
+            case "EXEMPTION_DOWNGRADE" -> "部分线索已按模板或引用场景做降权处理";
+            default -> resolveDisplayLabel(code);
+        };
     }
 
     // ==================== 报告决策页面数据结构生成 ====================
@@ -1083,17 +1124,17 @@ public class ReportGenerationService {
         int id = 1;
         for (RuleHit hit : sortedHits.stream().limit(5).toList()) {
             Map<String, Object> keyFindings = new LinkedHashMap<>();
-            keyFindings.put("命中规则", fallback(hit.getRuleCode(), "-"));
+            keyFindings.put("检测项目", resolveDisplayLabel(fallback(hit.getRuleCode(), "-")));
             keyFindings.put("风险类型", resolveCategoryName(resolveGroupKeyForReport(hit)));
-            keyFindings.put("涉及文档", hit.getDocumentIds() == null ? 0 : hit.getDocumentIds().size());
+            keyFindings.put("涉及文档数", hit.getDocumentIds() == null ? 0 : hit.getDocumentIds().size());
             if (effectiveWeight(hit) != null) {
-                keyFindings.put("风险权重", effectiveWeight(hit));
+                keyFindings.put("风险关注度", riskAttentionLabel(effectiveWeight(hit)));
             }
             if (hit.getConfidence() != null) {
-                keyFindings.put("判定置信度", String.format("%.0f%%", hit.getConfidence() * 100));
+                keyFindings.put("判定可信度", hit.getConfidence() >= 0.8 ? "高" : hit.getConfidence() >= 0.5 ? "中" : "低");
             }
             if (hit.getEvidences() != null && !hit.getEvidences().isEmpty()) {
-                keyFindings.put("关键位置", fallback(hit.getEvidences().get(0).getChapterPath(), "原文片段"));
+                keyFindings.put("定位章节", fallback(hit.getEvidences().get(0).getChapterPath(), "原文片段"));
             }
 
             evidences.add(Page3CoreEvidence.Evidence.builder()

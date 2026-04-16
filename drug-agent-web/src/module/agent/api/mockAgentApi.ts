@@ -9,7 +9,6 @@ import type {
   UpdateTitleRequest,
   ModelInfo,
 } from '../types/agent';
-import type { ReportData } from '../types/report.types';
 
 type ApiEnvelope<T> = Promise<{ data: ApiResponse<T> }>;
 
@@ -78,7 +77,7 @@ const sampleReport = {
   ],
 };
 
-const sampleReportData: ReportData = {
+const sampleReportData: any = {
   page1Summary: {
     riskLevel: 'high',
     conclusion:
@@ -408,7 +407,7 @@ const buildTenderResult = (
   suggestedActions: ['查看结构化风险详情', '导出审查报告', '发起人工复核任务'],
   caseId: buildId('case'),
   documentIds: [buildId('doc'), buildId('doc')],
-  documentNames: sampleReportData.page1Summary.documents.map((item) => item.docName),
+  documentNames: sampleReportData.page1Summary.documents.map((item: any) => item.docName),
   report: sampleReport,
   reportData: sampleReportData,
   evidenceList: [

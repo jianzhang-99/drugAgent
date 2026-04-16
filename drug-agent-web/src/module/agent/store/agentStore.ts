@@ -594,13 +594,11 @@ export const useAgentStore = defineStore('agent', () => {
           return res.data.data;
         } else {
           // 移除上传中消息和处理中消息，添加错误消息
-        removeMessage(uploadingMsg.id);
-        removeMessage(processingMsg.id);
-        removeMessage(processingMsg.id);
-        const errorMsg = createErrorMessage(res.data.message || '上传失败');
-        addMessage(errorMsg);
-      }
-    } catch (syncError: unknown) {
+          removeMessage(processingMsg.id);
+          const errorMsg = createErrorMessage(res.data.message || '上传失败');
+          addMessage(errorMsg);
+        }
+      } catch (syncError: unknown) {
         removeMessage(processingMsg.id);
         const errorMsg = createErrorMessage(
           syncError instanceof Error ? syncError.message : '网络错误，请稍后重试'

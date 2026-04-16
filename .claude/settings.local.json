@@ -35,7 +35,10 @@
       "Bash(mkdir -p support)",
       "Bash(mv DocumentTextNormalizer.java DocumentSectionRecognizer.java support/)",
       "Bash(ls -la C:/Users/Administrator/Desktop/药品监管项目/drugAgent/*.cmd C:/Users/Administrator/Desktop/药品监管项目/drugAgent/mvnw*)",
-      "Bash(dir \"C:\\\\Users\\\\Administrator\\\\Desktop\\\\药品监管项目\\\\drugAgent\\\\drug-agent-web\\\\src\\\\module\\\\agent\")"
+      "Bash(dir \"C:\\\\Users\\\\Administrator\\\\Desktop\\\\药品监管项目\\\\drugAgent\\\\drug-agent-web\\\\src\\\\module\\\\agent\")",
+      "Bash(xargs basename:*)",
+      "Bash(wc -l src/main/java/com/liang/drugagent/shared/rag/service/*.java)",
+      "Bash(npx vue-tsc:*)"
     ]
   }
 }
