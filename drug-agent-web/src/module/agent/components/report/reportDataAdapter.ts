@@ -23,10 +23,11 @@ const REASON_TEXT: Record<string, string> = {
   'W-M1': '报价梯度异常',
   'W-M2': '联系人或联系方式异常接近',
   'W-M3': '核心团队成员重复',
+  'W-M4': '版式模板同源',
   'W-P1': '技术方案雷同',
   'W-P2': '实施路径或结构高度相似',
   'W-P3': '服务承诺雷同',
-  'W-P4': '模板同源',
+  'W-P4': '风险识别抄袭',
   'W-P5': '错误复现',
 };
 
@@ -141,38 +142,47 @@ function transformReviewReport(result: DrugAgentResp): ReportData {
   const riskLevelLabel = riskLevelLabelMap[riskLevel] || '待定风险';
 
   // V2: 重点风险判断（含规则编码）
-  const topRisks = riskItems.slice(0, 3).map((item, index) => {
+  const topRisks = dedupeTopRisks(riskItems.map((item, index) => {
     const riskType = resolveRiskType(item);
     const ruleCode = item.reasonCodes?.[0] || '';
+    const riskDesc = buildRiskDescription(item, riskType, aliasMap);
     return {
       rank: index + 1,
       ruleCode: ruleCode || undefined,
-      riskName: humanizeText(item.title || '未命名风险', aliasMap),
+      riskName: normalizeRiskTitle(item.title, riskType),
       level: toRiskLevel(item.riskLevel || riskType),
-      riskDesc: humanizeText(item.summary || '存在需要重点复核的异常线索。', aliasMap),
-      keyFact: humanizeText(item.summary || '系统已识别到异常线索。', aliasMap),
-      whyReview: categoryAction(riskType),
-      action: humanizeText(item.recommendations?.[0] || categoryAction(riskType), aliasMap),
+      riskDesc,
+      keyFact: riskDesc,
+      whyReview: buildWhyReview(riskType),
+      action: buildReviewAction(riskType),
     };
-  });
+  })).slice(0, 3).map((item, index) => ({ ...item, rank: index + 1 }));
 
   // V2: 关键证据明细（含证据链ID/相似度/AI判定）
   const evidences = evidenceGroups.map((group, index) => {
     const category = resolveEvidenceCategory(group);
     const ruleCode = topRisks[0]?.ruleCode || 'UNKNOWN';
     const similarityValue = group.similarity != null ? (group.similarity * 100).toFixed(1) : undefined;
+    const displayTitle = resolveRiskTypeLabel(category);
+    const docAName = documents[0]?.partyName || '投标主体 A';
+    const docBName = documents[1]?.partyName || '投标主体 B';
+    const rawDocAContent = group.items?.[0]?.content || group.evidenceList?.[0]?.content || group.contentA || '';
+    const rawDocBContent = group.items?.[1]?.content || group.evidenceList?.[1]?.content || group.contentB || '';
     return {
       evidenceId: `E${String(index + 1).padStart(2, '0')}`,
       type: category,
       level: toEvidenceLevel(inferEvidenceLevel(group)),
       evidenceChainId: `RULE-${ruleCode}-${String(index + 1).padStart(3, '0')}`,
+      displayTitle,
       similarity: similarityValue ? `${similarityValue}%` : undefined,
       sourceType: resolveRiskTypeLabel(category),
-      docAName: `${documents[0]?.docId || 'DOC-001'} [${documents[0]?.partyName || '晟博云创'}]`,
-      docBName: `${documents[1]?.docId || 'DOC-002'} [${documents[1]?.partyName || '晟拓数科'}]`,
-      docAContent: humanizeText(group.items?.[0]?.content || group.evidenceList?.[0]?.content || group.contentA || '（暂无对照内容）', aliasMap),
-      docBContent: humanizeText(group.items?.[1]?.content || group.evidenceList?.[1]?.content || group.contentB || '（暂无对照内容）', aliasMap),
-      comparisonFinding: humanizeText(group.summary || `发现 ${category} 异常信号。`, aliasMap),
+      docAName,
+      docBName,
+      docASummary: buildEvidenceExcerpt(rawDocAContent, aliasMap),
+      docBSummary: buildEvidenceExcerpt(rawDocBContent, aliasMap),
+      docAContent: buildEvidenceSideContent(rawDocAContent, 'A', aliasMap),
+      docBContent: buildEvidenceSideContent(rawDocBContent, 'B', aliasMap),
+      comparisonFinding: buildEvidenceSummary(group, category, aliasMap),
       aiJudgment: buildAIJudgment(group, category, documents),
       reviewSuggestion: categoryAction(category),
     };
@@ -245,9 +255,89 @@ function transformReviewReport(result: DrugAgentResp): ReportData {
 function buildAIJudgment(group: EvidenceGroup, category: string, documents: DocumentIndex[]): string {
   const docAName = documents[0]?.partyName || '投标主体 A';
   const docBName = documents[1]?.partyName || '投标主体 B';
-  const similarity = group.similarity != null ? (group.similarity * 100).toFixed(1) : 'Unknown';
+  const similarity = group.similarity != null ? (group.similarity * 100).toFixed(1) : '';
   const typeLabel = resolveRiskTypeLabel(category);
-  return `AI 审查引擎经由"确定性规约"与"LLM 语义分析器"交叉验证：【${docAName}】与【${docBName}】在"${typeLabel}"维度上表现出极高的协同特征，文本相似度达 ${similarity}%，建议结合原文上下文和人工复核结论决定是否升级处理。`;
+  const similarityText = similarity ? `，文本相似度约 ${similarity}%` : '';
+  return `AI 复核结论：${docAName} 与 ${docBName} 在“${typeLabel}”维度存在明显一致性${similarityText}，建议结合原文上下文和人工复核意见确认是否升级处理。`;
+}
+
+function dedupeTopRisks(risks: RiskOverview['topRisks']): RiskOverview['topRisks'] {
+  const merged = new Map<string, RiskOverview['topRisks'][number]>();
+  risks.forEach((risk) => {
+    const key = risk.ruleCode || risk.riskType || risk.riskName;
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, risk);
+      return;
+    }
+    if (risk.riskDesc.length > existing.riskDesc.length) {
+      merged.set(key, { ...risk, rank: existing.rank });
+    }
+  });
+  return Array.from(merged.values());
+}
+
+function normalizeRiskTitle(title: string | undefined, riskType: string): string {
+  const raw = String(title || '').trim();
+  if (raw && !/^风险识别抄袭$/.test(raw)) {
+    return raw;
+  }
+  return resolveRiskTypeLabel(riskType);
+}
+
+function buildRiskDescription(item: RiskItem, riskType: string, aliasMap: Record<string, string>): string {
+  const summary = humanizeText(item.summary || '', aliasMap);
+  const similarity = extractSimilarity(summary);
+  const focus = extractQuotedFocus(summary);
+  const similarityText = similarity ? `，相似度约 ${similarity}` : '';
+
+  if (riskType === 'pricing') {
+    return `多份投标文件的报价结构或分项报价呈现异常接近${similarityText}。建议重点核验报价形成依据，判断是否存在协同报价或统一测算底稿。`;
+  }
+  if (riskType === 'team') {
+    return `不同投标主体在联系人、核心人员或授权关系上出现重叠线索${similarityText}。该类信息通常具有主体独立性，需确认是否存在同一控制或人员交叉使用。`;
+  }
+  if (riskType === 'template') {
+    return `多份投标文件在目录结构、章节顺序或版式骨架上高度接近${similarityText}。若相似范围覆盖非标准化章节，应进一步核查是否源自同一模板或统一底稿。`;
+  }
+  if (riskType === 'text_similarity') {
+    const focusText = focus ? `“${focus}”相关内容` : '关键条款、技术响应或风险处置表述';
+    return `多份投标文件在${focusText}上高度一致${similarityText}。相似内容集中在需要各投标主体独立编制的表达区域，建议作为重点围标风险线索复核。`;
+  }
+  return summary || '系统识别到需要进一步复核的异常线索，建议结合原文、历史投标记录和外围材料确认风险是否成立。';
+}
+
+function buildWhyReview(riskType: string): string {
+  return {
+    pricing: '报价逻辑应能反映各主体独立测算过程。',
+    team: '人员和授权关系是判断投标主体独立性的关键证据。',
+    text_similarity: '非通用条款高度一致时，可能指向同源编制或协同修改。',
+    template: '版式和结构同源需要结合章节内容判断是否超出公共模板范围。',
+    auxiliary: '辅助线索需要与其他证据交叉验证后再定性。',
+  }[normalizeRiskType(riskType)] || '辅助线索需要与其他证据交叉验证后再定性。';
+}
+
+function buildReviewAction(riskType: string): string {
+  return {
+    pricing: '调取报价明细、成本测算表和历史报价记录，核对异常接近项是否具备合理商业解释。',
+    team: '核验人员社保、劳动合同、授权文件和项目履历，确认是否存在交叉任职或代持授权。',
+    text_similarity: '对相似段落进行原文级比对，标注通用模板部分与个性化响应部分，重点复核后者是否同源。',
+    template: '核对目录、页眉页脚、表格样式和章节顺序，并与招标文件模板区分公共格式与异常同源痕迹。',
+    auxiliary: '补充历史投标、工商关系和文件流转记录，形成可解释的证据链后再升级处理。',
+  }[normalizeRiskType(riskType)] || '补充历史投标、工商关系和文件流转记录，形成可解释的证据链后再升级处理。';
+}
+
+function extractSimilarity(text: string): string {
+  const match = String(text || '').match(/相似度\s*(?:达|为|约)?\s*([0-9.]+%?)/);
+  if (!match?.[1]) {
+    return '';
+  }
+  return match[1].endsWith('%') ? match[1] : `${match[1]}%`;
+}
+
+function extractQuotedFocus(text: string): string {
+  const quoted = String(text || '').match(/[“"]([^”"]{2,40})[”"]/);
+  return quoted?.[1]?.trim() || '';
 }
 
 function polishReportData(data: ReportData, result: DrugAgentResp): ReportData {
@@ -464,7 +554,7 @@ function translateCode(code: string): string {
     return trimmed.replace(/W-[A-Z]\d/g, (value) => REASON_TEXT[value] || value);
   }
   return trimmed.replace(
-    /(MULTI_RULE_CO_OCCURRENCE|MULTI_HIT_ACCUMULATION|CROSS_DOCUMENT_VALIDATION|CROSS_DOCUMENT_EVIDENCE|EVIDENCE_SUFFICIENT|HIGH_PRIORITY_RULE|SYNERGY_BONUS|EXEMPTION_DOWNGRADE|W-M1|W-M2|W-M3|W-P1|W-P2|W-P3|W-P4|W-P5)/g,
+    /(MULTI_RULE_CO_OCCURRENCE|MULTI_HIT_ACCUMULATION|CROSS_DOCUMENT_VALIDATION|CROSS_DOCUMENT_EVIDENCE|EVIDENCE_SUFFICIENT|HIGH_PRIORITY_RULE|SYNERGY_BONUS|EXEMPTION_DOWNGRADE|W-M1|W-M2|W-M3|W-M4|W-P1|W-P2|W-P3|W-P4|W-P5)/g,
     (value) => REASON_TEXT[value] || value,
   );
 }
@@ -512,7 +602,7 @@ function normalizeDocRole(role: string): string {
 }
 
 function resolveRiskType(item: RiskItem): string {
-  const text = `${item.riskType || ''} ${item.title || ''} ${item.summary || ''}`;
+  const text = `${item.riskType || ''} ${(item.reasonCodes || []).join(' ')} ${item.title || ''} ${item.summary || ''}`;
   return inferRiskTypeByText(text);
 }
 
@@ -530,8 +620,8 @@ function inferRiskTypeByText(text: string): string {
   const value = String(text || '').toLowerCase();
   if (value.includes('报价')) return 'pricing';
   if (value.includes('团队') || value.includes('人员') || value.includes('联系人')) return 'team';
-  if (value.includes('模板') || value.includes('同源') || value.includes('错误复现')) return 'template';
-  if (value.includes('雷同') || value.includes('相似') || value.includes('条款') || value.includes('方案')) return 'text_similarity';
+  if (value.includes('w-m4') || value.includes('模板') || value.includes('同源') || value.includes('错误复现')) return 'template';
+  if (value.includes('w-p4') || value.includes('抄袭') || value.includes('雷同') || value.includes('相似') || value.includes('条款') || value.includes('方案')) return 'text_similarity';
   return 'auxiliary';
 }
 
@@ -586,6 +676,57 @@ function buildRiskDistribution(riskItems: RiskItem[], evidenceGroups: EvidenceGr
       };
     })
     .filter(Boolean) as unknown) as RiskOverview['distributions'];
+}
+
+function buildEvidenceExcerpt(text: string, aliasMap: Record<string, string>, maxLength = 180): string {
+  const value = formatEvidenceText(text, aliasMap);
+  if (!value) {
+    return '（当前未返回对照原文）';
+  }
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+  return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function buildEvidenceSideContent(text: string, side: 'A' | 'B', aliasMap: Record<string, string>): string {
+  const raw = String(text || '').trim();
+  if (!raw || /^（?暂无对照内容）?$/.test(raw)) {
+    return side === 'A' ? '（当前未返回 A 侧原文）' : '（当前未返回 B 侧原文）';
+  }
+  return formatEvidenceText(raw, aliasMap);
+}
+
+function formatEvidenceText(text: string, aliasMap: Record<string, string>): string {
+  let value = humanizeText(text, aliasMap);
+  if (!value) {
+    return '';
+  }
+
+  value = value
+    .replace(/分值\s*=\s*/g, '评分：')
+    .replace(/等级\s*=\s*/g, '风险等级：')
+    .replace(/原因\s*=\s*([A-Z0-9_,-，、\s]+)/g, (_, codes: string) => `原因：${translateReasonCodes(codes)}`)
+    .replace(/,\s*/g, '，');
+
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function translateReasonCodes(rawCodes: string): string {
+  return String(rawCodes || '')
+    .split(/[，,、\s]+/)
+    .map((code) => translateCode(code))
+    .filter(Boolean)
+    .join('、');
+}
+
+function buildEvidenceSummary(group: EvidenceGroup, category: string, aliasMap: Record<string, string>): string {
+  const summary = humanizeText(group.summary || '', aliasMap);
+  if (summary) {
+    return summary;
+  }
+  return `发现 ${resolveRiskTypeLabel(category)} 异常信号，建议结合原文与上下文继续复核。`;
 }
 
 function mapVerdict(verdict?: string): string {

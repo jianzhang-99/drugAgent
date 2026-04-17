@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>标书审查报告 - 决策复核版</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0f172a;
+            --brand: #1e40af;
+            --danger: #b91c1c;
+            --warning: #d97706;
+            --success: #059669;
+            --slate-50: #f8fafc;
+            --slate-100: #f1f5f9;
+            --slate-200: #e2e8f0;
+            --slate-700: #334155;
+            --slate-800: #1e293b;
+            --text-main: #0f172a;
+            --text-secondary: #475569;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @media print {
+            body { background: white; }
+            .page-container { margin: 0; box-shadow: none; }
+            .no-print { display: none; }
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            background-color: var(--slate-200);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 40px 0;
+        }
+
+        .page-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #ffffff;
+            box-shadow: var(--shadow-md);
+            padding: 60px 80px;
+            position: relative;
+            min-height: 1414px; /* A4 Ratio */
+        }
+
+        /* 水印装饰 */
+        .watermark {
+            position: absolute;
+            top: 40px;
+            right: 40px;
+            font-size: 12px;
+            font-weight: 800;
+            color: var(--slate-200);
+            letter-spacing: 2px;
+            transform: rotate(0deg);
+        }
+
+        header {
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 24px;
+            margin-bottom: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .report-title-group h1 {
+            font-size: 32px;
+            font-weight: 900;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .report-meta {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .risk-badge-large {
+            background: var(--danger);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .risk-badge-large .label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+            opacity: 0.9;
+        }
+
+        .risk-badge-large .value {
+            font-size: 20px;
+            font-weight: 800;
+        }
+
+        /* 章节样式 */
+        section { margin-bottom: 48px; }
+
+        h2 {
+            font-size: 19px;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--slate-200);
+            padding-bottom: 8px;
+        }
+
+        h2::before {
+            content: "";
+            width: 4px;
+            height: 20px;
+            background: var(--brand);
+            display: inline-block;
+        }
+
+        /* 总体结论 */
+        .conclusion-card {
+            background: #fef2f2;
+            border: 1px solid #fee2e2;
+            padding: 24px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+
+        .conclusion-card p {
+            font-size: 16px;
+            color: #991b1b;
+            font-weight: 500;
+            line-height: 1.8;
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .stat-box {
+            background: var(--slate-50);
+            padding: 16px;
+            border-bottom: 4px solid var(--slate-200);
+        }
+
+        .stat-box.danger { border-bottom-color: var(--danger); }
+
+        .stat-box .stat-label { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; }
+        .stat-box .stat-value { font-size: 24px; font-weight: 800; }
+
+        /* 文件列表表格 */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .data-table th {
+            text-align: left;
+            padding: 12px;
+            background: var(--slate-50);
+            border-bottom: 2px solid var(--slate-200);
+            font-weight: 700;
+            color: var(--slate-700);
+        }
+
+        .data-table td {
+            padding: 16px 12px;
+            border-bottom: 1px solid var(--slate-100);
+        }
+
+        .doc-tag {
+            background: var(--primary);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 2px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        /* 风险判定项 */
+        .risk-item {
+            margin-bottom: 32px;
+            padding: 24px;
+            background: white;
+            border: 1px solid var(--slate-200);
+            border-radius: 8px;
+        }
+
+        .risk-item-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .risk-item-header h3 { font-size: 18px; font-weight: 800; color: var(--danger); }
+
+        .risk-body-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+
+        .risk-field-label {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--slate-700);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .risk-field-value { font-size: 14px; line-height: 1.6; color: var(--text-main); }
+
+        /* 证据比对卡片 */
+        .evidence-card {
+            border: 1px solid var(--slate-200);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        .evidence-header {
+            background: var(--slate-50);
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--slate-200);
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .evidence-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            background: var(--slate-100);
+            gap: 1px;
+        }
+
+        .evidence-pane {
+            background: white;
+            padding: 20px;
+            min-height: 120px;
+        }
+
+        .evidence-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .evidence-text {
+            font-size: 13px;
+            line-height: 1.8;
+            color: var(--slate-800);
+            white-space: pre-wrap;
+        }
+
+        .text-highlight {
+            background: #fef08a;
+            font-weight: 600;
+            border-bottom: 1px solid #eab308;
+        }
+
+        .evidence-judgement {
+            padding: 16px 20px;
+            background: #fffcf0;
+            border-top: 1px solid var(--slate-200);
+            font-size: 13px;
+        }
+
+        /* 处置建议列表 */
+        .action-list {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .action-list th {
+            text-align: left;
+            padding: 12px;
+            background: var(--slate-50);
+            font-size: 13px;
+        }
+
+        .action-list td {
+            padding: 16px 12px;
+            border-bottom: 1px solid var(--slate-100);
+            font-size: 14px;
+        }
+
+        .priority-tag {
+            background: #fee2e2;
+            color: #b91c1c;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        footer {
+            margin-top: 80px;
+            padding-top: 40px;
+            border-top: 1px solid var(--slate-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-seal {
+            text-align: center;
+        }
+
+        .seal-line {
+            width: 160px;
+            height: 1px;
+            background: var(--slate-300);
+            margin: 12px auto;
+        }
+
+        .footer-seal p { font-size: 11px; color: var(--text-secondary); }
+
+        .report-disclaimer {
+            font-size: 11px;
+            color: var(--text-secondary);
+            max-width: 500px;
+            line-height: 1.5;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="page-container">
+        <div class="watermark">INTERNAL AUDIT ONLY</div>
+
+        <header>
+            <div class="report-title-group">
+                <p class="report-meta">生成时间：2026-04-17 14:30 | 报告版本：V1.2-FINAL</p>
+                <h1>标书审查与围标风险复核报告</h1>
+            </div>
+            <div class="risk-badge-large">
+                <span class="label">建议处置结论</span>
+                <span class="value">需优先复核</span>
+            </div>
+        </header>
+
+        <section id="executive-summary">
+            <h2>一、总体审查结论</h2>
+            <div class="conclusion-card">
+                <p>
+                    本次比对发现两份投标文件在<b>报价结构、核心团队成员</b>和<b>关键技术条款</b>表述上存在多处异常相似特征。
+                    其中，报价明细出现规律性价差（固定差额 1000 元），核心团队中多名关键成员身份重合，且风险应对章节存在大段文本雷同。
+                    上述证据共同指向两份文件可能存在<b>非独立编制</b>或<b>协同编写</b>风险，建议立即进入人工重点核查程序。
+                </p>
+            </div>
+            <div class="stats-row">
+                <div class="stat-box danger">
+                    <div class="stat-label">重点风险判定</div>
+                    <div class="stat-value">03 项</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">关键比对证据</div>
+                    <div class="stat-value">05 条</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">比对文件总量</div>
+                    <div class="stat-value">02 份</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="compared-documents">
+            <h2>二、本次比对文件记录</h2>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th width="15%">文件标识</th>
+                        <th width="30%">投标主体</th>
+                        <th width="40%">文件名</th>
+                        <th width="15%">报告角色</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="doc-tag">文档 A</span></td>
+                        <td><strong>晟博云创科技</strong></td>
+                        <td>投标人A_晟博云创_投标文件.pdf</td>
+                        <td>审计主文档</td>
+                    </tr>
+                    <tr>
+                        <td><span class="doc-tag">文档 B</span></td>
+                        <td><strong>晟拓数科集团</strong></td>
+                        <td>投标人B_晟拓数科_投标文件.pdf</td>
+                        <td>关键参检文档</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section id="risk-analysis">
+            <h2>三、重点风险项分析</h2>
+
+            <div class="risk-item">
+                <div class="risk-item-header">
+                    <h3>01. 报价结构呈现规律性分布</h3>
+                </div>
+                <div class="risk-body-grid">
+                    <div>
+                        <span class="risk-field-label">风险描述 / DESCRIPTION</span>
+                        <p class="risk-field-value">两份投标文件中，平台软件开发、配置实施、培训交付等多个报价子项均呈现固定的 1000 元价差模式，不符合独立报价的随机波动特征。</p>
+                    </div>
+                    <div>
+                        <span class="risk-field-label">为什么需要复核 / REASON</span>
+                        <p class="risk-field-value">规律性价差通常暗示报价经过统一测算或协同调整，是判断是否存在围标、陪标行为的重要信号。</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="risk-item">
+                <div class="risk-item-header">
+                    <h3>02. 核心团队成员身份重合</h3>
+                </div>
+                <div class="risk-body-grid">
+                    <div>
+                        <span class="risk-field-label">风险描述 / DESCRIPTION</span>
+                        <p class="risk-field-value">系统识别到文档 A 的“项目经理”与文档 B 的“技术负责人”为同一自然人，涉及关键资质授权与履约保障。</p>
+                    </div>
+                    <div>
+                        <span class="risk-field-label">为什么需要复核 / REASON</span>
+                        <p class="risk-field-value">人员重合可能导致投标主体不具备独立履约能力，或提示两家公司存在人员借用、关联控制等非独立关系。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="evidence-detail">
+            <h2>四、关键证据对比明细</h2>
+
+            <!-- 证据 1 -->
+            <div class="evidence-card">
+                <div class="evidence-header">
+                    <span>证据编号：E01</span>
+                    <span>风险指向：报价结构异常</span>
+                </div>
+                <div class="evidence-comparison">
+                    <div class="evidence-pane">
+                        <span class="evidence-label">文档 A：晟博云创</span>
+                        <div class="evidence-text">平台软件开发与配置实施：<span class="text-highlight">820,000 元</span></div>
+                    </div>
+                    <div class="evidence-pane">
+                        <span class="evidence-label">文档 B：晟拓数科</span>
+                        <div class="evidence-text">平台软件开发与配置实施：<span class="text-highlight">821,000 元</span></div>
+                    </div>
+                </div>
+                <div class="evidence-judgement">
+                    <strong>AI 判定逻辑：</strong> 两份文件在对应报价项上差异精准为 1000 元。此类固定差值在多个报价科目中连续出现，判定为“规律性价差”。
+                </div>
+            </div>
+
+            <!-- 证据 2 -->
+            <div class="evidence-card">
+                <div class="evidence-header">
+                    <span>证据编号：E02</span>
+                    <span>风险指向：关键条款高度雷同</span>
+                </div>
+                <div class="evidence-comparison">
+                    <div class="evidence-pane">
+                        <span class="evidence-label">文档 A：晟博云创</span>
+                        <div class="evidence-text">针对<span class="text-highlight">患者主数据口径不一致</span>问题，我司将建立<span class="text-highlight">统一的数据治理机制</span>，通过ETL清洗工具对冗余字段进行剔除，确保数据一致性。</div>
+                    </div>
+                    <div class="evidence-pane">
+                        <span class="evidence-label">文档 B：晟拓数科</span>
+                        <div class="evidence-text">针对<span class="text-highlight">患者主数据口径不一致</span>问题，我司将建立<span class="text-highlight">统一的数据治理机制</span>，通过自动化清洗工具对多余字段进行清除，确保数据高度一致。</div>
+                    </div>
+                </div>
+                <div class="evidence-judgement">
+                    <strong>AI 判定逻辑：</strong> 文本在核心语义、句式结构和特定术语使用上保持 92% 的相似度，疑似源自同一份文档底稿。
+                </div>
+            </div>
+        </section>
+
+        <section id="disposal-advice">
+            <h2>五、建议处置任务清单</h2>
+            <table class="action-list">
+                <thead>
+                    <tr>
+                        <th width="12%">优先级</th>
+                        <th width="35%">建议动作</th>
+                        <th width="20%">责任角色</th>
+                        <th width="33%">目标</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="priority-tag">紧急</span></td>
+                        <td>核查核心人员李建国社保缴纳证明</td>
+                        <td>合规 / 人事</td>
+                        <td>确认人员真实归属与关联关系</td>
+                    </tr>
+                    <tr>
+                        <td><span class="priority-tag">紧急</span></td>
+                        <td>复核报价明细测算依据及历史记录</td>
+                        <td>评标专家 / 财务</td>
+                        <td>判断报价异常形成的合理性</td>
+                    </tr>
+                    <tr>
+                        <td><span class="priority-tag">常规</span></td>
+                        <td>核对招标文件是否提供统一响应模版</td>
+                        <td>招采管理</td>
+                        <td>排除因模版导致的正常相似</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <footer>
+            <div class="report-disclaimer">
+                本报告由 Drug-Agent AI 智能审查引擎生成，仅作为辅助决策参考。报告结论基于已提交的比对文件，不直接等同于法律或行政认定。最终定性应结合人工实地复核、投标主体历史背景及项目实际情况确定。
+            </div>
+            <div class="footer-seal">
+                <p>审查中心系统验证章</p>
+                <div class="seal-line"></div>
+                <p>DATE: 2026 / 04 / 17</p>
+            </div>
+        </footer>
+    </div>
+
+</body>
+</html>

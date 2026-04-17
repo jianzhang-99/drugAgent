@@ -129,6 +129,8 @@ export interface EvidenceChain {
   evidenceChainId?: string;
   /** 文本相似度，如 "98.2%" */
   similarity?: string;
+  /** 证据标题/类型的可读展示名 */
+  displayTitle?: string;
 
   // 证据指向
   sourceType: string;       // 指向的风险类型
@@ -136,6 +138,8 @@ export interface EvidenceChain {
   // 涉及文件
   docAName: string;         // "文档 A（晟博云创）"
   docBName: string;         // "文档 B（晟拓数科）"
+  docASummary?: string;     // A 侧摘要文本
+  docBSummary?: string;     // B 侧摘要文本
 
   // A/B 原始内容（最关键）
   docAContent: string;      // 文档A原文/数据
