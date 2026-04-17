@@ -37,7 +37,13 @@ public class RagFile {
 
     private BigDecimal fileSize;
 
+    private String orgId;
+
     private String scene;
+
+    private String docType;
+
+    private Integer chunkCount;
 
     private Integer status;
 

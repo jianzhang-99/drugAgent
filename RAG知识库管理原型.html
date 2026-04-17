@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drug-Agent RAG 通用知识库管理</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-main: #f8fafc;
+            --sidebar-bg: #0f172a;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --success: #10b981;
+            --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* 侧边栏 */
+        .sidebar {
+            width: 260px;
+            background-color: var(--sidebar-bg);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--primary-color);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .nav-menu {
+            flex: 1;
+            padding: 20px 0;
+        }
+
+        .nav-item {
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            color: white;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .nav-item.active {
+            border-left: 4px solid var(--primary-color);
+        }
+
+        /* 主内容区 */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header.top-bar {
+            height: 64px;
+            background: white;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            flex-shrink: 0;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #e2e8f0;
+        }
+
+        .view-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 32px;
+        }
+
+        /* 卡片与布局 */
+        .card {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 24px;
+            box-shadow: var(--card-shadow);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::before {
+            content: "";
+            width: 4px;
+            height: 18px;
+            background: var(--primary-color);
+            border-radius: 2px;
+        }
+
+        /* 控件区 */
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 6px 12px;
+            width: 300px;
+        }
+
+        .search-box input {
+            border: none;
+            background: transparent;
+            outline: none;
+            width: 100%;
+            padding-left: 8px;
+            font-size: 14px;
+            color: var(--text-main);
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary { background: var(--primary-color); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+
+        .btn-danger { background: white; border-color: var(--border-color); color: var(--danger); }
+        .btn-danger:hover { background: #fef2f2; border-color: #fecaca; }
+
+        /* 表格样式 */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        .data-table th {
+            background: var(--bg-main);
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 13px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .data-table td {
+            padding: 16px;
+            font-size: 14px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-main);
+        }
+
+        .data-table tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #e0e7ff;
+            color: var(--success);
+        }
+
+        .tag.blue { background: #dbeafe; color: var(--primary-color); }
+        .tag.gray { background: #f1f5f9; color: var(--text-muted); }
+
+        /* 模态框样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 12px;
+            width: 480px;
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            overflow: hidden;
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title { font-size: 16px; font-weight: 700; }
+        .close-btn { cursor: pointer; color: var(--text-muted); font-size: 20px; }
+        
+        .modal-body { padding: 24px; }
+        .modal-footer {
+            padding: 16px 24px;
+            background: var(--bg-main);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 40px 20px;
+            text-align: center;
+            background: #fafafa;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .upload-area:hover { border-color: var(--primary-color); }
+        .upload-icon { font-size: 32px; color: var(--primary-color); margin-bottom: 12px; }
+        .upload-text { font-size: 14px; color: var(--text-main); font-weight: 500; margin-bottom: 8px; }
+        .upload-hint { font-size: 12px; color: var(--text-muted); }
+
+        .form-group { margin-top: 20px; }
+        .form-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text-main); }
+        .form-select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: white;
+            font-size: 14px;
+            color: var(--text-main);
+            outline: none;
+        }
+        .form-select:focus { border-color: var(--primary-color); }
+
+    </style>
+</head>
+<body>
+
+    <!-- 侧边栏导航 -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-icon">D</div>
+            <div style="font-size: 18px; font-weight: 700; letter-spacing: 0.5px;">Drug-Agent</div>
+        </div>
+        <nav class="nav-menu">
+            <a class="nav-item">
+                <span>📊</span> 控制面板
+            </a>
+            <a class="nav-item">
+                <span>📄</span> 标书雷同审查
+            </a>
+            <a class="nav-item">
+                <span>⚖️</span> 合同 AI 预审
+            </a>
+            <a class="nav-item">
+                <span>⚠️</span> 耗材合规预警
+            </a>
+            <div style="margin-top: 40px; padding: 0 24px; font-size: 11px; color: rgba(255,255,255,0.4); text-transform: uppercase;">知识增强</div>
+            <a class="nav-item active">
+                <span>📚</span> RAG 通用知识库
+            </a>
+            <div style="margin-top: 20px; padding: 0 24px; font-size: 11px; color: rgba(255,255,255,0.4); text-transform: uppercase;">系统设置</div>
+            <a class="nav-item">
+                <span>⚙️</span> 配置管理
+            </a>
+        </nav>
+        <div style="padding: 24px; font-size: 12px; color: rgba(255,255,255,0.4);">
+            v1.2.0-MVP
+        </div>
+    </aside>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+        <header class="top-bar">
+            <div style="font-weight: 700; font-size: 18px;">通用知识库管理</div>
+            <div class="user-info">
+                <span>机构：市人民医院 (org_001)</span>
+                <span style="color: var(--border-color)">|</span>
+                <span>管理员：张大民</span>
+                <div class="avatar"></div>
+            </div>
+        </header>
+
+        <div class="view-container">
+            <div class="card">
+                <div class="toolbar">
+                    <div class="search-box">
+                        <span>🔍</span>
+                        <input type="text" placeholder="根据文件名搜索...">
+                    </div>
+                    <button class="btn btn-primary" onclick="openModal()">
+                        <span>➕</span> 上传文件
+                    </button>
+                </div>
+
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th width="30%">文件名</th>
+                            <th width="15%">文档类型</th>
+                            <th width="15%">适用场景</th>
+                            <th width="15%">状态</th>
+                            <th width="15%">上传时间</th>
+                            <th width="10%">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>招标投标法.md</strong></td>
+                            <td><span class="tag blue">MD</span></td>
+                            <td>标书审查</td>
+                            <td><span class="tag">已入库 (50 Chunks)</span></td>
+                            <td>2026-04-17 10:30</td>
+                            <td><button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;">删除</button></td>
+                        </tr>
+                        <tr>
+                            <td><strong>政府采购法.pdf</strong></td>
+                            <td><span class="tag blue">PDF</span></td>
+                            <td>标书审查</td>
+                            <td><span class="tag">已入库 (84 Chunks)</span></td>
+                            <td>2026-04-16 15:20</td>
+                            <td><button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;">删除</button></td>
+                        </tr>
+                        <tr>
+                            <td><strong>药品监管目录.md</strong></td>
+                            <td><span class="tag blue">MD</span></td>
+                            <td>合规预警</td>
+                            <td><span class="tag">已入库 (12 Chunks)</span></td>
+                            <td>2026-04-15 09:15</td>
+                            <td><button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;">删除</button></td>
+                        </tr>
+                        <tr>
+                            <td><strong>医院内部采购合同模板.md</strong></td>
+                            <td><span class="tag blue">MD</span></td>
+                            <td>合同预审</td>
+                            <td><span class="tag">已入库 (22 Chunks)</span></td>
+                            <td>2026-04-14 16:45</td>
+                            <td><button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;">删除</button></td>
+                        </tr>
+                        <tr>
+                            <td><strong>医疗设备招投标违规案例集.pdf</strong></td>
+                            <td><span class="tag gray">PDF</span></td>
+                            <td>通用 (未分配)</td>
+                            <td><span class="tag gray">解析中...</span></td>
+                            <td>2026-04-17 11:05</td>
+                            <td><button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;" disabled>删除</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; font-size: 14px; color: var(--text-muted);">
+                    <div>共 5 条记录</div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn" style="background: white; border: 1px solid var(--border-color); padding: 4px 12px;">上一页</button>
+                        <button class="btn" style="background: white; border: 1px solid var(--border-color); padding: 4px 12px;">下一页</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 上传文件模态框 -->
+    <div class="modal-overlay" id="uploadModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">上传知识库文件</div>
+                <div class="close-btn" onclick="closeModal()">×</div>
+            </div>
+            <div class="modal-body">
+                <div class="upload-area">
+                    <div class="upload-icon">📄</div>
+                    <div class="upload-text">点击或将文件拖拽到这里上传</div>
+                    <div class="upload-hint">支持 .md, .pdf 格式，单文件不超过 20MB</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">适用业务场景 (Scene)</label>
+                    <select class="form-select">
+                        <option value="">通用 (不限场景)</option>
+                        <option value="tender_review">标书审查 (Tender Review)</option>
+                        <option value="contract_audit">合同预审 (Contract Audit)</option>
+                        <option value="risk_warning">风险预警 (Risk Warning)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" style="background: white; border: 1px solid var(--border-color);" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" onclick="alert('模拟调用接口：POST /api/knowledge/upload'); closeModal();">开始上传并解析</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openModal() {
+            document.getElementById('uploadModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('uploadModal').style.display = 'none';
+        }
+
+        // 点击遮罩层关闭
+        document.getElementById('uploadModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>

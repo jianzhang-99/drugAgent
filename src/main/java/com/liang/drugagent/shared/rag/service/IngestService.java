@@ -63,14 +63,36 @@ public class IngestService {
     }
 
     /**
-     * 入库 RagDocument
+     * 从 MultipartFile 入库文档，返回 chunk 数量。
      */
-    public void ingest(RagDocument document) {
+    public int ingestAndReturnChunkCount(MultipartFile file, String title, String orgId,
+                                          String scene, String subScene, String docType) throws IOException {
+        String sourceId = generateSourceId();
+        String text = textExtractor.extract(file);
+
+        RagDocument document = RagDocument.builder()
+                .sourceId(sourceId)
+                .title(title)
+                .rawText(text)
+                .orgId(orgId)
+                .scene(scene)
+                .subScene(subScene)
+                .docType(docType)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        return ingestAndReturnChunkCount(document);
+    }
+
+    /**
+     * 入库 RagDocument，返回 chunk 数量。
+     */
+    public int ingestAndReturnChunkCount(RagDocument document) {
         // 1. 切分 chunk
         List<RagChunk> chunks = chunker.chunk(document);
         if (chunks.isEmpty()) {
             log.warn("文档切分后无有效 chunk，跳导入库: sourceId={}", document.getSourceId());
-            return;
+            return 0;
         }
 
         // 2. 生成 embedding 并入库
@@ -88,6 +110,15 @@ public class IngestService {
 
         log.info("文档入库完成 - sourceId={}, title={}, chunk数量={}",
                 document.getSourceId(), document.getTitle(), chunks.size());
+
+        return chunks.size();
+    }
+
+    /**
+     * 入库 RagDocument
+     */
+    public void ingest(RagDocument document) {
+        ingestAndReturnChunkCount(document);
     }
 
     /**
@@ -167,7 +198,7 @@ public class IngestService {
     /**
      * 生成唯一源文档 ID
      */
-    private String generateSourceId() {
+    public String generateSourceId() {
         return "DOC-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 }

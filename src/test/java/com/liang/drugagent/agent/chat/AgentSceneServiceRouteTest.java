@@ -9,7 +9,6 @@ import com.liang.drugagent.shared.contextcache.DashScopeContextCacheService;
 import com.liang.drugagent.shared.intent.IntentDetectionService;
 import com.liang.drugagent.shared.llm.LlmService;
 import com.liang.drugagent.shared.model.WorkflowRouteDecision;
-import com.liang.drugagent.shared.tool.KnowledgeRetrievalTool;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,9 +28,6 @@ class AgentSceneServiceRouteTest {
     private TenderReviewSceneService tenderReviewSceneService;
 
     @Mock
-    private KnowledgeRetrievalTool knowledgeRetrievalTool;
-
-    @Mock
     private IntentDetectionService intentDetectionService;
 
     @Mock
@@ -44,7 +40,6 @@ class AgentSceneServiceRouteTest {
         agentSceneService = new AgentSceneService(
                 llmService,
                 tenderReviewSceneService,
-                knowledgeRetrievalTool,
                 intentDetectionService,
                 dashScopeContextCacheService
         );

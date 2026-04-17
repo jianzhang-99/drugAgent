@@ -2,6 +2,7 @@ package com.liang.drugagent.scene.tender_review.service;
 
 import com.liang.drugagent.scene.tender_review.model.ExemptionHit;
 import com.liang.drugagent.scene.tender_review.model.RiskFusionResult;
+import com.liang.drugagent.scene.tender_review.model.RuleEvidence;
 import com.liang.drugagent.scene.tender_review.model.RuleHit;
 import com.liang.drugagent.scene.tender_review.model.TenderCase;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
@@ -846,14 +847,14 @@ public class ReportGenerationService {
         };
     }
 
-    // ==================== 报告决策页面数据结构生成 ====================
+    // ==================== 报告决策页面数据结构生成（V2 用户视角版） ====================
 
     private final EvidenceAssemblerService evidenceAssembler = new EvidenceAssemblerService();
 
     /**
-     * 生成报告决策页面数据结构。
+     * 生成报告决策页面数据结构（V2 用户视角版）。
      *
-     * <p>将审查全链路数据转换为6页报告结构，供前端直接渲染使用。</p>
+     * <p>按照"标书审查报告原型V1"生成结构化报告数据，供前端 FormalReportDocument 直接渲染。</p>
      *
      * @param data 标书审查数据
      * @param rawHits 原始规则命中列表
@@ -861,7 +862,7 @@ public class ReportGenerationService {
      * @param exemptionHits 免责命中列表
      * @param fusionResult 风险融合结果
      * @param evidenceAssemblyResult 证据组装结果
-     * @return 报告数据
+     * @return V2 结构的报告数据
      */
     public ReportData generateReportData(TenderReviewData data,
                                         List<RuleHit> rawHits,
@@ -870,13 +871,492 @@ public class ReportGenerationService {
                                         RiskFusionResult fusionResult,
                                         EvidenceAssemblyResult evidenceAssemblyResult) {
         ReportData reportData = new ReportData();
+
+        // V2: 1. 总体结论
+        reportData.setExecutiveSummary(buildExecutiveSummary(data, effectiveHits, fusionResult, evidenceAssemblyResult));
+
+        // V2: 2. 风险总览
+        reportData.setRiskOverview(buildRiskOverview(effectiveHits, fusionResult));
+
+        // V2: 3. 本次比对文件
+        reportData.setDocuments(buildDocuments(data));
+
+        // V2: 4. 关键证据明细
+        reportData.setEvidences(buildEvidences(effectiveHits, fusionResult, evidenceAssemblyResult, data));
+
+        // V2: 5. 处置建议
+        reportData.setActionPlan(buildActionPlan(fusionResult, effectiveHits));
+
+        // V2: 6. 报告元信息
+        reportData.setMetadata(buildMetadata(data, fusionResult));
+
+        // 保留旧版结构以兼容
         reportData.setPage1Summary(buildPage1Summary(data, rawHits, effectiveHits, exemptionHits, fusionResult));
         reportData.setPage2RiskOverview(buildPage2RiskOverview(effectiveHits, fusionResult));
         reportData.setPage3CoreEvidence(buildPage3CoreEvidence(effectiveHits, fusionResult));
         reportData.setPage4DetailComparison(buildPage4DetailComparison(data, effectiveHits));
         reportData.setPage5ActionSuggestions(buildPage5ActionSuggestions(fusionResult, effectiveHits, exemptionHits));
         reportData.setPage6Appendix(buildPage6Appendix(rawHits, fusionResult));
+
         return reportData;
+    }
+
+    // ==================== V2 结构生成方法 ====================
+
+    /**
+     * 构建 V2 总体结论。
+     */
+    private ReportData.ExecutiveSummary buildExecutiveSummary(TenderReviewData data,
+                                                             List<RuleHit> effectiveHits,
+                                                             RiskFusionResult fusionResult,
+                                                             EvidenceAssemblyResult evidenceAssemblyResult) {
+        String riskLevelCode = normalizeRiskLevelCode(fusionResult == null ? null : fusionResult.getRiskLevel());
+        String riskLevelLabel = resolveRiskLevelLabel(riskLevelCode);
+        int hitCount = effectiveHits == null ? 0 : effectiveHits.size();
+        int evidenceCount = evidenceAssemblyResult == null ? 0 : evidenceAssemblyResult.getGroups().size();
+        int docCount = data == null || data.getDocuments() == null ? 0 : data.getDocuments().size();
+
+        // 按原型生成完整自然语言结论
+        String conclusionText = buildV2Conclusion(effectiveHits, fusionResult, evidenceAssemblyResult);
+
+        return ReportData.ExecutiveSummary.builder()
+                .conclusionText(conclusionText)
+                .riskLevelLabel(riskLevelLabel)
+                .metrics(ReportData.ExecutiveSummary.Metrics.builder()
+                        .effectiveHits(hitCount)
+                        .evidenceClusters(evidenceCount)
+                        .documentCount(docCount)
+                        .build())
+                .reviewNote("本报告用于辅助识别标书疑似围标、串标或非独立编制风险，不直接替代最终评审结论。")
+                .riskLevel(riskLevelCode)
+                .riskScore(fusionResult == null ? 0 : fusionResult.getScore())
+                .overallConclusion(conclusionText)
+                .recommendedAction(buildV2RecommendedAction(effectiveHits, riskLevelCode))
+                .build();
+    }
+
+    /**
+     * 按原型生成 V2 版本的完整结论正文。
+     */
+    private String buildV2Conclusion(List<RuleHit> effectiveHits, RiskFusionResult fusionResult, EvidenceAssemblyResult evidenceAssemblyResult) {
+        if (effectiveHits == null || effectiveHits.isEmpty()) {
+            return "本次比对未发现明显的高风险线索，当前材料在报价结构、核心团队成员和关键条款表述上未见显著异常。";
+        }
+
+        // 统计各类型命中
+        long pricingHits = effectiveHits.stream().filter(h -> "pricing".equals(resolveGroupKeyForReport(h))).count();
+        long teamHits = effectiveHits.stream().filter(h -> "team".equals(resolveGroupKeyForReport(h))).count();
+        long textHits = effectiveHits.stream().filter(h -> "text_similarity".equals(resolveGroupKeyForReport(h))).count();
+
+        StringBuilder builder = new StringBuilder("本次比对发现两份投标文件");
+        List<String> findings = new ArrayList<>();
+
+        if (pricingHits > 0) {
+            findings.add("报价结构出现规律性价差");
+        }
+        if (teamHits > 0) {
+            findings.add("核心团队中多名成员重复");
+        }
+        if (textHits > 0) {
+            findings.add("技术方案与风险应对内容存在高度相似表述");
+        }
+
+        if (!findings.isEmpty()) {
+            builder.append(findings.get(0));
+            for (int i = 1; i < findings.size(); i++) {
+                builder.append("、").append(findings.get(i));
+            }
+        }
+
+        builder.append("。上述线索共同指向两份文件可能存在非独立编制或协同编写风险。");
+        builder.append("建议先暂停自动通过流程，进入人工重点复核。");
+
+        return builder.toString();
+    }
+
+    private String buildV2RecommendedAction(List<RuleHit> effectiveHits, String riskLevelCode) {
+        if (effectiveHits == null || effectiveHits.isEmpty()) {
+            return "建议保留本次审查结果，并对关键章节进行抽样复核。";
+        }
+        return switch (riskLevelCode) {
+            case "high" -> "建议立即启动人工复核，并优先核查报价形成依据、人员真实归属、文件编制来源和关键条款原文比对。";
+            case "medium" -> "建议尽快开展人工核验，补充核查关键条款、联系人信息和历史投标记录。";
+            default -> "建议纳入持续观察，必要时补充人工抽检。";
+        };
+    }
+
+    /**
+     * 构建 V2 风险总览。
+     */
+    private ReportData.RiskOverview buildRiskOverview(List<RuleHit> effectiveHits, RiskFusionResult fusionResult) {
+        List<ReportData.TopRisk> topRisks = buildV2TopRisks(effectiveHits, fusionResult);
+        List<ReportData.RiskDistribution> distributions = buildV2Distributions(effectiveHits);
+        return ReportData.RiskOverview.builder()
+                .topRisks(topRisks)
+                .distributions(distributions)
+                .build();
+    }
+
+    /**
+     * 构建 V2 重点风险判断（最多3条）。
+     */
+    private List<ReportData.TopRisk> buildV2TopRisks(List<RuleHit> effectiveHits, RiskFusionResult fusionResult) {
+        if (effectiveHits == null || effectiveHits.isEmpty()) {
+            return List.of();
+        }
+
+        List<RuleHit> sortedHits = new ArrayList<>(effectiveHits);
+        sortedHits.sort(Comparator.comparing(this::effectiveWeight, Comparator.nullsLast(Comparator.reverseOrder())));
+
+        List<ReportData.TopRisk> topRisks = new ArrayList<>();
+        int rank = 1;
+        for (RuleHit hit : sortedHits.stream().limit(3).toList()) {
+            String categoryKey = resolveGroupKeyForReport(hit);
+            String riskName = buildCoreRiskTitle(hit);
+            String itemLevel = normalizeRiskLevelCode(resolveItemRiskLevel(hit, fusionResult));
+
+            topRisks.add(ReportData.TopRisk.builder()
+                    .rank(rank++)
+                    .ruleCode(hit.getRuleCode())
+                    .riskName(riskName)
+                    .level(itemLevel)
+                    .riskDesc(buildV2RiskDesc(hit, categoryKey))
+                    .keyFact(buildV2KeyFact(hit, categoryKey))
+                    .whyReview(buildV2WhyReview(categoryKey))
+                    .action(buildV2Action(categoryKey))
+                    .riskLevel(itemLevel)
+                    .riskType(categoryKey)
+                    .build());
+        }
+        return topRisks;
+    }
+
+    private String buildV2RiskDesc(RuleHit hit, String categoryKey) {
+        return switch (categoryKey) {
+            case "pricing" -> "两份投标文件中多个报价项目存在规律性价差，差异呈现固定模式，不符合独立报价中常见的随机波动特征。";
+            case "team" -> "两份投标文件中发现多名核心团队成员重复，涉及项目经理、技术负责人等关键角色。";
+            case "text_similarity" -> "两份投标文件在风险识别、应对措施和部分实施方案描述上存在高度相似表达。";
+            case "template" -> "两份投标文件在目录结构、章节顺序或版式风格上表现出明显的同源特征。";
+            default -> "系统识别到需要关注的异常线索，建议人工复核确认。";
+        };
+    }
+
+    private String buildV2KeyFact(RuleHit hit, String categoryKey) {
+        String trigger = safeText(hit.getTriggerSummary(), "");
+        if (!trigger.isBlank()) {
+            return trigger;
+        }
+        return switch (categoryKey) {
+            case "pricing" -> "多个报价项呈现接近或固定差异。";
+            case "team" -> "同一人员出现在不同投标主体的核心团队配置中。";
+            case "text_similarity" -> "多处段落在内容结构、句式和业务表达上接近。";
+            case "template" -> "文档结构和排版风格高度一致。";
+            default -> "存在需要复核的异常线索。";
+        };
+    }
+
+    private String buildV2WhyReview(String categoryKey) {
+        return switch (categoryKey) {
+            case "pricing" -> "如果报价差异长期呈规律性分布，可能说明报价不是由各投标主体独立测算形成，而是存在统一编制、协同调整或陪标报价的可能。";
+            case "team" -> "核心团队成员重复可能影响投标主体独立履约能力判断，也可能提示主体之间存在人员借用、资质共享或协同投标风险。";
+            case "text_similarity" -> "如果相似内容超出行业通用表达范围，可能说明文件存在同源底稿、统一模板或协同编写情况。";
+            case "template" -> "模板同源可能反映投标主体使用了相同的编制来源，存在串通投标的风险。";
+            default -> "需要人工复核以确认是否存在实质性风险。";
+        };
+    }
+
+    private String buildV2Action(String categoryKey) {
+        return switch (categoryKey) {
+            case "pricing" -> "复核报价明细表、报价形成依据、报价编制人员和历史报价记录。";
+            case "team" -> "核查人员社保归属、劳动关系、授权文件、任职单位和项目履历。";
+            case "text_similarity" -> "人工对照原文，判断相似内容是否属于行业通用描述，必要时比对历史投标文件。";
+            case "template" -> "排查是否存在同源模板、错误复现或统一底稿来源。";
+            default -> "结合外围材料补强证据链，再决定是否升级处理。";
+        };
+    }
+
+    /**
+     * 构建 V2 风险分布（只展示有发现的风险方向）。
+     */
+    private List<ReportData.RiskDistribution> buildV2Distributions(List<RuleHit> effectiveHits) {
+        List<ReportData.RiskDistribution> distributions = new ArrayList<>();
+
+        if (effectiveHits == null || effectiveHits.isEmpty()) {
+            return distributions;
+        }
+
+        // 报价风险
+        long pricingCount = effectiveHits.stream().filter(h -> "pricing".equals(resolveGroupKeyForReport(h))).count();
+        if (pricingCount > 0) {
+            distributions.add(ReportData.RiskDistribution.builder()
+                    .riskType("报价异常")
+                    .found(true)
+                    .foundDescription("发现明显异常")
+                    .needReview(true)
+                    .needReviewText("必须复核")
+                    .brief("多个报价项呈现规律性价差，需核查报价形成过程")
+                    .hitCount((int) pricingCount)
+                    .level("high")
+                    .build());
+        }
+
+        // 团队风险
+        long teamCount = effectiveHits.stream().filter(h -> "team".equals(resolveGroupKeyForReport(h))).count();
+        if (teamCount > 0) {
+            distributions.add(ReportData.RiskDistribution.builder()
+                    .riskType("核心团队重复")
+                    .found(true)
+                    .foundDescription("发现明显异常")
+                    .needReview(true)
+                    .needReviewText("必须复核")
+                    .brief("两份文件中出现多名核心人员重合")
+                    .hitCount((int) teamCount)
+                    .level("high")
+                    .build());
+        }
+
+        // 文本相似
+        long textCount = effectiveHits.stream().filter(h -> "text_similarity".equals(resolveGroupKeyForReport(h))).count();
+        if (textCount > 0) {
+            distributions.add(ReportData.RiskDistribution.builder()
+                    .riskType("关键条款相似")
+                    .found(true)
+                    .foundDescription("发现明显异常")
+                    .needReview(true)
+                    .needReviewText("必须复核")
+                    .brief("技术方案、风险应对等内容存在高度相似表达")
+                    .hitCount((int) textCount)
+                    .level("high")
+                    .build());
+        }
+
+        // 模板同源
+        long templateCount = effectiveHits.stream().filter(h -> "template".equals(resolveGroupKeyForReport(h))).count();
+        if (templateCount > 0) {
+            distributions.add(ReportData.RiskDistribution.builder()
+                    .riskType("模板同源")
+                    .found(true)
+                    .foundDescription("发现异常")
+                    .needReview(true)
+                    .needReviewText("建议复核")
+                    .brief("文档结构和模板特征表现出同源特征")
+                    .hitCount((int) templateCount)
+                    .level("medium")
+                    .build());
+        }
+
+        return distributions;
+    }
+
+    /**
+     * 构建 V2 本次比对文件。
+     */
+    private List<ReportData.DocumentIndex> buildDocuments(TenderReviewData data) {
+        List<ReportData.DocumentIndex> documents = new ArrayList<>();
+        if (data == null || data.getDocuments() == null || data.getDocuments().isEmpty()) {
+            return documents;
+        }
+
+        List<TenderDocument> docs = data.getDocuments();
+        for (int i = 0; i < docs.size(); i++) {
+            TenderDocument doc = docs.get(i);
+            String partyName = inferPartyName(doc, i);
+            String docName = firstNonBlank(doc.getDocumentName(), doc.getFilename(), "未命名标书");
+
+            documents.add(ReportData.DocumentIndex.builder()
+                    .docCode("文档 " + (char) ('A' + i))
+                    .docId("DOC-" + String.format("%03d", i + 1))
+                    .partyName(partyName)
+                    .fileName(docName)
+                    .docNature(i == 0 ? "审计主文档" : "关键参检文档")
+                    .lastModifier("Admin_User")
+                    .role((i == 0 ? "第一" : "第二") + "份投标文件参与比对")
+                    .docRole("投标文件")
+                    .id(doc.getDocumentId())
+                    .build());
+        }
+        return documents;
+    }
+
+    /**
+     * 构建 V2 关键证据明细（必须包含 A/B 双侧内容）。
+     */
+    private List<ReportData.EvidenceChain> buildEvidences(List<RuleHit> effectiveHits,
+                                                         RiskFusionResult fusionResult,
+                                                         EvidenceAssemblyResult evidenceAssemblyResult,
+                                                         TenderReviewData data) {
+        List<ReportData.EvidenceChain> evidences = new ArrayList<>();
+        if (effectiveHits == null || effectiveHits.isEmpty()) {
+            return evidences;
+        }
+
+        // 构建文档 A/B 名称映射
+        Map<String, String> docIdToName = buildDocIdToName(data);
+        List<TenderDocument> docs = data == null ? List.of() : data.getDocuments();
+        String docAName = docs.size() > 0 ? docs.get(0).getDocumentName() : "文档 A";
+        String docBName = docs.size() > 1 ? docs.get(1).getDocumentName() : "文档 B";
+
+        int id = 1;
+        for (RuleHit hit : effectiveHits.stream().limit(5).toList()) {
+            String categoryKey = resolveGroupKeyForReport(hit);
+            String evidenceType = resolveCategoryName(categoryKey);
+            String level = normalizeRiskLevelCode(resolveItemRiskLevel(hit, fusionResult));
+
+            // 提取 A/B 内容
+            String docAContent = extractDocAContent(hit, docs);
+            String docBContent = extractDocBContent(hit, docs);
+            String ruleCode = safeText(hit.getRuleCode(), "UNKNOWN");
+
+            evidences.add(ReportData.EvidenceChain.builder()
+                    .evidenceId("E" + String.format("%02d", id++))
+                    .type(evidenceType)
+                    .level(level)
+                    .evidenceChainId("RULE-" + ruleCode + "-" + String.format("%03d", id - 1))
+                    .similarity(hit.getConfidence() != null ? String.format("%.1f%%", hit.getConfidence() * 100) : null)
+                    .sourceType(evidenceType)
+                    .docAName("文档 A（" + docAName + "）")
+                    .docBName("文档 B（" + docBName + "）")
+                    .docAContent(docAContent)
+                    .docBContent(docBContent)
+                    .comparisonFinding(buildComparisonFinding(hit, categoryKey))
+                    .aiJudgment(buildAIJudgment(docAName, docBName, categoryKey, hit))
+                    .reviewSuggestion(buildV2Action(categoryKey))
+                    .title(hit.getRuleName())
+                    .summary(hit.getTriggerSummary())
+                    .build());
+        }
+        return evidences;
+    }
+
+    private String extractDocAContent(RuleHit hit, List<TenderDocument> docs) {
+        if (hit.getEvidences() != null && !hit.getEvidences().isEmpty()) {
+            for (RuleEvidence ev : hit.getEvidences()) {
+                if (ev.getDocumentId() != null && docs.size() > 0 && ev.getDocumentId().equals(docs.get(0).getDocumentId())) {
+                    return safeText(ev.getMatchedValue(), "（暂无对照内容）");
+                }
+            }
+            // 如果没找到对应的，返回第一个证据的内容
+            RuleEvidence first = hit.getEvidences().get(0);
+            return safeText(first.getMatchedValue(), "（暂无对照内容）");
+        }
+        return safeText(hit.getTriggerSummary(), "（暂无对照内容）");
+    }
+
+    private String extractDocBContent(RuleHit hit, List<TenderDocument> docs) {
+        if (hit.getEvidences() != null && !hit.getEvidences().isEmpty()) {
+            // 尝试找第二个文档的内容
+            for (RuleEvidence ev : hit.getEvidences()) {
+                if (ev.getDocumentId() != null && docs.size() > 1 && ev.getDocumentId().equals(docs.get(1).getDocumentId())) {
+                    return safeText(ev.getMatchedValue(), "（暂无对照内容）");
+                }
+            }
+            // 如果只有一个证据或没找到匹配的，返回触发摘要
+            if (hit.getEvidences().size() >= 2) {
+                RuleEvidence second = hit.getEvidences().get(1);
+                return safeText(second.getMatchedValue(), "（暂无对照内容）");
+            }
+        }
+        return "（暂无对照内容）";
+    }
+
+    private String buildComparisonFinding(RuleHit hit, String categoryKey) {
+        String summary = safeText(hit.getTriggerSummary(), "");
+        if (!summary.isBlank()) {
+            return summary;
+        }
+        return switch (categoryKey) {
+            case "pricing" -> "报价项存在规律性差异，差异呈现固定模式。";
+            case "team" -> "核心团队成员在不同投标文件中出现重复。";
+            case "text_similarity" -> "关键条款在内容结构、句式和业务表达上高度一致。";
+            case "template" -> "文档结构与模板特征高度接近。";
+            default -> "发现需要复核的异常线索。";
+        };
+    }
+
+    private String buildAIJudgment(String docAName, String docBName, String categoryKey, RuleHit hit) {
+        String typeLabel = resolveCategoryName(categoryKey);
+        String confidence = hit.getConfidence() != null ? String.format("%.0f", hit.getConfidence() * 100) : "Unknown";
+        return "AI审查引擎经由\"确定性规约\"与\"LLM语义分析器\"交叉验证：【" + docAName + "】与【" + docBName + "】在\"" + typeLabel + "\"维度上表现出极高的协同特征，置信度达 " + confidence + "%，建议结合原文上下文和人工复核结论决定是否升级处理。";
+    }
+
+    /**
+     * 构建 V2 处置建议（任务清单）。
+     */
+    private ReportData.ActionPlan buildActionPlan(RiskFusionResult fusionResult, List<RuleHit> effectiveHits) {
+        List<ReportData.TaskItem> tasks = new ArrayList<>();
+
+        // 按原型生成固定的5条建议
+        tasks.add(ReportData.TaskItem.builder()
+                .priority("high")
+                .action("复核报价明细和报价形成依据")
+                .role("评标专家 / 招采人员")
+                .goal("判断报价异常是否成立")
+                .build());
+        tasks.add(ReportData.TaskItem.builder()
+                .priority("high")
+                .action("核查核心人员归属和授权关系")
+                .role("风控 / 合规人员")
+                .goal("判断团队重复是否合理")
+                .build());
+        tasks.add(ReportData.TaskItem.builder()
+                .priority("medium")
+                .action("对关键相似段落做人工原文比对")
+                .role("评标专家")
+                .goal("判断是否超出通用模板范围")
+                .build());
+        tasks.add(ReportData.TaskItem.builder()
+                .priority("medium")
+                .action("查询历史投标记录和历史模板")
+                .role("招采管理员")
+                .goal("判断是否存在长期协同或同源文件")
+                .build());
+        tasks.add(ReportData.TaskItem.builder()
+                .priority("low")
+                .action("归档系统报告、人工复核意见和佐证材料")
+                .role("项目负责人")
+                .goal("形成可追溯审查闭环")
+                .build());
+
+        return ReportData.ActionPlan.builder()
+                .tasks(tasks)
+                .level1Actions(List.of("复核报价明细和报价形成依据", "核查核心人员归属和授权关系"))
+                .level2Actions(List.of("对关键相似段落做人工原文比对", "查询历史投标记录和历史模板"))
+                .level3Actions(List.of("归档系统报告、人工复核意见和佐证材料"))
+                .build();
+    }
+
+    /**
+     * 构建 V2 报告元信息。
+     */
+    private ReportData.ReportMetadata buildMetadata(TenderReviewData data, RiskFusionResult fusionResult) {
+        String riskLevel = fusionResult == null ? "UNKNOWN" : fusionResult.getRiskLevel();
+        String docId = "TSR-" + java.time.LocalDate.now().toString().replace("-", "") + "-"
+                + (fusionResult != null && fusionResult.getSummary() != null
+                ? fusionResult.getSummary().hashCode() & 0xfff : "000");
+
+        int docCount = data == null || data.getDocuments() == null ? 0 : data.getDocuments().size();
+
+        return ReportData.ReportMetadata.builder()
+                .generatedAt(java.time.OffsetDateTime.now().format(java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME))
+                .reviewScope(docCount + " 份文件")
+                .documentId(docId)
+                .taskId(docId)
+                .reportId(docId)
+                .projectTarget(data != null && data.getDocuments() != null && !data.getDocuments().isEmpty()
+                        ? data.getDocuments().stream().map(TenderDocument::getDocumentName).collect(Collectors.joining("、"))
+                        : "-")
+                .reviewType(docCount > 2 ? "多文件比对" : "双文件比对")
+                .systemVersion("drug-agent-v1.0.0")
+                .build();
+    }
+
+    private String resolveRiskLevelLabel(String levelCode) {
+        return switch (levelCode) {
+            case "high" -> "重大围标风险";
+            case "medium" -> "中度围标风险";
+            case "low" -> "轻度异常信号";
+            default -> "暂未发现明显异常";
+        };
     }
 
     private Page1Summary buildPage1Summary(TenderReviewData data,

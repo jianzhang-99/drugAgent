@@ -7,6 +7,7 @@ import com.liang.drugagent.agent.chat.LLMChatService;
 import com.liang.drugagent.scene.tender_review.model.ExemptionHit;
 import com.liang.drugagent.scene.tender_review.model.RiskFusionResult;
 import com.liang.drugagent.scene.tender_review.model.RuleHit;
+import com.liang.drugagent.scene.tender_review.model.TenderReviewRagEvidence;
 import com.liang.drugagent.scene.tender_review.model.TenderDocument;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
 import com.liang.drugagent.scene.tender_review.semantic.analyzer.CommercialCoordinationSemanticAnalyzer;
@@ -18,11 +19,13 @@ import com.liang.drugagent.scene.tender_review.semantic.analyzer.TeamOverlapSema
 import com.liang.drugagent.scene.tender_review.service.EvidenceAssemblerService;
 import com.liang.drugagent.scene.tender_review.service.ReportGenerationService;
 import com.liang.drugagent.scene.tender_review.service.RiskFusionService;
+import com.liang.drugagent.scene.tender_review.service.TenderReviewRagService;
 import com.liang.drugagent.scene.tender_review.support.TenderExemptionEngine;
 import com.liang.drugagent.scene.tender_review.support.TenderRuleEngine;
 import com.liang.drugagent.agent.prompt.tender_review.validate.TenderReviewValidatePrompt;
 import com.liang.drugagent.scene.tender_review.support.assembler.TenderReviewDataAssembler;
 import com.liang.drugagent.shared.model.EvidenceItem;
+import com.liang.drugagent.shared.model.EvidenceAssemblyResult;
 import com.liang.drugagent.shared.model.ReviewReport;
 import com.liang.drugagent.shared.model.report.ReportData;
 import com.liang.drugagent.shared.model.ThinkingStep;
@@ -65,6 +68,7 @@ public class TenderReviewWorkflow {
     private final TenderExemptionEngine tenderExemptionEngine;
     private final RiskFusionService riskFusionService;
     private final EvidenceAssemblerService evidenceAssemblerService;
+    private final TenderReviewRagService tenderReviewRagService;
     private final ReportGenerationService reportGenerationService;
     private final ObjectMapper objectMapper;
     private final TenderReviewDataAssembler tenderReviewDataResolver;
@@ -91,6 +95,7 @@ public class TenderReviewWorkflow {
                                 TenderExemptionEngine tenderExemptionEngine,
                                 RiskFusionService riskFusionService,
                                 EvidenceAssemblerService evidenceAssemblerService,
+                                TenderReviewRagService tenderReviewRagService,
                                 ReportGenerationService reportGenerationService,
                                 ObjectMapper objectMapper,
                                 TenderReviewDataAssembler tenderReviewDataResolver,
@@ -108,6 +113,7 @@ public class TenderReviewWorkflow {
         this.tenderExemptionEngine = tenderExemptionEngine;
         this.riskFusionService = riskFusionService;
         this.evidenceAssemblerService = evidenceAssemblerService;
+        this.tenderReviewRagService = tenderReviewRagService;
         this.reportGenerationService = reportGenerationService;
         this.objectMapper = objectMapper;
         this.tenderReviewDataResolver = tenderReviewDataResolver;
@@ -325,11 +331,11 @@ public class TenderReviewWorkflow {
                 .finalResult(false)
                 .build());
 
-        // 阶段5：风险融合
+        // 阶段5：法规知识检索
         ThinkingStep step5 = ThinkingStep.builder()
-                .code("risk_fusion")
-                .title("风险融合")
-                .detail("正在计算综合风险评分")
+                .code("rag_legal_basis")
+                .title("法规知识检索")
+                .detail("正在根据有效风险命中检索法规、审查标准和案例依据")
                 .type("EXECUTION")
                 .status("PROCESSING")
                 .order(5)
@@ -344,14 +350,15 @@ public class TenderReviewWorkflow {
                 .finalResult(false)
                 .build());
 
-        RiskFusionResult fusionResult = riskFusionService.fuse(
-                tenderReviewData,
-                exemptionResult.effectiveHits(),
-                exemptionResult.exemptionHits()
+        TenderReviewRagEvidence ragEvidence = tenderReviewRagService.retrieveEvidence(
+                effectiveHits,
+                extractOrgId(context),
+                context == null ? null : context.getTraceId()
         );
+        analyzerStatus.put("RAG", ragEvidence == null ? "DEGRADED" : ragEvidence.getStatus());
 
         step5.setStatus("COMPLETED");
-        step5.setDetail("风险融合完成，综合风险等级：" + fusionResult.getRiskLevel() + "，评分：" + fusionResult.getScore());
+        step5.setDetail(buildRagStepDetail(ragEvidence));
         completedSteps.add(step5);
         emitter.emit(ThinkingStepProgress.builder()
                 .currentCode(step5.getCode())
@@ -363,11 +370,11 @@ public class TenderReviewWorkflow {
                 .finalResult(false)
                 .build());
 
-        // 阶段6：证据组装
+        // 阶段6：风险融合
         ThinkingStep step6 = ThinkingStep.builder()
-                .code("evidence_assembly")
-                .title("证据组装")
-                .detail("正在组装风险证据链")
+                .code("risk_fusion")
+                .title("风险融合")
+                .detail("正在计算综合风险评分")
                 .type("EXECUTION")
                 .status("PROCESSING")
                 .order(6)
@@ -382,15 +389,14 @@ public class TenderReviewWorkflow {
                 .finalResult(false)
                 .build());
 
-        var evidenceAssemblyResult = evidenceAssemblerService.assemble(
+        RiskFusionResult fusionResult = riskFusionService.fuse(
+                tenderReviewData,
                 exemptionResult.effectiveHits(),
-                exemptionResult.exemptionHits(),
-                fusionResult,
-                buildDocIdToNameMap(tenderReviewData)
+                exemptionResult.exemptionHits()
         );
 
         step6.setStatus("COMPLETED");
-        step6.setDetail("证据组装完成，共 " + evidenceAssemblyResult.getFlatItems().size() + " 条证据");
+        step6.setDetail("风险融合完成，综合风险等级：" + fusionResult.getRiskLevel() + "，评分：" + fusionResult.getScore());
         completedSteps.add(step6);
         emitter.emit(ThinkingStepProgress.builder()
                 .currentCode(step6.getCode())
@@ -402,11 +408,11 @@ public class TenderReviewWorkflow {
                 .finalResult(false)
                 .build());
 
-        // 阶段7：报告生成
+        // 阶段7：证据组装
         ThinkingStep step7 = ThinkingStep.builder()
-                .code("report_generation")
-                .title("报告生成")
-                .detail("正在生成审查报告")
+                .code("evidence_assembly")
+                .title("证据组装")
+                .detail("正在组装风险证据链")
                 .type("EXECUTION")
                 .status("PROCESSING")
                 .order(7)
@@ -417,6 +423,46 @@ public class TenderReviewWorkflow {
                 .currentStatus(step7.getStatus())
                 .currentDetail(step7.getDetail())
                 .currentStep(step7)
+                .completedSteps(completedSteps)
+                .finalResult(false)
+                .build());
+
+        var evidenceAssemblyResult = evidenceAssemblerService.assemble(
+                exemptionResult.effectiveHits(),
+                exemptionResult.exemptionHits(),
+                fusionResult,
+                buildDocIdToNameMap(tenderReviewData)
+        );
+        appendRagEvidence(evidenceAssemblyResult, ragEvidence);
+
+        step7.setStatus("COMPLETED");
+        step7.setDetail("证据组装完成，共 " + evidenceAssemblyResult.getFlatItems().size() + " 条证据");
+        completedSteps.add(step7);
+        emitter.emit(ThinkingStepProgress.builder()
+                .currentCode(step7.getCode())
+                .currentTitle(step7.getTitle())
+                .currentStatus(step7.getStatus())
+                .currentDetail(step7.getDetail())
+                .currentStep(step7)
+                .completedSteps(completedSteps)
+                .finalResult(false)
+                .build());
+
+        // 阶段8：报告生成
+        ThinkingStep step8 = ThinkingStep.builder()
+                .code("report_generation")
+                .title("报告生成")
+                .detail("正在生成审查报告")
+                .type("EXECUTION")
+                .status("PROCESSING")
+                .order(8)
+                .build();
+        emitter.emit(ThinkingStepProgress.builder()
+                .currentCode(step8.getCode())
+                .currentTitle(step8.getTitle())
+                .currentStatus(step8.getStatus())
+                .currentDetail(step8.getDetail())
+                .currentStep(step8)
                 .completedSteps(completedSteps)
                 .finalResult(false)
                 .build());
@@ -437,7 +483,7 @@ public class TenderReviewWorkflow {
         result.setSummary(report.getOverview() != null ? report.getOverview().getSummary() : null);
         result.setRiskLevel(fusionResult.getRiskLevel());
         result.setScore(fusionResult.getScore() != null ? fusionResult.getScore() : 0);
-        result.setSteps(List.of("场景路由", "结构化加载", "规则命中分析", "LLM语义分析", "误报豁免", "风险融合", "证据组装", "报告生成"));
+        result.setSteps(List.of("场景路由", "结构化加载", "规则命中分析", "LLM语义分析", "误报豁免", "法规知识检索", "风险融合", "证据组装", "报告生成"));
         result.setReport(report);
         result.setEvidenceList(evidenceAssemblyResult.getFlatItems());
         result.setEvidenceGroups(evidenceAssemblyResult.getGroups());
@@ -471,7 +517,7 @@ public class TenderReviewWorkflow {
                     .detail("正在进行输出合规性校验")
                     .type("EXECUTION")
                     .status("PROCESSING")
-                    .order(8)
+                    .order(9)
                     .build();
             emitter.emit(ThinkingStepProgress.builder()
                     .currentCode(stepL4.getCode())
@@ -491,9 +537,9 @@ public class TenderReviewWorkflow {
         }
 
         // 所有阶段完成
-        step7.setStatus("COMPLETED");
-        step7.setDetail("审查报告生成完成");
-        completedSteps.add(step7);
+        step8.setStatus("COMPLETED");
+        step8.setDetail("审查报告生成完成");
+        completedSteps.add(step8);
 
         // LLM 生成自然语言结论（识规则 + 建议）
         String llmConclusion = generateLlmConclusion(fusionResult, effectiveHits, exemptionHits, report);
@@ -531,11 +577,11 @@ public class TenderReviewWorkflow {
 
         // 发送最终结果
         emitter.emit(ThinkingStepProgress.builder()
-                .currentCode(step7.getCode())
-                .currentTitle(step7.getTitle())
-                .currentStatus(step7.getStatus())
-                .currentDetail(step7.getDetail())
-                .currentStep(step7)
+                .currentCode(step8.getCode())
+                .currentTitle(step8.getTitle())
+                .currentStatus(step8.getStatus())
+                .currentDetail(step8.getDetail())
+                .currentStep(step8)
                 .completedSteps(completedSteps)
                 .finalResult(true)
                 .result(result)
@@ -746,6 +792,49 @@ public class TenderReviewWorkflow {
             return null;
         }
         return objectMapper.convertValue(rawData, TenderReviewData.class);
+    }
+
+    /**
+     * 从上下文元数据中读取机构标识。
+     * RAG 检索必须带 orgId，缺失时直接跳过知识增强，避免全库裸搜。
+     */
+    private String extractOrgId(AgentChatContext context) {
+        if (context == null || context.getMetadata() == null) {
+            return null;
+        }
+        Object orgId = context.getMetadata().get("orgId");
+        return orgId == null ? null : orgId.toString();
+    }
+
+    private String buildRagStepDetail(TenderReviewRagEvidence ragEvidence) {
+        if (ragEvidence == null) {
+            return "法规知识检索降级，未影响风险判断主流程";
+        }
+        String status = ragEvidence.getStatus();
+        if ("SUPPORTED".equals(status)) {
+            return "法规知识检索完成，补充 " + ragEvidence.getHitCount() + " 条法规/审查依据";
+        }
+        if ("SKIPPED".equals(status)) {
+            return "法规知识检索跳过：" + ragEvidence.getReason();
+        }
+        if ("NO_HIT".equals(status)) {
+            return "法规知识检索未命中，风险判断继续使用规则与语义证据";
+        }
+        return "法规知识检索降级：" + ragEvidence.getReason();
+    }
+
+    private void appendRagEvidence(EvidenceAssemblyResult evidenceAssemblyResult, TenderReviewRagEvidence ragEvidence) {
+        if (evidenceAssemblyResult == null || ragEvidence == null || !ragEvidence.hasEvidence()) {
+            return;
+        }
+        if (evidenceAssemblyResult.getGroups() == null) {
+            evidenceAssemblyResult.setGroups(new ArrayList<>());
+        }
+        if (evidenceAssemblyResult.getFlatItems() == null) {
+            evidenceAssemblyResult.setFlatItems(new ArrayList<>());
+        }
+        evidenceAssemblyResult.getGroups().add(ragEvidence.getGroup());
+        evidenceAssemblyResult.getFlatItems().addAll(ragEvidence.getItems());
     }
 
     /**

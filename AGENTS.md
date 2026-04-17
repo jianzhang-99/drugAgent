@@ -297,3 +297,12 @@ public class XxxReq {}
 ## 8. 一句话协作准则
 
 在这个仓库里，优先做“边界清晰、流程稳定、便于扩展”的设计，而不是“短期能跑但不断堆逻辑”的实现。
+
+
+<claude-mem-context>
+# Memory Context
+
+# [drug-agent] recent context, 2026-04-17 2:12pm GMT+8
+
+No previous sessions found.
+</claude-mem-context>

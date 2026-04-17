@@ -14,9 +14,6 @@ import com.liang.drugagent.shared.llm.LlmRequest;
 import com.liang.drugagent.shared.llm.LlmService;
 import com.liang.drugagent.shared.model.WorkflowRouteDecision;
 import com.liang.drugagent.shared.llm.LlmResponse;
-import com.liang.drugagent.shared.model.EvidenceItem;
-import com.liang.drugagent.shared.model.RagOutcome;
-import com.liang.drugagent.shared.tool.KnowledgeRetrievalTool;
 import com.liang.drugagent.shared.intent.IntentDetectionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -55,7 +52,6 @@ public class AgentSceneService {
 
     private final LlmService llmService;
     private final TenderReviewSceneService tenderReviewSceneService;
-    private final KnowledgeRetrievalTool knowledgeRetrievalTool;
     private final IntentDetectionService intentDetectionService;
     private final DashScopeContextCacheService dashScopeContextCacheService;
 
@@ -516,6 +512,8 @@ public class AgentSceneService {
 
     /**
      * 分发到通用对话。
+     *
+     * <p>通用对话场景不再直接调用 RAG，RAG 作为通用基础设施由场景 Workflow 按需调用。</p>
      */
     private AgentSceneExecution dispatchToGeneralChat(AgentChatContext context, String query,
                                                        WorkflowRouteDecision decision) {
@@ -523,48 +521,21 @@ public class AgentSceneService {
         long totalStartTime = System.currentTimeMillis();
 
         try {
-            // 1. 知识检索增强（仅检索不生成答案，避免双LLM调用）
-            long ragStartTime = System.currentTimeMillis();
-            String orgId = extractOrgId(context);
-            RagOutcome ragOutcome = knowledgeRetrievalTool.search(query, orgId, null, null, null);
-            long ragRetrieveCostMs = System.currentTimeMillis() - ragStartTime;
-
-            // 2. 判断检索结果，决定是否使用 RAG 上下文
-            boolean useRagContext = "ANSWERED".equals(ragOutcome.getDecision())
-                    && ragOutcome.getEvidenceList() != null
-                    && !ragOutcome.getEvidenceList().isEmpty();
-
-            if (useRagContext) {
-                log.info("[AgentSceneService] 知识检索命中，使用 RAG 增强回答 - ragRetrieveCostMs={}, evidenceCount={}",
-                        ragRetrieveCostMs, ragOutcome.getEvidenceList().size());
-            } else {
-                log.info("[AgentSceneService] 知识检索未命中，使用纯 LLM 回答 - ragRetrieveCostMs={}, decision={}",
-                        ragRetrieveCostMs, ragOutcome.getDecision());
-            }
-
-            // 3. 构建增强后的 system prompt
-            String systemPrompt = buildEnhancedSystemPrompt(ragOutcome, useRagContext);
-
-            // 4. 调用 LLM 获取回答
-            long answerStartTime = System.currentTimeMillis();
-            GeneralChatResult chatResult = generalChatWithTitle(context, systemPrompt);
-            long finalAnswerCostMs = System.currentTimeMillis() - answerStartTime;
+            // 直接调用通用对话（不再主动调用 RAG）
+            GeneralChatResult chatResult = generalChatWithTitle(context);
 
             long totalCostMs = System.currentTimeMillis() - totalStartTime;
-            log.info("[AgentSceneService] 通用对话完成 - totalCostMs={}, ragRetrieveCostMs={}, finalAnswerCostMs={}, useRagContext={}",
-                    totalCostMs, ragRetrieveCostMs, finalAnswerCostMs, useRagContext);
+            log.info("[AgentSceneService] 通用对话完成 - totalCostMs={}", totalCostMs);
 
             return AgentSceneExecution.builder()
                     .decision(decision)
                     .executionResult(AgentExecutionResult.builder()
                             .success(true)
                             .answer(chatResult.answer)
-                            .summary(useRagContext ? "通用对话-RAG增强" : "通用对话")
+                            .summary("通用对话")
                             .generatedTitle(chatResult.title)
                             .shouldUpdateTitle(true)
-                            .steps(useRagContext
-                                    ? List.of("知识检索", "RAG上下文构建", "LLM回答生成")
-                                    : List.of("问题理解", "回复生成"))
+                            .steps(List.of("问题理解", "回复生成"))
                             .needsFallback(false)
                             .build())
                     .needsClarification(false)
@@ -587,36 +558,28 @@ public class AgentSceneService {
 
     /**
      * 真流式通用对话入口（绕过同步 Execution 框架，直接返回 Flux）。
+     *
+     * <p>通用对话场景不再直接调用 RAG，RAG 作为通用基础设施由场景 Workflow 按需调用。</p>
      */
     public Flux<String> streamGeneralChat(AgentChatContext context) {
         log.info("[AgentSceneService] 分发到真流式通用对话");
 
         try {
-            // 1. 知识检索增强
-            String orgId = extractOrgId(context);
-            RagOutcome ragOutcome = knowledgeRetrievalTool.search(context.getQuery(), orgId, null, null, null);
-            boolean useRagContext = "ANSWERED".equals(ragOutcome.getDecision())
-                    && ragOutcome.getEvidenceList() != null
-                    && !ragOutcome.getEvidenceList().isEmpty();
-
-            // 2. 构建增强后的 system prompt
-            String systemPrompt = buildEnhancedSystemPrompt(ragOutcome, useRagContext);
-
-            // 3. 构建请求
+            // 1. 构建请求（不再主动调用 RAG）
             String query = context.getQuery();
             String sessionId = context.getSessionId();
             String model = context.getModel();
             LlmProviderType provider = resolveProviderType(model);
             String effectiveModel = resolveEffectiveModel(model, provider);
-            
-            String effectiveSystemPrompt = systemPrompt;
+
+            String systemPrompt = SharedBasePrompt.GENERAL_CHAT;
             List<LlmRequest.ChatMessage> messages = List.of(LlmRequest.ChatMessage.builder()
                     .role("user")
                     .content(query)
                     .build());
 
             if (LlmProviderType.DASHSCOPE.equals(provider)) {
-                effectiveSystemPrompt = buildGeneralChatSystemPrompt(context, systemPrompt);
+                systemPrompt = buildGeneralChatSystemPrompt(context, systemPrompt);
                 messages = buildGeneralChatMessages(context, query);
             }
 
@@ -624,12 +587,12 @@ public class AgentSceneService {
                     .provider(provider)
                     .model(effectiveModel)
                     .sessionId(sessionId)
-                    .systemPrompt(effectiveSystemPrompt)
+                    .systemPrompt(systemPrompt)
                     .messages(messages)
                     .stream(true)
                     .build();
 
-            // 4. 调用 LLM 真流式
+            // 2. 调用 LLM 真流式
             return llmService.streamChat(request)
                     .map(r -> r.getContent() != null ? r.getContent() : "");
 
@@ -938,44 +901,6 @@ public class AgentSceneService {
         }
         // 降级：从 sessionId 尝试提取（如果 sessionId 包含 orgId 信息）
         return null;
-    }
-
-    /**
-     * 构建增强后的 system prompt。
-     *
-     * <p>当 RAG 检索命中时，将检索到的证据拼入 prompt 作为上下文，
-     * 让 LLM 基于证据回答而不是自由发挥。</p>
-     */
-    private String buildEnhancedSystemPrompt(RagOutcome ragOutcome, boolean useRagContext) {
-        if (!useRagContext) {
-            return SharedBasePrompt.GENERAL_CHAT;
-        }
-
-        StringBuilder promptBuilder = new StringBuilder();
-        promptBuilder.append(SharedBasePrompt.GENERAL_CHAT);
-        promptBuilder.append("\n\n");
-        promptBuilder.append("【参考知识】\n");
-        promptBuilder.append("根据知识库检索，以下信息可作为回答参考：\n\n");
-
-        for (int i = 0; i < ragOutcome.getEvidenceList().size(); i++) {
-            EvidenceItem evidence = ragOutcome.getEvidenceList().get(i);
-            promptBuilder.append("【证据").append(i + 1).append("】\n");
-            if (evidence.getTitle() != null && !evidence.getTitle().isBlank()) {
-                promptBuilder.append("标题：").append(evidence.getTitle()).append("\n");
-            }
-            if (evidence.getContent() != null && !evidence.getContent().isBlank()) {
-                promptBuilder.append("内容：").append(evidence.getContent()).append("\n");
-            }
-            if (evidence.getSource() != null && !evidence.getSource().isBlank()) {
-                promptBuilder.append("来源：").append(evidence.getSource()).append("\n");
-            }
-            promptBuilder.append("\n");
-        }
-
-        promptBuilder.append("请基于上述参考知识回答用户问题。如果参考知识不足以回答，请明确说明。\n");
-        promptBuilder.append("回答时如引用了参考知识，可适当标注来源。");
-
-        return promptBuilder.toString();
     }
 
     /**
