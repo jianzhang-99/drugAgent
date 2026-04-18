@@ -200,6 +200,7 @@ public class ReportData {
         private String type;
         private String level;
         private String evidenceChainId;
+        private String evidenceChainName;
         private String similarity;
         /** 证据指向 */
         private String sourceType;

@@ -161,6 +161,7 @@ public class ImplementationMethodSemanticAnalyzer implements TenderSemanticAnaly
         evidence.setChapterPath(semEvidence.getChapterPath());
         // matchedValue 使用摘录内容
         evidence.setMatchedValue(semEvidence.getExcerpt());
+        evidence.setOriginalValue(semEvidence.getExcerpt());
         return evidence;
     }
 }

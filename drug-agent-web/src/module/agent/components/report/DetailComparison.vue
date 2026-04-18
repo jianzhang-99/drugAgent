@@ -18,8 +18,8 @@
         class="custom-table"
       >
         <el-table-column prop="title" label="比对项目" min-width="180" />
-        <el-table-column prop="diffPayload.contentA" label="投标方 A 数据" min-width="160" />
-        <el-table-column prop="diffPayload.contentB" label="投标方 B 数据" min-width="160" />
+        <el-table-column prop="diffPayload.contentA" label="投标方 A 原文片段" min-width="160" />
+        <el-table-column prop="diffPayload.contentB" label="投标方 B 原文片段" min-width="160" />
         <el-table-column prop="summary" label="判定逻辑与基准线差异" min-width="200" />
         <el-table-column prop="diffPayload.diffVerdict" label="置信判定" min-width="120">
           <template #default="{ row }">
@@ -75,7 +75,7 @@
                   <span v-for="i in 5" :key="i">{{ i }}</span>
                 </div>
                 <div class="code-content">
-                  <span class="diff-highlight diff-remove">{{ item.diffPayload?.contentA || '暂无法提取原文内容' }}</span>
+                  <span class="diff-highlight diff-remove">{{ item.diffPayload?.contentA || '暂无法提取原文片段' }}</span>
                 </div>
               </div>
             </div>
@@ -90,7 +90,7 @@
                   <span v-for="i in 5" :key="i">{{ i }}</span>
                 </div>
                 <div class="code-content">
-                  <span class="diff-highlight diff-add">{{ item.diffPayload?.contentB || '暂无法提取原文内容' }}</span>
+                  <span class="diff-highlight diff-add">{{ item.diffPayload?.contentB || '暂无法提取原文片段' }}</span>
                 </div>
               </div>
             </div>

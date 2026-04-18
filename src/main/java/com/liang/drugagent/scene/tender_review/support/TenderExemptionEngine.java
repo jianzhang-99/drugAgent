@@ -116,6 +116,7 @@ public class TenderExemptionEngine {
             item.setFieldId(evidence.getFieldId());
             item.setBlockId(evidence.getBlockId());
             item.setMatchedValue(evidence.getMatchedValue());
+            item.setOriginalValue(evidence.getOriginalValue());
             item.setChapterPath(evidence.getChapterPath());
             item.setAnchorParagraphIndex(evidence.getAnchorParagraphIndex());
             item.setAnchorTableIndex(evidence.getAnchorTableIndex());

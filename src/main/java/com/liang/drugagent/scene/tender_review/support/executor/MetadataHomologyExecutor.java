@@ -236,6 +236,7 @@ public class MetadataHomologyExecutor extends AbstractTenderExecutor {
                 doc.getAuthor() != null ? doc.getAuthor() : "N/A",
                 doc.getCreateDate() != null ? doc.getCreateDate() : "N/A",
                 doc.getApplication() != null ? doc.getApplication() : "N/A"));
+        evidence.setOriginalValue(doc.getMetadataRaw());
         evidence.setChapterPath("文件指纹元数据");
         return evidence;
     }

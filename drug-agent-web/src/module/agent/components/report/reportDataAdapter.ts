@@ -421,8 +421,8 @@ function buildLegacyEvidences(
       diffPayload: {
         docA_id: documents[0]?.docId || '',
         docB_id: documents[1]?.docId || '',
-        contentA: humanizeText(comparison?.textA || comparison?.docA || '-', aliasMap),
-        contentB: humanizeText(comparison?.textB || comparison?.docB || '-', aliasMap),
+        contentA: String(comparison?.textA || comparison?.docA || '-'),
+        contentB: String(comparison?.textB || comparison?.docB || '-'),
         similarityScore: comparison?.similarity,
         divergence: comparison?.diff,
         diffVerdict: mapVerdict(comparison?.verdict),

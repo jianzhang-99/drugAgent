@@ -258,7 +258,7 @@ public class TenderReviewWorkflow {
         ThinkingStep step3 = ThinkingStep.builder()
                 .code("semantic_analysis")
                 .title("LLM语义分析")
-                .detail("正在执行6个语义分析器（技术方案、实施方案、服务承诺、风险识别、团队重叠、商务条款）")
+                .detail("横渡专属模型分析中")
                 .type("EXECUTION")
                 .status("PROCESSING")
                 .order(3)

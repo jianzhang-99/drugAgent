@@ -173,6 +173,7 @@ public class RareTypoCooccurrenceExecutor implements TenderRuleExecutor {
         evidence.setFieldId(field.getFieldId());
         evidence.setBlockId(field.getBlockId());
         evidence.setMatchedValue(field.getNormalizedValue());
+        evidence.setOriginalValue(field.getFieldValue());
         evidence.setChapterPath(field.getChapterPath());
         evidence.setAnchorParagraphIndex(field.getAnchorParagraphIndex());
         evidence.setAnchorTableIndex(field.getAnchorTableIndex());

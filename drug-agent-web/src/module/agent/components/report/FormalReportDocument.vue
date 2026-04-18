@@ -102,16 +102,16 @@
           <h2>四、关键取证对比明细</h2>
           <div v-for="evidence in data.evidences" :key="evidence.evidenceId" class="evidence-box">
             <div class="evidence-header">
-              证据链主标识：{{ evidence.evidenceChainId || evidence.evidenceId }}<template v-if="evidence.similarity"> | 文本相似度：{{ evidence.similarity }}</template>
+              证据链名称：{{ evidence.evidenceChainName || evidence.displayTitle || evidence.title || evidence.evidenceChainId || evidence.evidenceId }}<template v-if="evidence.similarity"> | 文本相似度：{{ evidence.similarity }}</template>
             </div>
             <div class="evidence-diff">
               <div class="diff-col">
-                <div class="diff-label">{{ evidence.docAName }} 原始文本描述</div>
-                <div class="diff-text">{{ evidence.docAContent }}</div>
+                <div class="diff-label">{{ evidence.docAName }} 原文片段</div>
+                <div class="diff-text">{{ evidence.docAContent || '（当前未返回原文片段）' }}</div>
               </div>
               <div class="diff-col">
-                <div class="diff-label">{{ evidence.docBName }} 原始文本描述</div>
-                <div class="diff-text">{{ evidence.docBContent }}</div>
+                <div class="diff-label">{{ evidence.docBName }} 原文片段</div>
+                <div class="diff-text">{{ evidence.docBContent || '（当前未返回原文片段）' }}</div>
               </div>
             </div>
             <div class="finding-footer">

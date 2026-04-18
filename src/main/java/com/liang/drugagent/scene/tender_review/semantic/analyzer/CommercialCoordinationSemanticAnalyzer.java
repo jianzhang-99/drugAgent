@@ -205,6 +205,7 @@ public class CommercialCoordinationSemanticAnalyzer implements TenderSemanticAna
                         .documentId(evidence.getDocumentId())
                         .chapterPath(evidence.getChapterPath())
                         .matchedValue(evidence.getExcerpt())
+                        .originalValue(evidence.getExcerpt())
                         .build())
                 .toList();
     }

@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * <p>验证 Markdown 解析器功能：
  * <ol>
- *   <li>支持 .md 和 .markdown 扩展名</li>
+ *   <li>支持 .md、.markdown、.txt 和 .text 扩展名</li>
  *   <li>不支持其他扩展名</li>
  *   <li>正确解析 Markdown 纯文本内容</li>
  *   <li>处理空内容情况</li>
@@ -52,8 +52,8 @@ class MarkdownDocumentParserTest {
     }
 
     @Test
-    void should不支持Txt扩展名() {
-        assertFalse(parser.supports("document.txt"));
+    void should支持Txt扩展名() {
+        assertTrue(parser.supports("document.txt"));
     }
 
     @Test

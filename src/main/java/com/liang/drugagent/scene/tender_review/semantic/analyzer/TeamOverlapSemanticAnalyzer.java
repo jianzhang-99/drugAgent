@@ -167,6 +167,7 @@ public class TeamOverlapSemanticAnalyzer implements TenderSemanticAnalyzer {
         evidence.setDocumentId(semEvidence.getDocumentId());
         evidence.setChapterPath(semEvidence.getChapterPath());
         evidence.setMatchedValue(semEvidence.getExcerpt());
+        evidence.setOriginalValue(semEvidence.getExcerpt());
         return evidence;
     }
 }

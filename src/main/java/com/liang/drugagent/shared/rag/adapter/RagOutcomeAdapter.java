@@ -32,6 +32,9 @@ public class RagOutcomeAdapter {
                         .title(citation.getSourceTitle())
                         .content(citation.getSnippet())
                         .source("[" + citation.getChunkId() + "] " + citation.getSourceId())
+                        .ragChunkId(citation.getChunkId())
+                        .ragSourceId(citation.getSourceId())
+                        .ragScore(citation.getScore())
                         .build();
                 evidenceItems.add(item);
             }

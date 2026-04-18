@@ -1,6 +1,8 @@
 package com.liang.drugagent.scene.tender_review.service;
 
 import com.liang.drugagent.scene.tender_review.model.ExemptionHit;
+import com.liang.drugagent.scene.tender_review.model.Block;
+import com.liang.drugagent.scene.tender_review.model.Field;
 import com.liang.drugagent.scene.tender_review.model.RiskFusionResult;
 import com.liang.drugagent.scene.tender_review.model.RuleEvidence;
 import com.liang.drugagent.scene.tender_review.model.RuleHit;
@@ -1192,6 +1194,8 @@ public class ReportGenerationService {
 
         // 构建文档 A/B 名称映射
         Map<String, String> docIdToName = buildDocIdToName(data);
+        Map<String, Field> fieldById = buildFieldById(data);
+        Map<String, Block> blockById = buildBlockById(data);
         List<TenderDocument> docs = data == null ? List.of() : data.getDocuments();
         String docAName = docs.size() > 0 ? docs.get(0).getDocumentName() : "文档 A";
         String docBName = docs.size() > 1 ? docs.get(1).getDocumentName() : "文档 B";
@@ -1201,17 +1205,19 @@ public class ReportGenerationService {
             String categoryKey = resolveGroupKeyForReport(hit);
             String evidenceType = resolveCategoryName(categoryKey);
             String level = normalizeRiskLevelCode(resolveItemRiskLevel(hit, fusionResult));
+            int chainIndex = id++;
 
             // 提取 A/B 内容
-            String docAContent = extractDocAContent(hit, docs);
-            String docBContent = extractDocBContent(hit, docs);
+            String docAContent = extractDocAContent(hit, docs, data, fieldById, blockById);
+            String docBContent = extractDocBContent(hit, docs, data, fieldById, blockById);
             String ruleCode = safeText(hit.getRuleCode(), "UNKNOWN");
 
             evidences.add(ReportData.EvidenceChain.builder()
-                    .evidenceId("E" + String.format("%02d", id++))
+                    .evidenceId("E" + String.format("%02d", chainIndex))
                     .type(evidenceType)
                     .level(level)
-                    .evidenceChainId("RULE-" + ruleCode + "-" + String.format("%03d", id - 1))
+                    .evidenceChainId("RULE-" + ruleCode + "-" + String.format("%03d", chainIndex))
+                    .evidenceChainName(evidenceType + "证据 " + String.format("%02d", chainIndex))
                     .similarity(hit.getConfidence() != null ? String.format("%.1f%%", hit.getConfidence() * 100) : null)
                     .sourceType(evidenceType)
                     .docAName("文档 A（" + docAName + "）")
@@ -1232,12 +1238,12 @@ public class ReportGenerationService {
         if (hit.getEvidences() != null && !hit.getEvidences().isEmpty()) {
             for (RuleEvidence ev : hit.getEvidences()) {
                 if (ev.getDocumentId() != null && docs.size() > 0 && ev.getDocumentId().equals(docs.get(0).getDocumentId())) {
-                    return safeText(ev.getMatchedValue(), "（暂无对照内容）");
+                    return safeText(firstNonBlank(ev.getOriginalValue(), ev.getMatchedValue()), "（暂无对照内容）");
                 }
             }
             // 如果没找到对应的，返回第一个证据的内容
             RuleEvidence first = hit.getEvidences().get(0);
-            return safeText(first.getMatchedValue(), "（暂无对照内容）");
+            return safeText(firstNonBlank(first.getOriginalValue(), first.getMatchedValue()), "（暂无对照内容）");
         }
         return safeText(hit.getTriggerSummary(), "（暂无对照内容）");
     }
@@ -1247,16 +1253,226 @@ public class ReportGenerationService {
             // 尝试找第二个文档的内容
             for (RuleEvidence ev : hit.getEvidences()) {
                 if (ev.getDocumentId() != null && docs.size() > 1 && ev.getDocumentId().equals(docs.get(1).getDocumentId())) {
-                    return safeText(ev.getMatchedValue(), "（暂无对照内容）");
+                    return safeText(firstNonBlank(ev.getOriginalValue(), ev.getMatchedValue()), "（暂无对照内容）");
                 }
             }
             // 如果只有一个证据或没找到匹配的，返回触发摘要
             if (hit.getEvidences().size() >= 2) {
                 RuleEvidence second = hit.getEvidences().get(1);
-                return safeText(second.getMatchedValue(), "（暂无对照内容）");
+                return safeText(firstNonBlank(second.getOriginalValue(), second.getMatchedValue()), "（暂无对照内容）");
             }
         }
         return "（暂无对照内容）";
+    }
+
+    private String extractDocAContent(RuleHit hit,
+                                      List<TenderDocument> docs,
+                                      TenderReviewData data,
+                                      Map<String, Field> fieldById,
+                                      Map<String, Block> blockById) {
+        String docId = docs.size() > 0 ? docs.get(0).getDocumentId() : null;
+        return resolveDocumentContent(hit, docId, 0, data, fieldById, blockById);
+    }
+
+    private String extractDocBContent(RuleHit hit,
+                                      List<TenderDocument> docs,
+                                      TenderReviewData data,
+                                      Map<String, Field> fieldById,
+                                      Map<String, Block> blockById) {
+        String docId = docs.size() > 1 ? docs.get(1).getDocumentId() : null;
+        return resolveDocumentContent(hit, docId, 1, data, fieldById, blockById);
+    }
+
+    private String resolveDocumentContent(RuleHit hit,
+                                          String targetDocId,
+                                          int sideIndex,
+                                          TenderReviewData data,
+                                          Map<String, Field> fieldById,
+                                          Map<String, Block> blockById) {
+        RuleEvidence evidence = resolveEvidenceForDocument(hit, targetDocId, sideIndex);
+        String value = resolveRawEvidenceContent(evidence, targetDocId, data, fieldById, blockById);
+        if (hasText(value)) {
+            return value;
+        }
+        String anchored = resolveContentFromHitAnchors(hit, targetDocId, data, fieldById, blockById);
+        if (hasText(anchored)) {
+            return anchored;
+        }
+        return "（当前未返回原文片段）";
+    }
+
+    private RuleEvidence resolveEvidenceForDocument(RuleHit hit, String targetDocId, int sideIndex) {
+        if (hit == null || hit.getEvidences() == null || hit.getEvidences().isEmpty()) {
+            return null;
+        }
+        if (hasText(targetDocId)) {
+            for (RuleEvidence evidence : hit.getEvidences()) {
+                if (targetDocId.equals(evidence.getDocumentId())) {
+                    return evidence;
+                }
+            }
+        }
+        return null;
+    }
+
+    private String resolveRawEvidenceContent(RuleEvidence evidence,
+                                             String targetDocId,
+                                             TenderReviewData data,
+                                             Map<String, Field> fieldById,
+                                             Map<String, Block> blockById) {
+        if (evidence == null) {
+            return "";
+        }
+        if (hasText(targetDocId) && hasText(evidence.getDocumentId()) && !targetDocId.equals(evidence.getDocumentId())) {
+            return "";
+        }
+
+        if (hasText(evidence.getFieldId())) {
+            Field field = fieldById.get(evidence.getFieldId());
+            if (field != null && (targetDocId == null || targetDocId.equals(field.getDocumentId()))) {
+                String value = firstNonBlank(field.getFieldValue(), field.getNormalizedValue());
+                if (hasText(value)) {
+                    return value;
+                }
+            }
+        }
+
+        if (hasText(evidence.getBlockId())) {
+            Block block = blockById.get(evidence.getBlockId());
+            if (block != null && (targetDocId == null || targetDocId.equals(block.getDocumentId()))) {
+                String value = firstNonBlank(block.getRawContent(), block.getContent());
+                if (hasText(value)) {
+                    return value;
+                }
+            }
+        }
+
+        if (data != null && hasText(targetDocId) && hasText(evidence.getChapterPath())) {
+            String blockValue = findBlockContentByChapter(data.getBlocks(), targetDocId, evidence.getChapterPath());
+            if (hasText(blockValue)) {
+                return blockValue;
+            }
+            String fieldValue = findFieldValueByChapter(data.getFields(), targetDocId, evidence.getChapterPath());
+            if (hasText(fieldValue)) {
+                return fieldValue;
+            }
+        }
+
+        if (hasText(evidence.getOriginalValue()) && !looksLikeSyntheticSummary(evidence.getOriginalValue())) {
+            return evidence.getOriginalValue();
+        }
+        if (hasText(evidence.getMatchedValue()) && !looksLikeSyntheticSummary(evidence.getMatchedValue())) {
+            return evidence.getMatchedValue();
+        }
+        return "";
+    }
+
+    private String findBlockContentByChapter(List<Block> blocks, String documentId, String chapterPath) {
+        if (blocks == null || blocks.isEmpty() || !hasText(documentId) || !hasText(chapterPath)) {
+            return "";
+        }
+        for (Block block : blocks) {
+            if (block != null
+                    && documentId.equals(block.getDocumentId())
+                    && chapterPath.equals(block.getChapterPath())) {
+                String value = firstNonBlank(block.getRawContent(), block.getContent());
+                if (hasText(value)) {
+                    return value;
+                }
+            }
+        }
+        return "";
+    }
+
+    private String findFieldValueByChapter(List<Field> fields, String documentId, String chapterPath) {
+        if (fields == null || fields.isEmpty() || !hasText(documentId) || !hasText(chapterPath)) {
+            return "";
+        }
+        for (Field field : fields) {
+            if (field != null
+                    && documentId.equals(field.getDocumentId())
+                    && chapterPath.equals(field.getChapterPath())
+                    && hasText(field.getFieldValue())) {
+                return field.getFieldValue();
+            }
+        }
+        return "";
+    }
+
+    private String resolveContentFromHitAnchors(RuleHit hit,
+                                                String targetDocId,
+                                                TenderReviewData data,
+                                                Map<String, Field> fieldById,
+                                                Map<String, Block> blockById) {
+        if (hit == null || !hasText(targetDocId) || data == null) {
+            return "";
+        }
+
+        if (hit.getFieldIds() != null) {
+            for (String fieldId : hit.getFieldIds()) {
+                Field field = fieldById.get(fieldId);
+                if (field != null && targetDocId.equals(field.getDocumentId()) && hasText(field.getFieldValue())) {
+                    return field.getFieldValue();
+                }
+            }
+        }
+
+        if (hit.getBlockIds() != null) {
+            for (String blockId : hit.getBlockIds()) {
+                Block block = blockById.get(blockId);
+                if (block != null && targetDocId.equals(block.getDocumentId())) {
+                    String value = firstNonBlank(block.getRawContent(), block.getContent());
+                    if (hasText(value)) {
+                        return value;
+                    }
+                }
+            }
+        }
+
+        return "";
+    }
+
+    private Map<String, Field> buildFieldById(TenderReviewData data) {
+        Map<String, Field> fieldById = new LinkedHashMap<>();
+        if (data == null || data.getFields() == null || data.getFields().isEmpty()) {
+            return fieldById;
+        }
+        for (Field field : data.getFields()) {
+            if (field != null && hasText(field.getFieldId())) {
+                fieldById.put(field.getFieldId(), field);
+            }
+        }
+        return fieldById;
+    }
+
+    private Map<String, Block> buildBlockById(TenderReviewData data) {
+        Map<String, Block> blockById = new LinkedHashMap<>();
+        if (data == null || data.getBlocks() == null || data.getBlocks().isEmpty()) {
+            return blockById;
+        }
+        for (Block block : data.getBlocks()) {
+            if (block != null && hasText(block.getBlockId())) {
+                blockById.put(block.getBlockId(), block);
+            }
+        }
+        return blockById;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private boolean looksLikeSyntheticSummary(String value) {
+        if (!hasText(value)) {
+            return false;
+        }
+        return value.contains("评分：")
+                || value.contains("风险等级：")
+                || value.contains("原因：")
+                || value.contains("[LLM_SEMANTIC_RULE]")
+                || value.contains("建议结合原文")
+                || value.contains("AI复核结论")
+                || value.contains("综合风险");
     }
 
     private String buildComparisonFinding(RuleHit hit, String categoryKey) {
@@ -1793,7 +2009,7 @@ public class ReportGenerationService {
                     for (var ev : hit.getEvidences().stream().limit(2).toList()) {
                         fragments.add(Page6Appendix.EvidenceFragment.builder()
                                 .fragmentId("F" + String.format("%02d", idx++))
-                                .content(fallback(ev.getMatchedValue(), "-"))
+                                .content(fallback(firstNonBlank(ev.getOriginalValue(), ev.getMatchedValue()), "-"))
                                 .source(fallback(ev.getChapterPath(), "-"))
                                 .build());
                     }

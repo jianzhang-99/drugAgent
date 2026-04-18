@@ -210,6 +210,7 @@ public class ProposalSemanticAnalyzer implements TenderSemanticAnalyzer {
                         .documentId(evidence.getDocumentId())
                         .chapterPath(evidence.getChapterPath())
                         .matchedValue(evidence.getExcerpt())
+                        .originalValue(evidence.getExcerpt())
                         .build())
                 .toList();
     }

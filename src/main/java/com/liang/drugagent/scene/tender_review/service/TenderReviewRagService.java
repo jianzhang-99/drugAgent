@@ -92,6 +92,9 @@ public class TenderReviewRagService {
                             .title(buildEvidenceTitle(spec, item))
                             .content(buildEvidenceContent(spec, item))
                             .source(item.getSource() == null ? "rag" : item.getSource())
+                            .ragChunkId(item.getRagChunkId())
+                            .ragSourceId(item.getRagSourceId())
+                            .ragScore(item.getRagScore())
                             .build());
                 }
             } catch (Exception e) {

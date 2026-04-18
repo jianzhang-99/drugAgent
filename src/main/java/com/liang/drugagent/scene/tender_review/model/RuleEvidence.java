@@ -24,6 +24,8 @@ public class RuleEvidence {
     private String blockId;
     /** 本条证据命中的值。 */
     private String matchedValue;
+    /** 原始文本片段。 */
+    private String originalValue;
     /** 证据所在章节路径。 */
     private String chapterPath;
 

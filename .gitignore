@@ -6,6 +6,8 @@ target/
 
 ### Local Config ###
 src/main/resources/application-local.yml
+.m2/
+settings.xml
 
 ### STS ###
 .apt_generated

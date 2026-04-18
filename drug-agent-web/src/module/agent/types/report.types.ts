@@ -127,6 +127,8 @@ export interface EvidenceChain {
 
   // 原型要求：证据链主标识，如 "RULE-W-P1-002"
   evidenceChainId?: string;
+  /** 证据链中文名称，如“模板同源证据 01” */
+  evidenceChainName?: string;
   /** 文本相似度，如 "98.2%" */
   similarity?: string;
   /** 证据标题/类型的可读展示名 */
