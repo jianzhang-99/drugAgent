@@ -55,6 +55,7 @@ public class AgentResponseService {
         }
 
         resp.setAnswer(executionResult.getAnswer());
+        resp.setReasoningContent(executionResult.getReasoningContent());
         resp.setSummary(executionResult.getSummary());
         resp.setRiskLevel(executionResult.getRiskLevel());
         resp.setScore(executionResult.getScore() != null ? executionResult.getScore() : 0);
@@ -62,6 +63,7 @@ public class AgentResponseService {
         resp.setDocumentIds(executionResult.getDocumentIds() != null ? executionResult.getDocumentIds() : new ArrayList<>());
         resp.setDocumentNames(executionResult.getDocumentNames() != null ? executionResult.getDocumentNames() : new ArrayList<>());
         resp.setReport(executionResult.getReport());
+        resp.setReportData(executionResult.getReportData());
         resp.setEvidenceList(executionResult.getEvidenceList() != null ? executionResult.getEvidenceList() : new ArrayList<>());
         resp.setEvidenceGroups(executionResult.getEvidenceGroups() != null ? executionResult.getEvidenceGroups() : new ArrayList<>());
         resp.setSteps(executionResult.getSteps() != null ? executionResult.getSteps() : new ArrayList<>());

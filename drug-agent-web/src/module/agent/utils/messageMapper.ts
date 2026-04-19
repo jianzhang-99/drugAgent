@@ -31,6 +31,7 @@ export function mapResponseToMessage(
     createdAt: new Date().toISOString(),
     status: 'sent',
     thinkingSteps: normalizeThinkingSteps(resp.thinkingSteps),
+    reasoningContent: resp.reasoningContent,
     raw: resp,
   };
 
@@ -110,6 +111,9 @@ export function mapChatMessageToMessage(chatMsg: ChatMessage): Message {
   // 从 metadata 恢复思考步骤
   if (metadata?.thinkingSteps && metadata.thinkingSteps.length > 0) {
     message.thinkingSteps = normalizeThinkingSteps(metadata.thinkingSteps as ThinkingStep[]);
+  }
+  if (metadata?.reasoningContent && typeof metadata.reasoningContent === 'string') {
+    message.reasoningContent = metadata.reasoningContent;
   }
   return message;
 }
@@ -226,7 +230,7 @@ function parseReportFromMarkdown(content: string): {
       riskItems.push({
         riskType: 'collusion',
         riskLevel: result.riskLevel || 'high',
-        title: `围标风险特征${i + 1}`,
+        title: `风险特征${i + 1}`,
         summary: '',
       });
     }
@@ -296,6 +300,7 @@ export function mapToResultData(resp: DrugAgentResp): ResultData {
     evidenceList: resp.evidenceList,
     evidenceGroups: resp.evidenceGroups,
     report: resp.report,
+    reportData: resp.reportData,
     confidence: resp.confidence,
     routeReason: resp.routeReason,
     scene: resp.scene,
@@ -353,7 +358,7 @@ export function createErrorMessage(error: string): Message {
 /**
  * 创建普通助手消息
  */
-export function createAssistantMessage(content: string): Message {
+export function createAssistantMessage(content: string, reasoningContent?: string): Message {
   return {
     id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     role: 'assistant',
@@ -361,6 +366,7 @@ export function createAssistantMessage(content: string): Message {
     content,
     createdAt: new Date().toISOString(),
     status: 'sent',
+    reasoningContent,
   };
 }
 

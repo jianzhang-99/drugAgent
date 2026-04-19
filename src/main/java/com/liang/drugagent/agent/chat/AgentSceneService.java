@@ -385,9 +385,9 @@ public class AgentSceneService {
         String lowerQuery = query.toLowerCase();
 
         // ===== 标书审查强规则 =====
-        // 包含"审查/比对" + "标书/围标/串标" -> 强命中
+        // 包含"审查/比对/审核" + "标书/围标/串标" -> 强命中
         if (containsAny(lowerQuery, "围标", "串标", "标书雷同", "竞标", "投标文件")
-                || (containsAny(lowerQuery, "标书") && containsAny(lowerQuery, "审查", "比对", "比较", "风险"))) {
+                || (containsAny(lowerQuery, "标书") && containsAny(lowerQuery, "审查", "比对", "比较", "风险", "审核"))) {
             return new RuleMatchResult(SceneEnum.TENDER_REVIEW, "标书审查强规则命中");
         }
 
@@ -399,8 +399,8 @@ public class AgentSceneService {
         }
 
         // ===== 合同预审强规则 =====
-        if (containsAny(lowerQuery, "合同预审", "合同审查", "合同风险", "合同条款")
-                || (containsAny(lowerQuery, "合同") && containsAny(lowerQuery, "审查", "风险", "合规"))) {
+        if (containsAny(lowerQuery, "合同预审", "合同审查", "合同风险", "合同条款", "合同审核")
+                || (containsAny(lowerQuery, "合同") && containsAny(lowerQuery, "审查", "风险", "合规", "审核"))) {
             return new RuleMatchResult(SceneEnum.CONTRACT_PRECHECK, "合同审查强规则命中");
         }
 
@@ -531,9 +531,10 @@ public class AgentSceneService {
                     .decision(decision)
                     .executionResult(AgentExecutionResult.builder()
                             .success(true)
-                            .answer(chatResult.answer)
+                            .answer(chatResult.answer())
+                            .reasoningContent(chatResult.reasoningContent())
                             .summary("通用对话")
-                            .generatedTitle(chatResult.title)
+                            .generatedTitle(chatResult.title())
                             .shouldUpdateTitle(true)
                             .steps(List.of("问题理解", "回复生成"))
                             .needsFallback(false)
@@ -561,7 +562,7 @@ public class AgentSceneService {
      *
      * <p>通用对话场景不再直接调用 RAG，RAG 作为通用基础设施由场景 Workflow 按需调用。</p>
      */
-    public Flux<String> streamGeneralChat(AgentChatContext context) {
+    public Flux<LlmResponse> streamGeneralChat(AgentChatContext context) {
         log.info("[AgentSceneService] 分发到真流式通用对话");
 
         try {
@@ -589,23 +590,23 @@ public class AgentSceneService {
                     .sessionId(sessionId)
                     .systemPrompt(systemPrompt)
                     .messages(messages)
+                    .thinkingEnabled(true)
                     .stream(true)
                     .build();
 
             // 2. 调用 LLM 真流式
-            return llmService.streamChat(request)
-                    .map(r -> r.getContent() != null ? r.getContent() : "");
+            return llmService.streamChat(request);
 
         } catch (Exception e) {
             log.error("[AgentSceneService] 真流式通用对话预处理失败: {}", e.getMessage(), e);
-            return Flux.just("处理失败，请稍后重试: " + e.getMessage());
+            return Flux.just(LlmResponse.error("STREAM_PREP_ERROR", "处理失败，请稍后重试: " + e.getMessage()));
         }
     }
 
     /**
      * 通用对话结果（含回答和标题）。
      */
-    private record GeneralChatResult(String answer, String title) {}
+    private record GeneralChatResult(String answer, String reasoningContent, String title) {}
 
     /**
      * 通用对话处理（同时生成标题）。
@@ -642,6 +643,7 @@ public class AgentSceneService {
                     .sessionId(sessionId)
                     .systemPrompt(effectiveSystemPrompt)
                     .messages(messages)
+                    .thinkingEnabled(true)
                     .build();
             LlmResponse llmResponse = callGeneralChatModel(request, provider, effectiveSystemPrompt);
             if (!Boolean.TRUE.equals(llmResponse.getSuccess()) || llmResponse.getContent() == null) {
@@ -650,12 +652,13 @@ public class AgentSceneService {
                 throw new RuntimeException("LLM调用失败: " + llmResponse.getErrorMessage());
             }
             String answer = llmResponse.getContent();
+            String reasoningContent = llmResponse.getReasoningContent();
 
             // 使用 query 截断作为默认标题，不等待 LLM 生成
             // LLM 回答中不要包含【会话标题】标记，避免解析混乱
             String title = generateDefaultTitle(query);
 
-            return new GeneralChatResult(answer, title);
+            return new GeneralChatResult(answer, reasoningContent, title);
         } catch (Exception e) {
             throw new RuntimeException("通用对话失败: " + e.getMessage(), e);
         }
@@ -962,7 +965,7 @@ public class AgentSceneService {
     }
 
     private String defaultModelFor(LlmProviderType provider) {
-        return LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7-highspeed" : "qwen-plus-2025-07-28";
+        return LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7-highspeed" : "qwen3.5-plus";
     }
 
     private LlmProviderType normalizeProviderType(LlmProviderType providerType) {

@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -99,6 +100,7 @@ public class DashScopeLlmClient implements LlmClient {
             if (request.getMaxTokens() != null) {
                 paramBuilder.maxTokens(request.getMaxTokens());
             }
+            applyExtraParams(paramBuilder, request.getExtraParams());
 
             // 设置响应格式
             if (request.getResponseFormat() != null && !request.getResponseFormat().isBlank()) {
@@ -108,6 +110,8 @@ public class DashScopeLlmClient implements LlmClient {
             // 结构化输出场景需关闭思考模式，避免百炼报错
             if (Boolean.FALSE.equals(request.getThinkingEnabled())) {
                 paramBuilder.parameter("enable_thinking", false);
+            } else if (Boolean.TRUE.equals(request.getThinkingEnabled()) && supportsThinkingMode(model)) {
+                paramBuilder.parameter("enable_thinking", true);
             }
 
             GenerationParam param = paramBuilder.build();
@@ -279,6 +283,8 @@ public class DashScopeLlmClient implements LlmClient {
             }
         }
 
+        String reasoningContent = extractReasoningContent(output);
+
         // 尝试获取工具调用
         LlmResponse.ToolCallResult toolCall = null;
         try {
@@ -314,6 +320,7 @@ public class DashScopeLlmClient implements LlmClient {
         LlmResponse.LlmResponseBuilder builder = LlmResponse.builder()
                 .success(true)
                 .content(content != null ? content : "")
+                .reasoningContent(reasoningContent)
                 .model(model)
                 .provider(LlmProviderType.DASHSCOPE);
 
@@ -322,6 +329,70 @@ public class DashScopeLlmClient implements LlmClient {
         }
 
         return builder.build();
+    }
+
+    private void applyExtraParams(GenerationParam.GenerationParamBuilder paramBuilder, Map<String, Object> extraParams) {
+        if (paramBuilder == null || extraParams == null || extraParams.isEmpty()) {
+            return;
+        }
+        for (Map.Entry<String, Object> entry : extraParams.entrySet()) {
+            if (entry.getKey() == null || entry.getKey().isBlank()) {
+                continue;
+            }
+            if (entry.getValue() == null) {
+                continue;
+            }
+            paramBuilder.parameter(entry.getKey(), entry.getValue());
+        }
+    }
+
+    private void applyThinkingParameters(GenerationParam.GenerationParamBuilder paramBuilder,
+                                         LlmRequest request,
+                                         String model) {
+        if (paramBuilder == null || request == null) {
+            return;
+        }
+        if (Boolean.FALSE.equals(request.getThinkingEnabled())) {
+            paramBuilder.parameter("enable_thinking", false);
+            return;
+        }
+        if (Boolean.TRUE.equals(request.getThinkingEnabled()) && supportsThinkingMode(model)) {
+            paramBuilder.parameter("enable_thinking", true);
+        }
+    }
+
+    private boolean supportsThinkingMode(String model) {
+        if (model == null || model.isBlank()) {
+            return false;
+        }
+        String lower = model.toLowerCase(Locale.ROOT);
+        return lower.startsWith("qwen3")
+                || lower.startsWith("qwq")
+                || lower.startsWith("deepseek-r1");
+    }
+
+    private String extractReasoningContent(GenerationOutput output) {
+        try {
+            if (output == null) {
+                return "";
+            }
+            List<GenerationOutput.Choice> choices = output.getChoices();
+            if (choices == null || choices.isEmpty()) {
+                return "";
+            }
+            GenerationOutput.Choice firstChoice = choices.get(0);
+            if (firstChoice == null) {
+                return "";
+            }
+            Message msg = firstChoice.getMessage();
+            if (msg == null) {
+                return "";
+            }
+            return msg.getReasoningContent() != null ? msg.getReasoningContent() : "";
+        } catch (Exception e) {
+            log.trace("提取 reasoning_content 失败", e);
+            return "";
+        }
     }
 
     @Override
@@ -359,6 +430,9 @@ public class DashScopeLlmClient implements LlmClient {
                     paramBuilder.maxTokens(request.getMaxTokens());
                 }
 
+                applyExtraParams(paramBuilder, request.getExtraParams());
+                applyThinkingParameters(paramBuilder, request, model);
+
                 GenerationParam param = paramBuilder.build();
 
                 Flowable<GenerationResult> stream = generation.streamCall(param);
@@ -366,11 +440,13 @@ public class DashScopeLlmClient implements LlmClient {
                 return Flux.from(stream)
                         .map(result -> {
                             String chunk = extractChunkText(result);
+                            String reasoningChunk = extractReasoningContent(result != null ? result.getOutput() : null);
                             boolean isLast = isLastChunk(result);
 
                             return LlmResponse.builder()
                                     .success(true)
                                     .content(chunk)
+                                    .reasoningContent(reasoningChunk)
                                     .model(model)
                                     .provider(LlmProviderType.DASHSCOPE)
                                     .streamed(true)
@@ -379,6 +455,7 @@ public class DashScopeLlmClient implements LlmClient {
                                     .build();
                         })
                         .filter(resp -> (resp.getContent() != null && !resp.getContent().isEmpty())
+                                || (resp.getReasoningContent() != null && !resp.getReasoningContent().isEmpty())
                                 || Boolean.TRUE.equals(resp.getIsLast()))
                         .doOnError(e -> log.error("DashScope(官方SDK)流式聊天异常 - sessionId: {}, 错误: {}",
                                 request.getSessionId(), e.getMessage(), e));

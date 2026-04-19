@@ -88,6 +88,16 @@ public class TenderReviewSceneService {
 
         try {
             // 1. 准备标书审查数据
+            if (shouldUseFollowUpMode(context, req)) {
+                AgentExecutionResult followUpResult = tryFollowUpMode(context);
+                if (followUpResult != null) {
+                    log.info("[TenderReviewSceneService] 命中审查后追问模式, sessionId={}", context.getSessionId());
+                    return followUpResult;
+                }
+                log.info("[TenderReviewSceneService] 追问模式未返回结果，继续执行完整审查, sessionId={}",
+                        context.getSessionId());
+            }
+
             TenderReviewData data = preparationService.prepare(context, req);
 
             // 2. 校验数据是否满足最低要求
@@ -374,6 +384,22 @@ public class TenderReviewSceneService {
      *
      * @return 回答结果；如果没有可用的历史报告，返回 null
      */
+    /**
+     * 判断本轮是否应该优先进入追问模式。
+     *
+     * <p>只要当前轮没有上传新文件，并且历史消息中已经存在一份审查报告，
+     * 就优先让系统基于历史报告回答追问，避免把同一批历史文件再次跑成一份新报告。</p>
+     */
+    private boolean shouldUseFollowUpMode(AgentChatContext context, AgentChatReq req) {
+        if (context == null || req == null) {
+            return false;
+        }
+        if (req.getFiles() != null && req.getFiles().length > 0) {
+            return false;
+        }
+        return findLatestReviewReportContent(context) != null;
+    }
+
     private AgentExecutionResult tryFollowUpMode(AgentChatContext context) {
         // 从历史消息中找最近一条审查结果卡片
         String previousReportContent = findLatestReviewReportContent(context);

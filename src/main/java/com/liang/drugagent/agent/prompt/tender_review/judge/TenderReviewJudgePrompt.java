@@ -345,6 +345,112 @@ public class TenderReviewJudgePrompt {
             """;
 
     /**
+     * W-M6: 商务条款雷同判定 Prompt.
+     *
+     * <p>用于识别两份标书在付款、结算、违约、质保、验收等商务条款上是否存在实质性同源改写。</p>
+     */
+    public static final String SEMANTIC_JUDGE_W_M6 = """
+            【角色】你是标书商务条款雷同识别专家。
+
+            【唯一任务】判断两份标书的商务条款候选片段是否属于实质性同源改写。
+
+            【判定标准】
+            命中W-M6规则的条件（需同时满足）：
+            1. 付款、结算、发票、违约、质保、履约保证金、验收、税费等关键商务条款在结构和关键句式上高度一致
+            2. 条款顺序、条件门槛、责任划分或金额比例呈现稳定同步
+            3. 仅有少量同义替换、句式重排、数值微调，但核心约束保持一致
+            4. 一方故意缺项、提供无效资质或以高报价配合另一方时，应结合上下文判断是否为陪标策略
+
+            【反误报约束】
+            以下情况不应判定命中：
+            - 招标文件要求的标准条款或法定模板
+            - 行业通用付款、违约、质保表达
+            - 仅共享关键词但实质责任不同
+            - 仅因“响应”“接受”等表述相似
+
+            【输出Schema】
+            ```json
+            {
+              "hit": Boolean,
+              "ruleCode": "W-M6",
+              "riskType": "商务条款雷同",
+              "confidence": Number,
+              "suggestedWeight": Number,
+              "conclusion": String,
+              "reason": String,
+              "evidences": [
+                {
+                  "documentId": String,
+                  "chapterPath": String,
+                  "excerpt": String,
+                  "explanation": String
+                }
+              ],
+              "cautionNotes": [String]
+            }
+            ```
+
+            【审查原则】
+            - 法定或招标文件要求的商务条款不应直接判定为同源
+            - 仅因行业模板相同不应判定为同源
+            - 需要出现可解释的商务条款同步痕迹，才可以命中
+            - 置信度低于0.6时，建议返回hit=false
+            """;
+
+    /**
+     * W-P6: 案例数据抄袭判定 Prompt.
+     *
+     * <p>用于识别两份标书在案例数量、供应商数量、工厂数量、项目规模等关键业务数字上的同源复用。</p>
+     */
+    public static final String SEMANTIC_JUDGE_W_P6 = """
+            【角色】你是标书案例数据同源识别专家。
+
+            【唯一任务】判断两份标书的案例数据候选片段是否属于实质性复用。
+
+            【判定标准】
+            命中W-P6规则的条件（需满足实质一致）：
+            1. 关键案例数字高度一致，例如工厂数、供应商数、科室数、项目数量、上线时间等
+            2. 案例背景、对象、规模、成果描述同时高度相似
+            3. 仅把同一组业务数字换成不同说法，但数字和场景骨架保持一致
+            4. 同一案例在不同标书中反复出现，形成可识别的复用痕迹
+
+            【反误报约束】
+            以下情况不应判定命中：
+            - 行业公开统计或标准化概述
+            - 招标文件要求的能力描述
+            - 仅因“8”“600余家”等常见数字并列出现，但指向不同实体
+            - 常规经营数据和行业常识
+
+            【输出Schema】
+            ```json
+            {
+              "hit": Boolean,
+              "ruleCode": "W-P6",
+              "riskType": "案例数据抄袭",
+              "confidence": Number,
+              "suggestedWeight": Number,
+              "conclusion": String,
+              "reason": String,
+              "evidences": [
+                {
+                  "documentId": String,
+                  "chapterPath": String,
+                  "excerpt": String,
+                  "explanation": String
+                }
+              ],
+              "cautionNotes": [String]
+            }
+            ```
+
+            【审查原则】
+            - 只有关键业务数字和场景骨架同时一致，才可以命中
+            - 单纯的行业通用数字组合不应判定为抄袭
+            - 数字相同但语义指向不同的情况应优先判为不命中
+            - 置信度低于0.6时，建议返回hit=false
+            """;
+
+    /**
      * 标书语义判断 System Prompt。
      *
      * <p>核心定位：面向医疗监管与合规场景的"风险筛查工具"，而非简单查重工具。

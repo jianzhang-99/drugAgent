@@ -2,6 +2,7 @@ package com.liang.drugagent.scene.tender_review.service;
 
 import com.liang.drugagent.scene.tender_review.model.Block;
 import com.liang.drugagent.scene.tender_review.model.CompareScope;
+import com.liang.drugagent.scene.tender_review.model.Field;
 import com.liang.drugagent.scene.tender_review.model.TenderDocument;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
 import com.liang.drugagent.scene.tender_review.model.semantic.TenderSemanticJudgeReq;
@@ -33,7 +34,7 @@ public class TenderSemanticCandidateService {
     private static final int MAX_CANDIDATE_GROUPS_PER_RULE_PAIR = 5;
     private static final int MIN_SNIPPETS_PER_GROUP = 2;
     private static final int MAX_SNIPPETS_PER_GROUP = 4;
-    private static final double MIN_SIMILARITY_THRESHOLD = 0.08;
+    private static final double MIN_SIMILARITY_THRESHOLD = 0.25;
 
     /**
      * 召回候选片段对。
@@ -76,7 +77,8 @@ public class TenderSemanticCandidateService {
 
         // 4. 构建 TenderSemanticJudgeReq
         String caseId = data.getACase() != null ? data.getACase().getCaseId() : null;
-        return buildJudgeRequests(topCandidates, ruleCode, compareTopic, leftDocId, rightDocId, data.getBlocks(), caseId);
+        return buildJudgeRequests(topCandidates, ruleCode, compareTopic, leftDocId, rightDocId,
+                data.getBlocks(), data.getFields(), caseId);
     }
 
     /**
@@ -108,7 +110,8 @@ public class TenderSemanticCandidateService {
             case "服务承诺" -> lowerText.contains("服务承诺") || lowerText.contains("服务水平") || lowerText.contains("售后服务");
             case "实施方法" -> lowerText.contains("实施方法") || lowerText.contains("实施计划") || lowerText.contains("施工方案");
             case "核心团队" -> lowerText.contains("核心团队") || lowerText.contains("人员配置") || lowerText.contains("项目团队");
-            default -> true;
+            case "案例数据" -> lowerText.contains("案例数据") || lowerText.contains("典型案例") || lowerText.contains("标杆案例");
+            default -> false;
         };
     }
 
@@ -202,23 +205,22 @@ public class TenderSemanticCandidateService {
             String leftDocId,
             String rightDocId,
             List<Block> allBlocks,
+            List<Field> allFields,
             String caseId) {
 
         List<TenderSemanticJudgeReq> requests = new ArrayList<>();
         for (CandidateSnippetPair pair : candidates) {
-            // 收集章节内的实际内容段落（非标题块）
-            List<String> leftContents = collectChapterContents(pair.leftBlock, allBlocks);
-            List<String> rightContents = collectChapterContents(pair.rightBlock, allBlocks);
-
-            List<String> leftSnippets = selectCoreSnippets(
-                    leftContents,
-                    MIN_SNIPPETS_PER_GROUP,
-                    MAX_SNIPPETS_PER_GROUP
+            List<String> leftSnippets = collectJudgeSnippets(
+                    pair.leftBlock,
+                    allBlocks,
+                    allFields,
+                    compareTopic
             );
-            List<String> rightSnippets = selectCoreSnippets(
-                    rightContents,
-                    MIN_SNIPPETS_PER_GROUP,
-                    MAX_SNIPPETS_PER_GROUP
+            List<String> rightSnippets = collectJudgeSnippets(
+                    pair.rightBlock,
+                    allBlocks,
+                    allFields,
+                    compareTopic
             );
 
             TenderSemanticJudgeReq req = TenderSemanticJudgeReq.builder()
@@ -239,6 +241,129 @@ public class TenderSemanticCandidateService {
             requests.add(req);
         }
         return requests;
+    }
+
+    /**
+     * 优先使用字段级证据；字段缺失时再回退到块级正文。
+     */
+    private List<String> collectJudgeSnippets(Block matchedBlock,
+                                              List<Block> allBlocks,
+                                              List<Field> allFields,
+                                              String compareTopic) {
+        List<String> fieldSnippets = collectRelevantFieldSnippets(matchedBlock, allFields, compareTopic);
+        if (!fieldSnippets.isEmpty()) {
+            return selectCoreSnippets(fieldSnippets, MIN_SNIPPETS_PER_GROUP, MAX_SNIPPETS_PER_GROUP);
+        }
+
+        if (matchedBlock == null || matchedBlock.getContent() == null || matchedBlock.getContent().isBlank()) {
+            return Collections.emptyList();
+        }
+
+        if ("HEADING".equalsIgnoreCase(matchedBlock.getBlockType())) {
+            List<String> chapterContents = collectChapterContents(matchedBlock, allBlocks);
+            return selectCoreSnippets(chapterContents, MIN_SNIPPETS_PER_GROUP, MAX_SNIPPETS_PER_GROUP);
+        }
+
+        return List.of(matchedBlock.getContent());
+    }
+
+    /**
+     * 按对比主题优先召回字段级证据，避免把整章正文直接送入语义裁决。
+     */
+    private List<String> collectRelevantFieldSnippets(Block matchedBlock,
+                                                      List<Field> allFields,
+                                                      String compareTopic) {
+        if (matchedBlock == null || allFields == null || allFields.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<String> targetFieldTypes = resolveFieldTypes(compareTopic);
+        if (targetFieldTypes.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Set<String> targetTypeSet = new LinkedHashSet<>(targetFieldTypes);
+        return allFields.stream()
+                .filter(Objects::nonNull)
+                .filter(field -> targetTypeSet.contains(field.getFieldType()))
+                .filter(field -> isSameContext(field, matchedBlock))
+                .map(this::formatFieldSnippet)
+                .filter(snippet -> snippet != null && !snippet.isBlank())
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 将对比主题映射到更准确的字段类型。
+     */
+    private List<String> resolveFieldTypes(String compareTopic) {
+        String normalizedTopic = normalizeTopic(compareTopic);
+        return switch (normalizedTopic) {
+            case "技术方案" -> List.of("proposal_segment");
+            case "核心团队" -> List.of("team_member");
+            case "实施方法" -> List.of("implementation_method");
+            case "服务承诺" -> List.of("service_commitment");
+            case "风险识别" -> List.of("risk_identification");
+            case "案例数据" -> List.of("case_data");
+            case "商务条款" -> List.of("text_segment");
+            default -> Collections.emptyList();
+        };
+    }
+
+    /**
+     * 判断字段是否与当前候选块处于同一上下文。
+     */
+    private boolean isSameContext(Field field, Block matchedBlock) {
+        if (field == null || matchedBlock == null) {
+            return false;
+        }
+        if (!Objects.equals(field.getDocumentId(), matchedBlock.getDocumentId())) {
+            return false;
+        }
+        if (Objects.equals(field.getBlockId(), matchedBlock.getBlockId())) {
+            return true;
+        }
+        String fieldChapterPath = firstNonBlank(field.getAnchorChapterPath(), field.getChapterPath());
+        String blockChapterPath = firstNonBlank(matchedBlock.getAnchorChapterPath(), matchedBlock.getChapterPath());
+        if (fieldChapterPath == null || blockChapterPath == null) {
+            return false;
+        }
+        if (fieldChapterPath.equals(blockChapterPath)) {
+            return true;
+        }
+        return isSubSectionOf(fieldChapterPath, blockChapterPath)
+                || isSubSectionOf(blockChapterPath, fieldChapterPath);
+    }
+
+    /**
+     * 将字段格式化为适合 LLM 判断的片段文本。
+     */
+    private String formatFieldSnippet(Field field) {
+        if (field == null) {
+            return null;
+        }
+        String fieldType = firstNonBlank(field.getFieldType(), "unknown");
+        String fieldName = firstNonBlank(field.getFieldName(), fieldType);
+        String fieldValue = firstNonBlank(field.getFieldValue(), field.getNormalizedValue());
+        if (fieldName == null || fieldName.isBlank() || fieldValue == null || fieldValue.isBlank()) {
+            return null;
+        }
+        return "[" + fieldType + "] " + fieldName + "： " + fieldValue;
+    }
+
+    /**
+     * 返回首个非空白字符串。
+     */
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
     }
 
     /**

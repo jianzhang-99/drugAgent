@@ -17,7 +17,7 @@
                 </svg>
               </div>
               <div class="header-titles">
-                <h3>标书围标深度比对报告</h3>
+                <h3>标书审查深度比对报告</h3>
                 <span class="trace-badge">TRACE: {{ result?.traceId || '—' }}</span>
               </div>
             </div>
@@ -306,10 +306,10 @@ const displayScore = computed(() => {
 // 结论文本
 const conclusionText = computed(() => {
   const level = derivedLevel.value;
-  if (level === 'high') return '发现明显围标特征，建议立即启动人工复核';
+  if (level === 'high') return '发现明显风险特征，建议立即启动人工复核';
   if (level === 'medium') return '存在一定相似风险，建议进行人工核查';
   if (level === 'low') return '相似度较低，可进一步观察';
-  if (level === 'safe') return '未发现明显围标嫌疑';
+  if (level === 'safe') return '未发现明显风险嫌疑';
   return '风险等级待确认，请参考详情信息';
 });
 
@@ -356,7 +356,7 @@ function levelLabel(level?: string): string {
 function translateRiskType(type?: string): string {
   if (!type) return '审查项目';
   const map: Record<string, string> = {
-    collusion: '协同作弊(围标)',
+    collusion: '协同作弊',
     plagiarism: '雷同与抄袭',
     qualification: '资质异常',
     pricing: '报价特征异常',
@@ -452,7 +452,7 @@ async function handleExportPdf() {
 <html lang="zh">
 <head>
 <meta charset="utf-8">
-<title>标书围标深度比对报告</title>
+<title>标书审查深度比对报告</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'PingFang SC', 'Microsoft YaHei', 'Heiti SC', sans-serif; font-size: 14px; color: #1d2129; background: #fff; padding: 32px 40px; }
@@ -480,7 +480,7 @@ async function handleExportPdf() {
 </style>
 </head>
 <body>
-  <h1>标书围标深度比对报告</h1>
+  <h1>标书审查深度比对报告</h1>
   <div class="sub">TRACE: ${escHtml(r.traceId)} &nbsp;|&nbsp; 生成时间：${new Date().toLocaleString('zh-CN')}</div>
 
   <div class="banner">

@@ -38,8 +38,7 @@ public class TenderReviewDataAssembler {
     private static final Pattern CASE_DATA_PATTERN =
             Pattern.compile("\\d+\\s*(?:家|个|项|套|名|座|台|年|%|亿元|万元|人次|余家|余个|余项)");
     private static final Pattern SECTION_NO_PATTERN = Pattern.compile("^([0-9一二三四五六七八九十]+(?:\\.[0-9]+)*)");
-    private static final Pattern BOLD_TEXT_PATTERN = Pattern.compile("\\*\\*(.*?)\\*\\*");
-    private static final Pattern SPECIFIC_TYPOS_PATTERN = Pattern.compile("应急响映|串并口|协仪|堆叠架构|逻辑漏斗");
+    private static final Pattern SPECIFIC_TYPOS_PATTERN = Pattern.compile("应急响映|串并口|协仪|高可用堆叠|堆叠架构|逻辑漏斗");
     /** HTML 注释中的元数据提取模式。 */
     private static final Pattern METADATA_COMMENT_PATTERN = Pattern.compile("<!--([\\s\\S]*?)-->");
     /** 元数据字段提取模式。 */
@@ -431,14 +430,30 @@ public class TenderReviewDataAssembler {
         }
 
         Matcher contactMatcher = CONTACT_PERSON_PATTERN.matcher(content);
+        String extractedName = null;
+        String extractedPhone = null;
         if (contactMatcher.find()) {
+            extractedName = contactMatcher.group(1);
+            // 从同一段落内容中查找电话号码
+            Matcher phoneInContent = PHONE_PATTERN.matcher(content);
+            if (phoneInContent.find()) {
+                extractedPhone = phoneInContent.group();
+            }
+            // 创建 contact_info 组合字段供 ContactProximityExecutor (W-M2) 使用
+            // normalizedKey=姓名, normalizedValue=电话号码
+            fields.add(buildField(document.documentId(), block, "contact_info", "联系人",
+                    extractedName + (extractedPhone != null ? " " + extractedPhone : ""),
+                    normalizePersonName(extractedName),
+                    extractedPhone != null ? normalizePhone(extractedPhone) : normalizePersonName(extractedName)));
+            // 同时保留原有的 contact_person 字段以兼容其他规则
             fields.add(buildField(document.documentId(), block, "contact_person", "联系人",
-                    contactMatcher.group(1), normalizePersonName(contactMatcher.group(1)), "contact_person"));
+                    extractedName, normalizePersonName(extractedName), "contact_person"));
         }
 
         Matcher phoneMatcher = PHONE_PATTERN.matcher(content);
         while (phoneMatcher.find()) {
             String phone = phoneMatcher.group();
+            // contact_info 已在上面处理，此处只补充 contact_phone 字段
             fields.add(buildField(document.documentId(), block, "contact_phone", "联系电话",
                     phone, normalizePhone(phone), "contact_phone"));
         }
@@ -485,16 +500,6 @@ public class TenderReviewDataAssembler {
                     content, normalizeSentence(content), normalizeKeyFromChapter(block.getChapterPath())));
         }
 
-        // 提取错别字或罕见项 (W-M5 支持)
-        Matcher boldMatcher = BOLD_TEXT_PATTERN.matcher(block.getRawContent());
-        while (boldMatcher.find()) {
-            String typoCandidate = boldMatcher.group(1).trim();
-            if (!isBlank(typoCandidate) && typoCandidate.length() >= 2 && typoCandidate.length() <= 15) {
-                fields.add(buildField(document.documentId(), block, "typo", "潜在错词",
-                        typoCandidate, normalizeSentence(typoCandidate), "typo:" + normalizeSentence(typoCandidate)));
-            }
-        }
-        
         Matcher specificTypoMatcher = SPECIFIC_TYPOS_PATTERN.matcher(content);
         while (specificTypoMatcher.find()) {
             String typo = specificTypoMatcher.group();
@@ -538,12 +543,20 @@ public class TenderReviewDataAssembler {
         if (containsHeader(header, "联系人", "联系电话", "项目联系人", "contact person", "phone", "contact")) {
             for (int i = 1; i < rows.size(); i++) {
                 Map<String, String> row = mapRow(header, rows.get(i));
+                String name = firstValue(row, "项目联系人", "联系人", "contact person", "contact");
+                String phone = firstValue(row, "联系电话", "电话", "联系方式", "phone");
+                String normalizedName = normalizePersonName(name);
+                String normalizedPhone = normalizePhone(phone);
+                // 创建 contact_info 组合字段供 ContactProximityExecutor (W-M2) 使用
+                addSimpleFieldIfPresent(document.documentId(), block, fields, "contact_info",
+                        "联系人", name + (phone != null ? " " + phone : ""),
+                        normalizedName,
+                        normalizedPhone != null ? normalizedPhone : normalizedName);
+                // 同时保留原有的 contact_person 和 contact_phone 字段以兼容其他规则
                 addSimpleFieldIfPresent(document.documentId(), block, fields, "contact_person",
-                        "联系人", firstValue(row, "项目联系人", "联系人", "contact person", "contact"),
-                        normalizePersonName(firstValue(row, "项目联系人", "联系人", "contact person", "contact")), "contact_person");
+                        "联系人", name, normalizedName, normalizedName);
                 addSimpleFieldIfPresent(document.documentId(), block, fields, "contact_phone",
-                        "联系电话", firstValue(row, "联系电话", "电话", "联系方式", "phone"),
-                        normalizePhone(firstValue(row, "联系电话", "电话", "联系方式", "phone")), "contact_phone");
+                        "联系电话", phone, normalizedPhone, normalizedPhone);
             }
         }
 

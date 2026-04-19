@@ -31,18 +31,32 @@
         在此输入评测 Prompt，系统将对所有已接入的模型并发发起评测，并展示各模型的响应时间、Token 消耗及评测结果排行榜。
       </p>
 
-      <!-- ===== 模型列表展示区 ===== -->
+      <!-- ===== 模型选择评测区 ===== -->
       <div class="model-list-section">
         <div class="section-header">
-          <div class="section-title">已接入模型</div>
+          <div class="section-title">选择评测模型</div>
+          <div class="select-actions">
+            <button class="select-btn" @click="handleSelectAll">全选</button>
+            <button class="select-btn" @click="handleDeselectAll">取消全选</button>
+            <span class="select-count">已选 {{ selectedModels.length }} / {{ availableModels.length }} 个模型</span>
+          </div>
         </div>
         <div class="model-cards">
           <div
             v-for="model in availableModels"
             :key="model.modelName"
             class="model-card"
-            :class="{ 'model-unavailable': !model.available }"
+            :class="{ 'model-unavailable': !model.available, 'model-selected': isModelSelected(model.modelName) }"
+            @click="toggleModelSelect(model)"
           >
+            <div class="model-checkbox">
+              <input
+                type="checkbox"
+                :checked="isModelSelected(model.modelName)"
+                @click.stop
+                @change="toggleModelSelect(model)"
+              >
+            </div>
             <div class="model-card-icon">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
@@ -67,17 +81,32 @@
           <div class="section-title">评测执行</div>
         </div>
         <div class="execute-form">
+          <!-- Prompt 模板选择 -->
+          <div class="template-section">
+            <div class="template-label">预设模板</div>
+            <div class="template-buttons">
+              <button
+                v-for="template in promptTemplates"
+                :key="template.name"
+                class="template-btn"
+                :class="{ 'template-btn-active': selectedTemplate === template.name }"
+                @click="handleSelectTemplate(template)"
+              >
+                {{ template.name }}
+              </button>
+            </div>
+          </div>
           <textarea
             v-model="benchmarkPrompt"
             class="prompt-input"
-            placeholder="输入评测 Prompt..."
+            :placeholder="promptPlaceholder"
             rows="3"
           ></textarea>
           <div class="execute-actions">
             <button
               class="start-btn"
               type="button"
-              :disabled="isRunning || !benchmarkPrompt.trim()"
+              :disabled="isRunning || !benchmarkPrompt.trim() || selectedModels.length === 0"
               @click="handleStartBenchmark"
             >
               <svg v-if="!isRunning" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -93,7 +122,7 @@
         <div v-if="isRunning" class="progress-area">
           <div class="progress-text">
             正在评测: <strong>{{ runningModelName }}</strong>
-            <span class="progress-count">已完成 {{ completedCount }} / {{ availableModels.length }}</span>
+            <span class="progress-count">已完成 {{ completedCount }} / {{ selectedModels.length }}</span>
           </div>
           <div class="progress-bar">
             <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
@@ -160,6 +189,7 @@
 
         <div v-if="historyRecords.length > 0" class="history-table">
           <div class="table-head">
+            <div class="col-hist-expand"></div>
             <div class="col-hist-time">评测时间</div>
             <div class="col-hist-prompt">Prompt</div>
             <div class="col-hist-model">模型</div>
@@ -168,32 +198,47 @@
             <div class="col-hist-tokens">Token</div>
             <div class="col-hist-status">状态</div>
           </div>
-          <div
-            v-for="record in historyRecords"
-            :key="record.id"
-            class="table-row"
-            :class="{ 'row-success': record.success, 'row-fail': !record.success }"
-          >
-            <div class="col-hist-time">{{ formatDateTime(record.benchmarkTime) }}</div>
-            <div class="col-hist-prompt">
-              <span class="prompt-text" :title="record.prompt">{{ record.prompt }}</span>
+          <template v-for="record in historyRecords" :key="record.id">
+            <div
+              class="table-row"
+              :class="{ 'row-success': record.success, 'row-fail': !record.success, 'row-expanded': expandedHistoryId === record.id }"
+              @click="toggleHistoryExpand(record.id)"
+            >
+              <div class="col-hist-expand">
+                <span class="expand-icon" :class="{ 'expand-icon-rotated': expandedHistoryId === record.id }">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"/>
+                  </svg>
+                </span>
+              </div>
+              <div class="col-hist-time">{{ formatDateTime(record.benchmarkTime) }}</div>
+              <div class="col-hist-prompt">
+                <span class="prompt-text" :title="record.prompt">{{ record.prompt }}</span>
+              </div>
+              <div class="col-hist-model">{{ record.modelName }}</div>
+              <div class="col-hist-provider">{{ record.provider }}</div>
+              <div class="col-hist-time2">
+                <span v-if="record.success" class="time-value">{{ record.responseTimeMs }} ms</span>
+                <span v-else class="time-dash">-</span>
+              </div>
+              <div class="col-hist-tokens">
+                <span v-if="record.success" class="tokens-value">{{ record.tokensUsed }}</span>
+                <span v-else class="tokens-dash">-</span>
+              </div>
+              <div class="col-hist-status">
+                <span class="status-badge" :class="record.success ? 'badge-success' : 'badge-fail'">
+                  {{ record.success ? '成功' : '失败' }}
+                </span>
+              </div>
             </div>
-            <div class="col-hist-model">{{ record.modelName }}</div>
-            <div class="col-hist-provider">{{ record.provider }}</div>
-            <div class="col-hist-time2">
-              <span v-if="record.success" class="time-value">{{ record.responseTimeMs }} ms</span>
-              <span v-else class="time-dash">-</span>
+            <!-- 展开的详情行 -->
+            <div v-if="expandedHistoryId === record.id" class="history-detail-row">
+              <div class="history-detail-content">
+                <div class="detail-label">模型回复：</div>
+                <div class="detail-response">{{ record.response || '无响应内容' }}</div>
+              </div>
             </div>
-            <div class="col-hist-tokens">
-              <span v-if="record.success" class="tokens-value">{{ record.tokensUsed }}</span>
-              <span v-else class="tokens-dash">-</span>
-            </div>
-            <div class="col-hist-status">
-              <span class="status-badge" :class="record.success ? 'badge-success' : 'badge-fail'">
-                {{ record.success ? '成功' : '失败' }}
-              </span>
-            </div>
-          </div>
+          </template>
         </div>
 
         <!-- 空状态 -->
@@ -241,8 +286,28 @@ import type { ModelBenchmarkResp, BenchmarkRecord } from '../api/benchmarkApi';
 /** 可用模型列表 */
 const availableModels = ref<any[]>([]);
 
+/** 选中的模型列表 */
+const selectedModels = ref<string[]>([]);
+
 /** 评测 Prompt */
 const benchmarkPrompt = ref('你好，请介绍一下你自己');
+
+/** 选中的模板名称 */
+const selectedTemplate = ref('');
+
+/** Prompt 占位符提示 */
+const promptPlaceholder = ref('输入评测 Prompt...');
+
+/** 预设 Prompt 模板列表 */
+const promptTemplates = [
+  { name: '你好/自我介绍', prompt: '你好，请介绍一下你自己' },
+  { name: '药品知识问答', prompt: '请介绍一下常见的降压药物分类及其代表药物？' },
+  { name: '法规咨询', prompt: '请介绍一下《药品生产质量管理规范》中关于厂房设施的要求？' },
+  { name: '风险识别', prompt: '请分析以下情况是否存在风险：两家投标公司的投标文件存在多处雷同' }
+];
+
+/** 展开的历史记录 ID */
+const expandedHistoryId = ref<string | null>(null);
 
 /** 评测是否运行中 */
 const isRunning = ref(false);
@@ -268,8 +333,8 @@ const historyTotal = ref(0);
 
 /** 进度百分比 */
 const progressPercent = computed(() => {
-  if (availableModels.value.length === 0) return 0;
-  return Math.round((completedCount.value / availableModels.value.length) * 100);
+  if (selectedModels.value.length === 0) return 0;
+  return Math.round((completedCount.value / selectedModels.value.length) * 100);
 });
 
 /** 总页数 */
@@ -287,6 +352,62 @@ const sortedResults = computed(() => {
 // ==================== 方法 ====================
 
 /**
+ * 判断模型是否被选中
+ */
+function isModelSelected(modelName: string) {
+  return selectedModels.value.includes(modelName);
+}
+
+/**
+ * 切换模型选中状态
+ */
+function toggleModelSelect(model: any) {
+  if (!model.available) return;
+  const index = selectedModels.value.indexOf(model.modelName);
+  if (index === -1) {
+    selectedModels.value.push(model.modelName);
+  } else {
+    selectedModels.value.splice(index, 1);
+  }
+}
+
+/**
+ * 全选所有可用模型
+ */
+function handleSelectAll() {
+  selectedModels.value = availableModels.value
+    .filter(m => m.available)
+    .map(m => m.modelName);
+}
+
+/**
+ * 取消全选
+ */
+function handleDeselectAll() {
+  selectedModels.value = [];
+}
+
+/**
+ * 选择预设模板
+ */
+function handleSelectTemplate(template: { name: string; prompt: string }) {
+  selectedTemplate.value = template.name;
+  benchmarkPrompt.value = template.prompt;
+  promptPlaceholder.value = template.prompt;
+}
+
+/**
+ * 切换历史记录展开/收起
+ */
+function toggleHistoryExpand(recordId: string) {
+  if (expandedHistoryId.value === recordId) {
+    expandedHistoryId.value = null;
+  } else {
+    expandedHistoryId.value = recordId;
+  }
+}
+
+/**
  * 加载可用模型列表
  */
 async function loadModels() {
@@ -294,6 +415,10 @@ async function loadModels() {
     const res = await benchmarkApi.getAvailableModels();
     if (res.data.code === 200 || res.data.code === 0) {
       availableModels.value = res.data.data || [];
+      // 初始化默认选中所有可用模型
+      selectedModels.value = availableModels.value
+        .filter(m => m.available)
+        .map(m => m.modelName);
     }
   } catch (err) {
     console.error('加载模型列表失败:', err);
@@ -320,6 +445,10 @@ async function loadHistory() {
  */
 async function handleStartBenchmark() {
   if (!benchmarkPrompt.value.trim()) return;
+  if (selectedModels.value.length === 0) {
+    MessagePlugin.warning('请选择至少一个模型进行评测');
+    return;
+  }
 
   isRunning.value = true;
   completedCount.value = 0;
@@ -327,10 +456,16 @@ async function handleStartBenchmark() {
   runningModelName.value = '';
 
   try {
-    const res = await benchmarkApi.runBenchmark({ prompt: benchmarkPrompt.value.trim() });
+    // 只传递选中的模型名称列表
+    const res = await benchmarkApi.runBenchmark({
+      prompt: benchmarkPrompt.value.trim(),
+      models: selectedModels.value
+    });
     if (res.data.code === 200 || res.data.code === 0) {
       benchmarkResults.value = res.data.data || [];
-      completedCount.value = availableModels.value.length;
+      completedCount.value = selectedModels.value.length;
+      // 刷新历史记录
+      await loadHistory();
       MessagePlugin.success('评测完成');
     } else {
       MessagePlugin.error('评测失败: ' + res.data.message);
@@ -604,6 +739,99 @@ onMounted(async () => {
   color: #ef4444;
 }
 
+/* ========== 模型选择功能 ========== */
+.select-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.select-btn {
+  padding: 6px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.select-btn:hover {
+  border-color: #93b4f5;
+  color: #3b82f6;
+}
+
+.select-count {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-left: 8px;
+}
+
+.model-checkbox {
+  display: flex;
+  align-items: center;
+}
+
+.model-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #10b981;
+}
+
+.model-card.model-selected {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.model-card.model-selected:hover {
+  border-color: #059669;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+}
+
+/* ========== 模板选择 ========== */
+.template-section {
+  margin-bottom: 14px;
+}
+
+.template-label {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+
+.template-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.template-btn {
+  padding: 8px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.template-btn:hover {
+  border-color: #93b4f5;
+  color: #3b82f6;
+}
+
+.template-btn.template-btn-active {
+  border-color: #10b981;
+  background: #f0fdf4;
+  color: #059669;
+}
+
 /* ========== 评测执行区 ========== */
 .execute-form {
   padding: 20px 24px;
@@ -729,7 +957,7 @@ onMounted(async () => {
 }
 
 .history-table .table-head {
-  grid-template-columns: 160px 1fr 120px 100px 120px 80px 80px;
+  grid-template-columns: 40px 160px 1fr 120px 100px 120px 80px 80px;
 }
 
 .table-row {
@@ -746,7 +974,8 @@ onMounted(async () => {
 }
 
 .history-table .table-row {
-  grid-template-columns: 160px 1fr 120px 100px 120px 80px 80px;
+  grid-template-columns: 40px 160px 1fr 120px 100px 120px 80px 80px;
+  cursor: pointer;
 }
 
 .table-row:last-child {
@@ -850,6 +1079,58 @@ onMounted(async () => {
 }
 
 /* ========== 历史记录 ========== */
+.col-hist-expand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.expand-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  transition: transform 0.2s;
+}
+
+.expand-icon-rotated {
+  transform: rotate(90deg);
+}
+
+.table-row.row-expanded {
+  background: #f0fdf4;
+}
+
+.history-detail-row {
+  border-bottom: 1px solid #f6f8fb;
+  background: #fafbfd;
+}
+
+.history-detail-content {
+  padding: 16px 24px 16px 64px;
+}
+
+.detail-label {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.detail-response {
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 300px;
+  overflow-y: auto;
+  background: #fff;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #e6edf5;
+}
+
 .history-empty {
   display: flex;
   flex-direction: column;

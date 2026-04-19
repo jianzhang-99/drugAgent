@@ -48,7 +48,7 @@
           v-model="inputText"
           class="composer-input"
           :disabled="store.sending || store.uploading"
-          placeholder="描述您的监管需求，例如：帮我审查这几份标书的围标风险..."
+          placeholder="描述您的监管需求，例如：帮我审查这几份标书的风险..."
           :autosize="{ minRows: 2, maxRows: 8 }"
           @keydown="handleKeydown"
         />
@@ -78,7 +78,7 @@
             <template #valueDisplay="{ value }">
               <span style="font-size: 13px; font-weight: 500;">
                 <t-icon name="logo-chrome-filled" style="margin-right:4px;" />
-                {{ value === 'minimax' ? 'MiniMax' : (value === 'dashscope' ? '阿里云百炼' : value) }}
+                {{ value === 'minimax' ? 'MiniMax' : (value === 'dashscope' ? '横渡大模型' : value) }}
               </span>
             </template>
           </t-select>

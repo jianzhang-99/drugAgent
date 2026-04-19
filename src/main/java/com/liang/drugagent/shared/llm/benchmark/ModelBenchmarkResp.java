@@ -52,4 +52,9 @@ public class ModelBenchmarkResp {
      * 评测时间
      */
     private LocalDateTime benchmarkTime;
+
+    /**
+     * 模型回复内容
+     */
+    private String response;
 }

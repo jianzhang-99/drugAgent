@@ -73,7 +73,7 @@ function adaptLegacyStructuredReport(raw: LegacyReportData, result: DrugAgentRes
       raw.page1Summary?.recommendedAction || buildDecisionAction(result),
       aliasMap,
     ),
-    reviewNote: '本报告用于辅助识别标书疑似围标、串标或非独立编制风险，不直接替代最终评审结论。',
+    reviewNote: '本报告用于辅助识别标书疑似串标或非独立编制风险，不直接替代最终评审结论。',
     metrics: {
       effectiveHits: Number(raw.page1Summary?.coreEvidenceCount || evidences.length || 0),
       evidenceClusters: evidences.length,
@@ -134,8 +134,8 @@ function transformReviewReport(result: DrugAgentResp): ReportData {
   // V2: 风险等级标签（原型要求）
   const riskLevel = normalizeLevel(result.riskLevel || result.report?.overview?.riskLevel);
   const riskLevelLabelMap: Record<string, string> = {
-    high: '重大围标风险',
-    medium: '中度围标风险',
+    high: '重大风险',
+    medium: '中度风险',
     low: '轻度异常信号',
     safe: '暂未发现明显异常',
   };
@@ -166,8 +166,8 @@ function transformReviewReport(result: DrugAgentResp): ReportData {
     const displayTitle = resolveRiskTypeLabel(category);
     const docAName = documents[0]?.partyName || '投标主体 A';
     const docBName = documents[1]?.partyName || '投标主体 B';
-    const rawDocAContent = group.items?.[0]?.content || group.evidenceList?.[0]?.content || group.contentA || '';
-    const rawDocBContent = group.items?.[1]?.content || group.evidenceList?.[1]?.content || group.contentB || '';
+    const rawDocAContent = group.contentA || '';
+    const rawDocBContent = group.contentB || '';
     return {
       evidenceId: `E${String(index + 1).padStart(2, '0')}`,
       type: category,
@@ -226,7 +226,7 @@ function transformReviewReport(result: DrugAgentResp): ReportData {
         evidenceClusters: evidenceGroups.length || evidences.length,
         documentCount: documents.length,
       },
-      reviewNote: '本报告用于辅助识别标书疑似围标、串标或非独立编制风险，不直接替代最终评审结论。',
+      reviewNote: '本报告用于辅助识别标书疑似串标或非独立编制风险，不直接替代最终评审结论。',
     },
     riskOverview: {
       topRisks,
@@ -302,7 +302,7 @@ function buildRiskDescription(item: RiskItem, riskType: string, aliasMap: Record
   }
   if (riskType === 'text_similarity') {
     const focusText = focus ? `“${focus}”相关内容` : '关键条款、技术响应或风险处置表述';
-    return `多份投标文件在${focusText}上高度一致${similarityText}。相似内容集中在需要各投标主体独立编制的表达区域，建议作为重点围标风险线索复核。`;
+    return `多份投标文件在${focusText}上高度一致${similarityText}。相似内容集中在需要各投标主体独立编制的表达区域，建议作为重点风险线索复核。`;
   }
   return summary || '系统识别到需要进一步复核的异常线索，建议结合原文、历史投标记录和外围材料确认风险是否成立。';
 }

@@ -10,7 +10,8 @@ import type { ApiResponse } from '../types/agent';
 
 /** 评测请求 */
 export interface BenchmarkRunReq {
-  modelName?: string;  // 不传则评测所有模型
+  modelName?: string;  // 不传则评测所有模型（已废弃，推荐使用 models）
+  models?: string[];  // 指定要评测的模型列表
   prompt: string;
 }
 
@@ -35,6 +36,7 @@ export interface BenchmarkRecord {
   tokensUsed: number;
   success: boolean;
   errorMessage?: string;
+  response?: string;  // 模型回复内容
   benchmarkTime: string;
 }
 

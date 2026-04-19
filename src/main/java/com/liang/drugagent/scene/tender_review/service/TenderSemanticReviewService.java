@@ -96,9 +96,11 @@ public class TenderSemanticReviewService {
             case "W-P1" -> TenderReviewJudgePrompt.SEMANTIC_JUDGE_W_P1;
             case "W-P4" -> TenderReviewJudgePrompt.SEMANTIC_JUDGE_W_P4;
             case "W-M8" -> TenderReviewJudgePrompt.SEMANTIC_JUDGE_W_M8;
+            case "W-M6" -> TenderReviewJudgePrompt.SEMANTIC_JUDGE_W_M6;
             case "W-P2" -> TenderReviewJudgePrompt.SEMANTIC_JUDGE_W_P2;
             case "W-P3" -> TenderReviewJudgePrompt.SEMANTIC_JUDGE_W_P3;
             case "W-M3" -> TenderReviewJudgePrompt.SEMANTIC_JUDGE_W_M3;
+            case "W-P6" -> TenderReviewJudgePrompt.SEMANTIC_JUDGE_W_P6;
             default -> TenderReviewJudgePrompt.SEMANTIC_JUDGE_W_P1; // 默认使用W-P1
         };
     }

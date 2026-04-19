@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 /**
  * 单模型评测请求。
  *
@@ -17,7 +19,7 @@ import lombok.NoArgsConstructor;
 public class ModelBenchmarkRunReq {
 
     /**
-     * 模型名称（如 "MiniMax-M2.7-highspeed", "qwen-turbo"）
+     * 模型名称（单模型评测时使用）
      */
     private String modelName;
 
@@ -25,4 +27,9 @@ public class ModelBenchmarkRunReq {
      * 评测使用的 Prompt
      */
     private String prompt;
+
+    /**
+     * 指定评测模型列表（批量评测时使用，优先级高于modelName）
+     */
+    private List<String> modelNames;
 }

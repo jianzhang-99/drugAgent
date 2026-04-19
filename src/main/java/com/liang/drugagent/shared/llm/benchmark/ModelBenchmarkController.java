@@ -51,18 +51,20 @@ public class ModelBenchmarkController {
 
     /**
      * 执行单模型评测或批量评测。
-     * 当 modelName 不为空时评测指定模型，为空时评测所有可用模型。
+     * 当 modelNames 不为空时评测指定模型列表，为空时评测所有可用模型。
      *
-     * @param req 评测请求（包含 modelName 和 prompt）
+     * @param req 评测请求（包含 modelNames、modelName 和 prompt）
      * @return 评测结果列表
      */
     @Operation(summary = "执行模型评测（单模型或批量）")
     @PostMapping("/run-all")
     public Result<List<ModelBenchmarkResp>> runAllBenchmarks(@RequestBody ModelBenchmarkRunReq req) {
-        log.info("[ModelBenchmarkController] 收到评测请求 - modelName={}, prompt长度={}",
-                req.getModelName(), req.getPrompt() != null ? req.getPrompt().length() : 0);
+        log.info("[ModelBenchmarkController] 收到评测请求 - modelNames={}, modelName={}, prompt长度={}",
+                req.getModelNames(), req.getModelName(), req.getPrompt() != null ? req.getPrompt().length() : 0);
         List<ModelBenchmarkResp> results;
-        if (req.getModelName() != null && !req.getModelName().isBlank()) {
+        if (req.getModelNames() != null && !req.getModelNames().isEmpty()) {
+            results = benchmarkService.runBenchmarksByModels(req.getModelNames(), req.getPrompt());
+        } else if (req.getModelName() != null && !req.getModelName().isBlank()) {
             results = List.of(benchmarkService.runBenchmark(req.getModelName(), req.getPrompt()));
         } else {
             results = benchmarkService.runAllBenchmarks(req.getPrompt());
@@ -98,5 +100,18 @@ public class ModelBenchmarkController {
         log.info("[ModelBenchmarkController] 获取可用模型列表");
         List<ModelInfo> models = benchmarkService.getAvailableModels();
         return Result.success(models);
+    }
+
+    /**
+     * 获取预设的Prompt模板列表。
+     *
+     * @return 模板列表
+     */
+    @Operation(summary = "获取预设Prompt模板列表")
+    @GetMapping("/prompt-templates")
+    public Result<List<PromptTemplateResp>> getPromptTemplates() {
+        log.info("[ModelBenchmarkController] 获取预设Prompt模板列表");
+        List<PromptTemplateResp> templates = benchmarkService.getPromptTemplates();
+        return Result.success(templates);
     }
 }

@@ -40,6 +40,11 @@ public class AgentExecutionResult {
     private String answer;
 
     /**
+     * AI 思考内容。
+     */
+    private String reasoningContent;
+
+    /**
      * 摘要信息。
      */
     private String summary;

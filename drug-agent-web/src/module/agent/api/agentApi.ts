@@ -98,10 +98,12 @@ export interface ThinkingStepProgressEvent {
     traceId?: string;
     scene?: string;
     answer?: string;
+    reasoningContent?: string;
     summary?: string;
     riskLevel?: string;
     score?: number;
     report?: any;
+    reportData?: any;
     evidenceList?: any[];
     evidenceGroups?: any[];
     thinkingSteps?: ThinkingStep[];
@@ -315,6 +317,8 @@ export function addMessage(
  * 返回 SSE 流，需要使用 ReadableStream 处理
  */
 export function streamChat(req: ChatRequest): ReadableStream<DrugAgentResp> {
+  if (USE_MOCK) return mockAgentApi.streamChat(req);
+
   const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
   const url = BASE_URL + '/api/agent/chat/stream';
 

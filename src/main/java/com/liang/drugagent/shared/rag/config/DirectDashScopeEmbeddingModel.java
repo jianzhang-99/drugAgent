@@ -34,12 +34,13 @@ public class DirectDashScopeEmbeddingModel implements EmbeddingModel {
     public DirectDashScopeEmbeddingModel(
             @Value("${aliyun.dashscope.embedding-model:text-embedding-v3}") String model,
             @Value("${aliyun.dashscope.api-key}") String apiKey,
-            @Value("${aliyun.dashscope.base-url:https://dashscope.aliyuncs.com/api/v1}") String baseUrl) {
+            @Value("${aliyun.dashscope.embedding-base-url:https://dashscope.aliyuncs.com/compatible-mode/v1}") String baseUrl) {
 
         this.model = model;
+        // 兼容模式使用 OpenAI 兼容接口，原生接口路径不同
         String resolvedBaseUrl = (baseUrl != null && !baseUrl.isBlank())
                 ? baseUrl
-                : "https://dashscope.aliyuncs.com/api/v1";
+                : "https://dashscope.aliyuncs.com/compatible-mode/v1";
 
         // 强制直连，绕过系统代理（Proxy.NO_PROXY 表示完全不经过任何代理）
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();

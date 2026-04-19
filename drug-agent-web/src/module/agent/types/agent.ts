@@ -55,6 +55,7 @@ export interface Message {
   attachments?: Attachment[];
   result?: ResultData;
   thinkingSteps?: ThinkingStep[];
+  reasoningContent?: string;
   raw?: any;
 }
 
@@ -85,6 +86,7 @@ export interface ResultData {
   evidenceList?: Evidence[];
   evidenceGroups?: EvidenceGroup[];
   report?: ReviewReport;
+  reportData?: ReportData;
   confidence?: number;
   routeReason?: string;
   scene?: string;
@@ -222,6 +224,7 @@ export interface DrugAgentResp {
   confidence?: number;
   summary?: string;
   answer?: string;
+  reasoningContent?: string;
   riskLevel?: string;
   score?: number;
   docCount?: number;

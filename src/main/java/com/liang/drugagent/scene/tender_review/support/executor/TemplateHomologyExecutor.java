@@ -47,8 +47,13 @@ public class TemplateHomologyExecutor implements TenderRuleExecutor {
 
     /** 判定同源的最少公共标题数。 */
     private static final int MIN_MATCHING_HEADINGS = 5;
-    /** 相似度占比阈值。 */
-    private static final BigDecimal SIMILARITY_THRESHOLD = new BigDecimal("0.80");
+    /** 相似度占比阈值。
+     * 考虑到所有投标文件均采用标准模板框架，80%阈值过于宽松容易产生大量噪音。
+     * 上调至95%以确保只捕获真正异常的模板重用行为：
+     * - 正常情况：同一行业标准模板导致章节结构相似度在80-90%左右，不应触发
+     * - 异常情况：高度可疑的模板重用（如近95%+相似度）才判定为版式模板同源
+     */
+    private static final BigDecimal SIMILARITY_THRESHOLD = new BigDecimal("0.95");
 
     @Override
     public List<RuleHit> execute(TenderReviewData data) {

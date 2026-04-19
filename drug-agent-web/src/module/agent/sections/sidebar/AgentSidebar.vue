@@ -116,7 +116,6 @@ const titleInputRef = ref<HTMLInputElement>();
 const showSettings = ref(false);
 
 const navItems = [
-  { id: 'TASKS' as ViewMode, label: '任务看板', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>' },
   { id: 'KNOWLEDGE' as ViewMode, label: 'RAG知识库', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>' },
   { id: 'BENCHMARK' as ViewMode, label: '模型评测', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>' },
 ];
@@ -507,6 +506,10 @@ function formatTime(timeStr: string) {
   border-top: 1px solid #dfe7f1;
   padding: 18px 18px 24px;
   margin-top: auto;
+  position: sticky;
+  bottom: 0;
+  background: linear-gradient(180deg, #f8fbff 0%, #f5f7fb 100%);
+  z-index: 1;
 }
 
 .footer-link {

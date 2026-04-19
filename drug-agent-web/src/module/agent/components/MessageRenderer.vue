@@ -27,10 +27,12 @@
           v-if="message.thinkingSteps && message.thinkingSteps.length > 0"
           :steps="message.thinkingSteps"
         />
-        <div class="message-content">
-          {{ message.content }}
-          <span v-if="store.streaming && store.streamingMessageId === message.id" class="typing-cursor">|</span>
+        <div v-if="message.reasoningContent" class="reasoning-block">
+          <div class="reasoning-label">思考过程</div>
+          <div class="reasoning-content">{{ message.reasoningContent }}</div>
         </div>
+        <div class="message-content" v-html="renderMarkdown(message.content)"></div>
+        <span v-if="isStreaming && streamingMessageId === message.id" class="typing-cursor">|</span>
         <div class="message-time agent-time" v-if="message.createdAt">
           <span>内容由横渡智能体生成 · {{ formatTime(message.createdAt) }}</span>
           <button type="button" class="copy-btn" @click="handleCopy(message.content)">复制</button>
@@ -49,6 +51,10 @@
           :steps="message.thinkingSteps"
           :default-expanded="true"
         />
+        <div v-if="message.reasoningContent" class="reasoning-block">
+          <div class="reasoning-label">思考过程</div>
+          <div class="reasoning-content">{{ message.reasoningContent }}</div>
+        </div>
         <div
           v-if="!(message.thinkingSteps && message.thinkingSteps.length > 0)"
           :class="message.thinkingSteps && message.thinkingSteps.length > 0
@@ -79,6 +85,10 @@
           v-if="message.thinkingSteps && message.thinkingSteps.length > 0"
           :steps="message.thinkingSteps"
         />
+        <div v-if="message.reasoningContent" class="reasoning-block">
+          <div class="reasoning-label">思考过程</div>
+          <div class="reasoning-content">{{ message.reasoningContent }}</div>
+        </div>
         <div class="message-content">
           <ResultCard :data="message.result" />
         </div>
@@ -108,10 +118,12 @@
           v-if="message.thinkingSteps && message.thinkingSteps.length > 0"
           :steps="message.thinkingSteps"
         />
-        <div class="message-content">
-          {{ message.content }}
-          <span v-if="store.streaming && store.streamingMessageId === message.id" class="typing-cursor">|</span>
+        <div v-if="message.reasoningContent" class="reasoning-block">
+          <div class="reasoning-label">思考过程</div>
+          <div class="reasoning-content">{{ message.reasoningContent }}</div>
         </div>
+        <div class="message-content" v-html="renderMarkdown(message.content)"></div>
+        <span v-if="isStreaming && streamingMessageId === message.id" class="typing-cursor">|</span>
         <div class="message-time agent-time" v-if="message.createdAt">
           <span>内容由横渡智能体生成 · {{ formatTime(message.createdAt) }}</span>
           <button type="button" class="copy-btn" @click="handleCopy(message.content)">复制</button>
@@ -127,9 +139,27 @@ import ResultCard from './ResultCard.vue';
 import ThinkingSteps from './ThinkingSteps.vue';
 import { ElMessage } from 'element-plus';
 import { useAgentStore } from '../store/agentStore';
+import { computed } from 'vue';
+import MarkdownIt from 'markdown-it';
 
 defineProps<{ message: Message }>();
 const store = useAgentStore();
+const isStreaming = computed(() => store.streaming);
+const streamingMessageId = computed(() => store.streamingMessageId);
+void isStreaming.value;
+void streamingMessageId.value;
+
+// 创建 markdown-it 实例，启用链接自动识别
+const md = new MarkdownIt({
+  html: false,        // 禁用 HTML 标签
+  linkify: true,      // 自动识别链接
+  typographer: true,  // 启用标点替换
+});
+
+function renderMarkdown(content: string): string {
+  if (!content) return '';
+  return md.render(content);
+}
 
 function formatTime(isoStr?: string) {
   if (!isoStr) return '';
@@ -208,6 +238,28 @@ async function handleCopy(text: string) {
   line-height: 1.75;
   word-break: break-word;
   white-space: pre-wrap;
+}
+
+.reasoning-block {
+  margin: 0 0 10px;
+  padding-left: 12px;
+  border-left: 2px solid #dbe4f0;
+}
+
+.reasoning-label {
+  margin-bottom: 4px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.reasoning-content {
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .message-meta {
@@ -383,5 +435,113 @@ async function handleCopy(text: string) {
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
+}
+
+/* Markdown 渲染样式 */
+.message-content :deep(h1),
+.message-content :deep(h2),
+.message-content :deep(h3),
+.message-content :deep(h4) {
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.message-content :deep(h1) { font-size: 1.5em; }
+.message-content :deep(h2) { font-size: 1.3em; }
+.message-content :deep(h3) { font-size: 1.15em; }
+.message-content :deep(h4) { font-size: 1em; }
+
+.message-content :deep(p) {
+  margin: 0.5em 0;
+}
+
+.message-content :deep(ul),
+.message-content :deep(ol) {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+
+.message-content :deep(li) {
+  margin: 0.25em 0;
+}
+
+.message-content :deep(blockquote) {
+  margin: 0.5em 0;
+  padding: 0.5em 1em;
+  border-left: 4px solid #c084fc;
+  background: rgba(139, 92, 246, 0.05);
+  color: #4a5568;
+  border-radius: 0 8px 8px 0;
+}
+
+.message-content :deep(code) {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+}
+
+.message-content :deep(pre) {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 1em;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+
+.message-content :deep(pre code) {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+.message-content :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5em 0;
+  font-size: 0.9em;
+}
+
+.message-content :deep(th),
+.message-content :deep(td) {
+  border: 1px solid #e2e8f0;
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+
+.message-content :deep(th) {
+  background: #f7f9fc;
+  font-weight: 600;
+}
+
+.message-content :deep(tr:nth-child(even)) {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.message-content :deep(a) {
+  color: #6366f1;
+  text-decoration: none;
+}
+
+.message-content :deep(a:hover) {
+  text-decoration: underline;
+}
+
+.message-content :deep(hr) {
+  border: none;
+  border-top: 1px solid #e2e8f0;
+  margin: 1em 0;
+}
+
+.message-content :deep(strong) {
+  font-weight: 600;
+}
+
+.message-content :deep(em) {
+  font-style: italic;
 }
 </style>

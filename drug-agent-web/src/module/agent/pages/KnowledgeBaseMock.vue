@@ -79,6 +79,17 @@
                   placeholder="搜索文件名..."
                 />
               </div>
+              <button
+                v-if="knowledgeFiles.length > 0"
+                class="batch-delete-btn"
+                type="button"
+                :disabled="isBatchDeleting"
+                @click="handleBatchDelete"
+              >
+                <svg v-if="!isBatchDeleting" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                <span v-if="isBatchDeleting" class="batch-delete-spinner"></span>
+                {{ isBatchDeleting ? '清空中...' : '清空所有' }}
+              </button>
             </div>
           </div>
 
@@ -154,6 +165,7 @@ const isDragOver = ref(false);
 const fileInputRef = ref<HTMLInputElement>();
 const searchKeyword = ref('');
 const isUploading = ref(false);
+const isBatchDeleting = ref(false);
 
 // 固定 orgId，生产环境应从登录态获取
 const ORG_ID = 'default-org';
@@ -275,6 +287,26 @@ async function handleDeleteFile(file: OssFile) {
     }
   } catch {
     MessagePlugin.error('删除失败，请稍后重试');
+  }
+}
+
+async function handleBatchDelete() {
+  if (!confirm(`确定清空所有知识库文件吗？\n\n该操作将删除：\n- 所有已上传的文件\n- 所有向量化的文档内容\n- 所有 RAG 关联记录\n\n此操作不可恢复！`)) return;
+
+  isBatchDeleting.value = true;
+  try {
+    const res = await knowledgeApi.batchDeleteKnowledgeByOrgId();
+    if (res.data.code === 200 || res.data.code === 0) {
+      const data = res.data.data;
+      knowledgeFiles.value = [];
+      showToast(`已清空 ${data.deletedRagFileCount} 个文件（共 ${data.deletedChunkCount} 个向量片段）`, 'success');
+    } else {
+      MessagePlugin.error('清空失败: ' + res.data.message);
+    }
+  } catch {
+    MessagePlugin.error('清空失败，请稍后重试');
+  } finally {
+    isBatchDeleting.value = false;
   }
 }
 
@@ -791,6 +823,40 @@ onMounted(() => {
 .delete-file-btn:hover {
   background: #fef2f2;
   color: #ef4444;
+}
+
+.batch-delete-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fff;
+  color: #ef4444;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.batch-delete-btn:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #ef4444;
+}
+
+.batch-delete-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.batch-delete-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fecaca;
+  border-top-color: #ef4444;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 /* 空状态 */

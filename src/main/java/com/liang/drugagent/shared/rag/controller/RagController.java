@@ -28,6 +28,8 @@ import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -335,6 +337,84 @@ public class RagController {
 
         log.info("[RagController] 知识库文件删除完成（软删除）- ossId={}, sourceId={}", ossId, rf.getSourceId());
         return Result.success(null);
+    }
+
+    /**
+     * 批量删除知识库文件（清空当前所有RAG资料）。
+     *
+     * <p>删除内容：向量库chunks + rag_file关联记录 + COS文件。
+     * 由于 rag_file 表暂无 org_id 字段，此接口清空所有未软删除的记录。</p>
+     */
+    @Operation(summary = "批量删除知识库文件", description = "清空所有RAG资料（向量库、文件记录、COS对象）")
+    @DeleteMapping("/cleanup/all")
+    public Result<Map<String, Object>> batchDeleteAll() {
+        int deletedRagFileCount = 0;
+        int deletedChunkCount = 0;
+        int deletedCosCount = 0;
+
+        try {
+            // 1. 查询所有未软删除的rag_file记录
+            List<RagFile> ragFiles = ragFileMapper.selectList(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<RagFile>()
+                            .eq(RagFile::getDeleted, 0)
+            );
+
+            if (ragFiles.isEmpty()) {
+                log.info("[RagController] 批量删除完成（无数据）");
+                return Result.success(Map.of(
+                        "message", "无知识库文件可删除",
+                        "deletedRagFileCount", 0,
+                        "deletedChunkCount", 0,
+                        "deletedCosCount", 0
+                ));
+            }
+
+            // 2. 遍历删除向量库chunks、rag_file记录
+            for (RagFile rf : ragFiles) {
+                // 2.1 删除向量库chunks
+                if (rf.getSourceId() != null && !rf.getSourceId().isBlank()) {
+                    ingestService.deleteBySourceId(rf.getSourceId());
+                    deletedChunkCount++;
+                }
+
+                // 2.2 软删除rag_file记录
+                rf.setDeleted(1);
+                rf.setStatus(2);
+                ragFileMapper.updateById(rf);
+                deletedRagFileCount++;
+
+                // 2.3 删除COS文件（根据ossId查OssFile再删）
+                if (rf.getOssId() != null && !rf.getOssId().isBlank()) {
+                    OssFile ossFile = ossFileMapper.selectById(rf.getOssId());
+                    if (ossFile != null) {
+                        try {
+                            cosStorageService.deleteFile(ossFile.getOssUrl());
+                            deletedCosCount++;
+                        } catch (Exception e) {
+                            log.warn("[RagController] COS文件删除失败（跳过）- ossId={}, error={}",
+                                    rf.getOssId(), e.getMessage());
+                        }
+                        // 软删除oss_file记录
+                        ossFile.setUploadStatus(3);
+                        ossFileMapper.updateById(ossFile);
+                    }
+                }
+            }
+
+            log.info("[RagController] 批量删除完成 - ragFile={}, chunks={}, cos={}",
+                    deletedRagFileCount, deletedChunkCount, deletedCosCount);
+
+            return Result.success(Map.of(
+                    "message", "批量删除完成",
+                    "deletedRagFileCount", deletedRagFileCount,
+                    "deletedChunkCount", deletedChunkCount,
+                    "deletedCosCount", deletedCosCount
+            ));
+
+        } catch (Exception e) {
+            log.error("[RagController] 批量删除失败", e);
+            return Result.error("批量删除失败: " + (e.getMessage() != null ? e.getMessage() : "未知错误"));
+        }
     }
 
     /**

@@ -11,12 +11,12 @@
             <div class="report-id">DOCUMENT ID: {{ data.metadata?.documentId || 'TSR-20240416-X99' }}</div>
             <h1>医药标书违规风险专业审查报告</h1>
           </div>
-          <div class="risk-badge-large">
-            <span class="label">风险综合判定</span>
-            <span class="value">
-              {{ data.executiveSummary?.riskLevelLabel || '重大围标风险' }}
-            </span>
-          </div>
+            <div class="risk-badge-large">
+              <span class="label">风险综合判定</span>
+              <span class="value">
+              {{ riskHeadline }}
+              </span>
+            </div>
         </header>
 
         <!-- 一、审查执行摘要 -->
@@ -191,6 +191,12 @@ import { ref, computed } from 'vue';
 import type { ReportData, TopRisk } from '../../types/report.types';
 
 const props = defineProps<{ data?: ReportData }>();
+
+const riskHeadline = computed(() => {
+  const levelLabel = props.data?.executiveSummary?.riskLevelLabel || '重大风险';
+  const primaryRiskName = props.data?.executiveSummary?.primaryRiskName;
+  return primaryRiskName ? `${levelLabel} · ${primaryRiskName}` : levelLabel;
+});
 
 const docMainRef = ref<HTMLElement | null>(null);
 defineExpose({ docMainRef });

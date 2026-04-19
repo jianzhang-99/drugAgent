@@ -32,6 +32,11 @@ public class LlmResponse {
     private String content;
 
     /**
+     * 思考内容（流式时为增量内容）
+     */
+    private String reasoningContent;
+
+    /**
      * 完整响应内容（流式响应完成后填充）
      */
     private String fullContent;
@@ -153,9 +158,17 @@ public class LlmResponse {
      * 创建成功响应
      */
     public static LlmResponse success(String content, LlmProviderType provider, String model) {
+        return success(content, null, provider, model);
+    }
+
+    /**
+     * 创建成功响应
+     */
+    public static LlmResponse success(String content, String reasoningContent, LlmProviderType provider, String model) {
         return LlmResponse.builder()
                 .success(true)
                 .content(content)
+                .reasoningContent(reasoningContent)
                 .provider(provider)
                 .model(model)
                 .build();
@@ -176,9 +189,17 @@ public class LlmResponse {
      * 创建流式响应
      */
     public static LlmResponse streamedChunk(String chunk, boolean isLast) {
+        return streamedChunk(chunk, null, isLast);
+    }
+
+    /**
+     * 创建流式响应
+     */
+    public static LlmResponse streamedChunk(String chunk, String reasoningContent, boolean isLast) {
         return LlmResponse.builder()
                 .success(true)
                 .content(chunk)
+                .reasoningContent(reasoningContent)
                 .streamed(true)
                 .isLast(isLast)
                 .build();

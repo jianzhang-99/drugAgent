@@ -62,6 +62,32 @@ public class RiskFusionService {
     private static final double REPEAT_DECAY_RATE = 0.75;
 
     /**
+     * W-M4 鍣煶琛板噺绯绘暟銆?
+     * 褰?W-M4 涓庡涓叿浣撹鍒欐垨璇箟瑙勫垯鍚屾椂鍑虹幇鏃讹紝搴斿皢鍏跺綋浣滆儗鏅櫔闊炽€?
+     */
+    private static final double W_M4_NOISE_DECAY_FACTOR = 0.3;
+
+    /**
+     * W-P4 鍣煶琛板噺绯绘暟銆?
+     * 褰?W-P4 涓庡叾浠栨洿鍏蜂綋鐨勬枃鏈垨瑙勫垯鍏卞瓨鏃讹紝搴旈檷浣庡叾鎵€鍗犳潈閲嶃€?
+     */
+    private static final double W_P4_NOISE_DECAY_FACTOR = 0.4;
+
+    /**
+     * W-M4 澶氬懡涓椂瑙嗕负鍣煶鐨勫叾浠栧疄璐ㄨ鍒欍€?
+     */
+    private static final Set<String> W_M4_NOISE_COMPETITORS = Set.of(
+            "W-M1", "W-M2", "W-M3", "W-M6", "W-M8", "W-P1", "W-P2", "W-P3", "W-P4", "W-P6"
+    );
+
+    /**
+     * W-P4 澶氬懡涓椂瑙嗕负鍣煶鐨勫叾浠栧疄璐ㄨ鍒欍€?
+     */
+    private static final Set<String> W_P4_NOISE_COMPETITORS = Set.of(
+            "W-M1", "W-M2", "W-M3", "W-M4", "W-M6", "W-M8", "W-P1", "W-P2", "W-P3", "W-P6"
+    );
+
+    /**
      * 融合多项风险证据。
      *
      * @param data 原始输入数据（用于获取文档上下文）
@@ -74,6 +100,11 @@ public class RiskFusionService {
 
         List<RuleHit> hits = effectiveHits == null ? List.of() : effectiveHits;
         List<ExemptionHit> exemptions = exemptionHits == null ? List.of() : exemptionHits;
+
+        // 0. W-M4 噪音处理：如果 W-M4 与其他实质风险共存，进行权重衰减
+        // 原因：所有投标文件都使用标准模板，W-M4 容易触发但不代表真正的围标风险
+        applyW_M4NoiseReduction(hits);
+        applyW_P4NoiseReduction(hits);
 
         // 1. 处理无命中项或全部免责的情况
         if (hits.isEmpty()) {
@@ -343,5 +374,89 @@ public class RiskFusionService {
             return null;
         }
         return hit.getAdjustedWeight() != null ? hit.getAdjustedWeight() : hit.getWeight();
+    }
+
+    /**
+     * 判断 W-M4 是否为背景噪音。
+     * 当 W-M4 存在且同时有其他实质风险规则（W-M1、W-M2、W-M3）命中时，
+     * W-M4 很可能是因为大家都用了同一个标准模板，不应作为主要风险依据。
+     */
+    private boolean isW_M4Noise(List<RuleHit> hits) {
+        return isNoiseRule(hits, "W-M4", W_M4_NOISE_COMPETITORS);
+    }
+
+    /**
+     * 判断 W-P4 是否为背景噪音。
+     * 当 W-P4 与更具体的文本或规则共存时，
+     * 说明 W-P4 很可能是段落中的标准化风险描述，不应在融合层指向上盖过更具体的规则。
+     */
+    private boolean isW_P4Noise(List<RuleHit> hits) {
+        return isNoiseRule(hits, "W-P4", W_P4_NOISE_COMPETITORS);
+    }
+
+    /**
+     * 对指定规则进行噪音筛选。
+     * 当某个规则同时被更具体的规则命中时，将其权重降低到用于融合判定的低优先级水平。
+     * 注意：此方法会直接修改传入的 RuleHit 的 adjustedWeight。
+     */
+    private boolean isNoiseRule(List<RuleHit> hits, String targetRuleCode, Set<String> competitorRules) {
+        boolean hasTargetRule = false;
+        boolean hasSignificantCompetitor = false;
+
+        for (RuleHit hit : hits) {
+            String ruleCode = hit.getRuleCode();
+            if (targetRuleCode.equals(ruleCode)) {
+                hasTargetRule = true;
+                continue;
+            }
+            if (ruleCode != null && competitorRules.contains(ruleCode)) {
+                Integer weight = effectiveWeight(hit);
+                if (weight != null && weight >= 50) {
+                    hasSignificantCompetitor = true;
+                    break;
+                }
+            }
+        }
+
+        return hasTargetRule && hasSignificantCompetitor;
+    }
+
+    /**
+     * 对 W-M4 噪音进行衰减处理。
+     * 通过降低 W-M4 的 effectiveWeight 来减少其对最终分数的贡献。
+     */
+    private void applyW_M4NoiseReduction(List<RuleHit> hits) {
+        if (!isW_M4Noise(hits)) {
+            return;
+        }
+
+        for (RuleHit hit : hits) {
+            if ("W-M4".equals(hit.getRuleCode())) {
+                Integer originalWeight = effectiveWeight(hit);
+                if (originalWeight != null) {
+                    int reducedWeight = (int) Math.max(1, originalWeight * W_M4_NOISE_DECAY_FACTOR);
+                    hit.setAdjustedWeight(reducedWeight);
+                }
+            }
+        }
+    }
+
+    /**
+     * 对 W-P4 噪音进行衰减处理。
+     */
+    private void applyW_P4NoiseReduction(List<RuleHit> hits) {
+        if (!isW_P4Noise(hits)) {
+            return;
+        }
+
+        for (RuleHit hit : hits) {
+            if ("W-P4".equals(hit.getRuleCode())) {
+                Integer originalWeight = effectiveWeight(hit);
+                if (originalWeight != null) {
+                    int reducedWeight = (int) Math.max(1, originalWeight * W_P4_NOISE_DECAY_FACTOR);
+                    hit.setAdjustedWeight(reducedWeight);
+                }
+            }
+        }
     }
 }

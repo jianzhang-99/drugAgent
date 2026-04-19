@@ -403,6 +403,8 @@ const buildTenderResult = (
   answer,
   riskLevel: score >= 80 ? 'high' : score >= 60 ? 'medium' : 'low',
   score,
+  reasoningContent:
+    '我先比对两份标书的关键字段，再按相似度、联系信息和报价结构拆分风险点，最后整理成可直接展示的审查结论。',
   managementSummary: '建议进入人工复核流程并保留证据链。',
   suggestedActions: ['查看结构化风险详情', '导出审查报告', '发起人工复核任务'],
   caseId: buildId('case'),
@@ -502,7 +504,7 @@ const messageMap: Record<string, ChatMessage[]> = {
       role: 'assistant',
       type: 'assistant_text',
       content:
-        '欢迎进入标书审查工作台。你可以直接提问，也可以上传多份标书进行围标、雷同和风险线索分析。',
+        '欢迎进入标书审查工作台。你可以直接提问，也可以上传多份标书进行雷同和风险线索分析。',
       createdAt: nowIso(),
     },
     {
@@ -514,7 +516,7 @@ const messageMap: Record<string, ChatMessage[]> = {
       createdAt: nowIso(),
       metadata: buildTenderResult(
         '两份文件在技术方案、商务响应和联系人字段上存在较强同源迹象。',
-        '初步审查显示，这组文件存在较高围标风险，建议优先查看技术方案雷同段落和联系方式交叉证据。'
+        '初步审查显示，这组文件存在较高风险，建议优先查看技术方案雷同段落和联系方式交叉证据。'
       ) as Record<string, any>,
     },
   ],
@@ -580,6 +582,75 @@ function buildReply(query = ''): DrugAgentResp {
   };
 }
 
+function buildReasoningContent(query: string | undefined, isTenderReview: boolean): string {
+  if (isTenderReview) {
+    return '我先在 mock 数据里比对两份标书的关键字段，再把相似度、联系人和报价异常拆成可展示的结论。';
+  }
+  const normalized = (query || '').trim().toLowerCase();
+  if (!normalized) {
+    return '我先确认当前输入为空，再按通用问答流程组织一个简短回复。';
+  }
+  return '我先确认这是通用对话场景，再结合最近上下文组织回答，不会把标书审查的结论混到普通问答里。';
+}
+
+export function streamChat(req: ChatRequest): ReadableStream<DrugAgentResp> {
+  const resp = buildReply(req.query);
+  const isTenderReview =
+    !!req.query &&
+    (req.query.includes('瀹℃煡') ||
+      req.query.includes('鏍囦功') ||
+      req.query.includes('鍥存爣') ||
+      req.query.includes('闆峰悓') ||
+      req.query.includes('鏌ラ噸'));
+  resp.reasoningContent = buildReasoningContent(req.query, isTenderReview);
+
+  const sessionId = req.sessionId || sessions[0]?.id || 'session_mock_1';
+  const list = messageMap[sessionId] || [];
+  list.push({
+    id: buildId('msg'),
+    sessionId,
+    role: 'user',
+    type: 'user_text',
+    content: req.query || '',
+    createdAt: nowIso(),
+  });
+  messageMap[sessionId] = list;
+
+  return new ReadableStream<DrugAgentResp>({
+    async start(controller) {
+      const reasoningChunks = resp.reasoningContent ? [resp.reasoningContent] : [];
+      const answerText = resp.answer || resp.summary || '';
+      const answerChunks = answerText.match(/.{1,24}/g) || [answerText];
+
+      for (const chunk of reasoningChunks) {
+        controller.enqueue({
+          sessionId,
+          traceId: resp.traceId,
+          scene: resp.scene,
+          reasoningContent: chunk,
+          streamed: true,
+        });
+        await wait(60);
+      }
+
+      for (const chunk of answerChunks) {
+        if (!chunk) continue;
+        controller.enqueue({
+          sessionId,
+          traceId: resp.traceId,
+          scene: resp.scene,
+          answer: chunk,
+          streamed: true,
+        });
+        await wait(60);
+      }
+
+      pushAssistantResult(sessionId, resp);
+      controller.close();
+    },
+  });
+}
+
 export async function getSessions(): ApiEnvelope<ChatSession[]> {
   await wait();
   return ok([...sessions].sort((a, b) => +new Date(b.updatedAt) - +new Date(a.updatedAt)));
@@ -595,7 +666,7 @@ export async function getModels(): ApiEnvelope<ModelInfo[]> {
   await wait(100);
   return ok([
     { model: 'minimax', name: 'MiniMax', isDefault: true, available: true },
-    { model: 'dashscope', name: '阿里云百炼', isDefault: false, available: true },
+    { model: 'dashscope', name: '横渡大模型', isDefault: false, available: true },
   ]);
 }
 
@@ -673,6 +744,7 @@ export async function chat(req: ChatRequest): ApiEnvelope<DrugAgentResp> {
   messageMap[sessionId] = list;
   const resp = buildReply(req.query);
   resp.sessionId = sessionId;
+  resp.reasoningContent = buildReasoningContent(req.query, false);
   pushAssistantResult(sessionId, resp);
   return ok(resp);
 }
@@ -713,6 +785,7 @@ export async function submit(
     86
   );
   resp.sessionId = targetSessionId;
+  resp.reasoningContent = buildReasoningContent(query, true);
   resp.documentIds = attachments.map((item) => item.id);
   pushAssistantResult(targetSessionId, resp);
   return ok(resp);

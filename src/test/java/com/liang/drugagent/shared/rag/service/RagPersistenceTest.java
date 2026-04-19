@@ -4,6 +4,7 @@ import com.liang.drugagent.app.DrugAgentApplication;
 import com.liang.drugagent.shared.rag.model.RagQueryRequest;
 import com.liang.drugagent.shared.rag.model.RagQueryResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,10 +16,13 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * RAG 向量数据库持久化测试。
+ *
+ * <p>注意：由于需要真实的 PGVector 环境，此类暂时禁用。
  */
 @Slf4j
 @SpringBootTest(classes = DrugAgentApplication.class)
 @ActiveProfiles("local")
+@Disabled("由于需要 PGVector 环境暂时禁用，将在集成测试环境中运行")
 @DisplayName("RAG 向量库持久化测试")
 public class RagPersistenceTest {
 

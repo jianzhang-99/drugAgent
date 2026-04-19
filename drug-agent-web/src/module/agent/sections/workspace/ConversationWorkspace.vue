@@ -83,8 +83,8 @@ const quickActions = [
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>',
     color: 'indigo',
     label: '标书审查',
-    desc: '帮我对比新上传的这几份标书文件，检查是否有雷同或围标嫌疑。',
-    prompt: '帮我对比新上传的这几份标书文件，检查是否有雷同或围标嫌疑。',
+    desc: '帮我对比新上传的这几份标书文件，检查是否有雷同或风险嫌疑。',
+    prompt: '帮我对比新上传的这几份标书文件，检查是否有雷同或风险嫌疑。',
   },
   {
     icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10.4 12.6a2 2 0 1 1 3 3L8 21l-4 1 1-4Z"/><path d="M16 10.5 22 16"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M22 6l-6-6"/><path d="M7 21h10a2 2 0 0 0 2-2V8m0 0H14a2 2 0 0 1-2-2V2H7a2 2 0 0 0-2 2v10.5"/></svg>',
@@ -139,7 +139,7 @@ watch(
 
 // 流式内容变化时滚动到底部
 watch(
-  () => store.streamingContent,
+  () => [store.streamingContent, store.streamingReasoningContent],
   () => {
     if (store.streaming) {
       scrollToBottom();

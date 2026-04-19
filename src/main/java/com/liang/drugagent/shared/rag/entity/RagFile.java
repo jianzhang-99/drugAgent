@@ -37,6 +37,7 @@ public class RagFile {
 
     private BigDecimal fileSize;
 
+    @TableField(exist = false)
     private String orgId;
 
     private String scene;

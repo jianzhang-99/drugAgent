@@ -55,6 +55,7 @@ export const useAgentStore = defineStore('agent', () => {
   /** 流式输出状态 */
   const streaming = ref(false);
   const streamingContent = ref('');
+  const streamingReasoningContent = ref('');
   const streamingMessageId = ref<string | null>(null);
 
   /** 语音状态 */
@@ -305,7 +306,7 @@ export const useAgentStore = defineStore('agent', () => {
       console.log('[agentStore] sendMessage fileIds, sessionId=' + activeSessionId.value + ', count=' + currentFileIds.length + ', ids=' + JSON.stringify(currentFileIds));
 
       // 根据是否有文件判断是否使用流式（复杂场景如标书审查不使用流式）
-      const useStream = currentFileIds.length === 0 && !activeSession.value?.scene;
+      const useStream = currentFileIds.length === 0;
 
       if (useStream) {
         // 使用流式输出
@@ -369,10 +370,11 @@ export const useAgentStore = defineStore('agent', () => {
     // 重置流式状态
     streaming.value = true;
     streamingContent.value = '';
+    streamingReasoningContent.value = '';
     streamingMessageId.value = null;
 
     // 创建初始助手消息
-    const assistantMsg = createAssistantMessage('');
+    const assistantMsg = createAssistantMessage('', '');
     assistantMsg.id = `stream_${Date.now()}`;
     streamingMessageId.value = assistantMsg.id;
     addMessage(assistantMsg);
@@ -382,6 +384,7 @@ export const useAgentStore = defineStore('agent', () => {
       const reader = stream.getReader();
 
       let fullContent = '';
+      let fullReasoning = '';
 
       while (true) {
         const { done, value } = await reader.read();
@@ -390,14 +393,20 @@ export const useAgentStore = defineStore('agent', () => {
         if (value?.answer) {
           fullContent += value.answer;
           streamingContent.value = fullContent;
+        }
 
-          // 更新消息内容
-          if (streamingMessageId.value) {
-            const messages = messagesBySession.value[activeSessionId.value!];
-            const msg = messages?.find(m => m.id === streamingMessageId.value);
-            if (msg) {
-              msg.content = fullContent;
-            }
+        if (value?.reasoningContent) {
+          fullReasoning += value.reasoningContent;
+          streamingReasoningContent.value = fullReasoning;
+        }
+
+        // 更新消息内容
+        if (streamingMessageId.value) {
+          const messages = messagesBySession.value[activeSessionId.value!];
+          const msg = messages?.find(m => m.id === streamingMessageId.value);
+          if (msg) {
+            msg.content = fullContent;
+            msg.reasoningContent = fullReasoning;
           }
         }
 
@@ -420,6 +429,7 @@ export const useAgentStore = defineStore('agent', () => {
         if (msg && fullContent) {
           // 保留流式内容作为最终消息
           msg.content = fullContent;
+          msg.reasoningContent = fullReasoning;
         }
       }
     } catch (error: unknown) {
@@ -435,6 +445,7 @@ export const useAgentStore = defineStore('agent', () => {
     } finally {
       streaming.value = false;
       streamingContent.value = '';
+      streamingReasoningContent.value = '';
       streamingMessageId.value = null;
     }
   }
@@ -710,6 +721,7 @@ export const useAgentStore = defineStore('agent', () => {
     sending,
     streaming,
     streamingContent,
+    streamingReasoningContent,
     streamingMessageId,
     speechRecognizing,
     speechSynthesizing,

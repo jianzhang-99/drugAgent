@@ -254,6 +254,7 @@ public class AgentController {
         metadata.put("riskLevel", workflowResult.getRiskLevel());
         metadata.put("score", workflowResult.getScore());
         metadata.put("report", workflowResult.getReport());
+        metadata.put("reportData", workflowResult.getReportData());
         metadata.put("evidenceList", workflowResult.getEvidenceList());
         metadata.put("evidenceGroups", workflowResult.getEvidenceGroups());
         metadata.put("steps", workflowResult.getSteps());

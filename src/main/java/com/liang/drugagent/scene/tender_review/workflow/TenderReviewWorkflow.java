@@ -10,6 +10,8 @@ import com.liang.drugagent.scene.tender_review.model.RuleHit;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewRagEvidence;
 import com.liang.drugagent.scene.tender_review.model.TenderDocument;
 import com.liang.drugagent.scene.tender_review.model.TenderReviewData;
+import com.liang.drugagent.scene.tender_review.semantic.analyzer.CaseDataAnalyzer;
+import com.liang.drugagent.scene.tender_review.semantic.analyzer.CommercialTermsAnalyzer;
 import com.liang.drugagent.scene.tender_review.semantic.analyzer.CommercialCoordinationSemanticAnalyzer;
 import com.liang.drugagent.scene.tender_review.semantic.analyzer.ImplementationMethodSemanticAnalyzer;
 import com.liang.drugagent.scene.tender_review.semantic.analyzer.ProposalSemanticAnalyzer;
@@ -77,6 +79,8 @@ public class TenderReviewWorkflow {
     private final CommercialCoordinationSemanticAnalyzer commercialCoordinationSemanticAnalyzer;
     private final ImplementationMethodSemanticAnalyzer implementationMethodSemanticAnalyzer;
     private final ServiceCommitmentSemanticAnalyzer serviceCommitmentSemanticAnalyzer;
+    private final CaseDataAnalyzer caseDataAnalyzer;
+    private final CommercialTermsAnalyzer commercialTermsAnalyzer;
     private final TeamOverlapSemanticAnalyzer teamOverlapSemanticAnalyzer;
     private final Executor semanticAnalyzerExecutor;
     private final boolean l4ValidationEnabled;
@@ -104,6 +108,8 @@ public class TenderReviewWorkflow {
                                 CommercialCoordinationSemanticAnalyzer commercialCoordinationSemanticAnalyzer,
                                 ImplementationMethodSemanticAnalyzer implementationMethodSemanticAnalyzer,
                                 ServiceCommitmentSemanticAnalyzer serviceCommitmentSemanticAnalyzer,
+                                CaseDataAnalyzer caseDataAnalyzer,
+                                CommercialTermsAnalyzer commercialTermsAnalyzer,
                                 TeamOverlapSemanticAnalyzer teamOverlapSemanticAnalyzer,
                                 @Qualifier("semanticAnalyzerExecutor") Executor semanticAnalyzerExecutor,
                                 @Value("${agent.tender-review.l4-validation-enabled:true}") boolean l4ValidationEnabled) {
@@ -122,6 +128,8 @@ public class TenderReviewWorkflow {
         this.commercialCoordinationSemanticAnalyzer = commercialCoordinationSemanticAnalyzer;
         this.implementationMethodSemanticAnalyzer = implementationMethodSemanticAnalyzer;
         this.serviceCommitmentSemanticAnalyzer = serviceCommitmentSemanticAnalyzer;
+        this.caseDataAnalyzer = caseDataAnalyzer;
+        this.commercialTermsAnalyzer = commercialTermsAnalyzer;
         this.teamOverlapSemanticAnalyzer = teamOverlapSemanticAnalyzer;
         this.semanticAnalyzerExecutor = semanticAnalyzerExecutor;
         this.l4ValidationEnabled = l4ValidationEnabled;
@@ -706,7 +714,7 @@ public class TenderReviewWorkflow {
      */
     private SemanticAnalysisResult executeSemanticAnalyzers(TenderReviewData tenderReviewData) {
         String caseId = tenderReviewData.getACase() != null ? tenderReviewData.getACase().getCaseId() : "unknown";
-        log.info("[TenderReviewWorkflow] 开始执行 LLM 语义分析（6个分析器并行） - caseId: {}", caseId);
+        log.info("[TenderReviewWorkflow] 开始执行 LLM 语义分析（8个分析器并行） - caseId: {}", caseId);
 
         // 使用线程安全的Map记录各分析器状态
         Map<String, String> analyzerStatus = new ConcurrentHashMap<>();
@@ -721,10 +729,12 @@ public class TenderReviewWorkflow {
                 new AnalyzerTask("W-M8", data -> commercialCoordinationSemanticAnalyzer.analyze(data)),
                 new AnalyzerTask("W-P2", data -> implementationMethodSemanticAnalyzer.analyze(data)),
                 new AnalyzerTask("W-P3", data -> serviceCommitmentSemanticAnalyzer.analyze(data)),
-                new AnalyzerTask("W-M3", data -> teamOverlapSemanticAnalyzer.analyze(data))
+                new AnalyzerTask("W-M3", data -> teamOverlapSemanticAnalyzer.analyze(data)),
+                new AnalyzerTask("W-M6", data -> commercialTermsAnalyzer.analyze(data)),
+                new AnalyzerTask("W-P6", data -> caseDataAnalyzer.analyze(data))
         );
 
-        // 并行执行所有6个分析器，每个独立超时30秒
+        // 并行执行所有8个分析器，每个独立超时30秒
         List<CompletableFuture<Void>> futures = tasks.stream()
                 .map(task -> CompletableFuture.runAsync(() -> {
                     try {

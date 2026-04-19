@@ -4,11 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.liang.drugagent.scene.tender_review.model.semantic.TenderSemanticJudgeReq;
 import com.liang.drugagent.scene.tender_review.model.semantic.TenderSemanticJudgeResp;
 import com.liang.drugagent.scene.tender_review.service.TenderSemanticReviewService;
+import com.liang.drugagent.shared.llm.LlmRequest;
 import com.liang.drugagent.shared.llm.LlmResponse;
 import com.liang.drugagent.shared.llm.LlmService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -48,6 +50,25 @@ class TenderSemanticReviewServiceTest {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         tenderSemanticReviewService = new TenderSemanticReviewService(
                 llmService, objectMapper, executor);
+    }
+
+    private LlmResponse buildSuccessResponse(String ruleCode) {
+        String content = String.format("""
+                {
+                    "hit": false,
+                    "ruleCode": "%s",
+                    "confidence": 0.80,
+                    "suggestedWeight": 40,
+                    "conclusion": "测试结论",
+                    "reason": "测试理由",
+                    "evidences": [],
+                    "cautionNotes": []
+                }
+                """, ruleCode);
+        return LlmResponse.builder()
+                .success(true)
+                .content(content)
+                .build();
     }
 
     /**
@@ -287,4 +308,54 @@ class TenderSemanticReviewServiceTest {
         assertFalse(result.getHit());
         assertEquals(0.3, result.getConfidence());
     }
+    @Test
+    void shouldUseWM6SpecificPrompt() throws Exception {
+        when(llmService.chat(any())).thenReturn(buildSuccessResponse("W-M6"));
+
+        TenderSemanticJudgeReq req = TenderSemanticJudgeReq.builder()
+                .caseId("case-m6")
+                .ruleCode("W-M6")
+                .compareTopic("商务条款")
+                .leftSnippets(List.of("付款条件A：完全接受"))
+                .rightSnippets(List.of("付款条件B：仅微调"))
+                .leftDocumentId("doc-1")
+                .rightDocumentId("doc-2")
+                .build();
+
+        tenderSemanticReviewService.judge(req);
+
+        ArgumentCaptor<LlmRequest> captor = ArgumentCaptor.forClass(LlmRequest.class);
+        verify(llmService).chat(captor.capture());
+
+        String prompt = captor.getValue().getMessages().get(0).getContent();
+        assertTrue(prompt.contains("W-M6"));
+        assertTrue(prompt.contains("商务条款雷同"));
+        assertFalse(prompt.contains("W-P1"));
+    }
+
+    @Test
+    void shouldUseWP6SpecificPrompt() throws Exception {
+        when(llmService.chat(any())).thenReturn(buildSuccessResponse("W-P6"));
+
+        TenderSemanticJudgeReq req = TenderSemanticJudgeReq.builder()
+                .caseId("case-p6")
+                .ruleCode("W-P6")
+                .compareTopic("案例数据")
+                .leftSnippets(List.of("案例：8家工厂、600余家供应商"))
+                .rightSnippets(List.of("案例：8家工厂、600余家供应商"))
+                .leftDocumentId("doc-1")
+                .rightDocumentId("doc-2")
+                .build();
+
+        tenderSemanticReviewService.judge(req);
+
+        ArgumentCaptor<LlmRequest> captor = ArgumentCaptor.forClass(LlmRequest.class);
+        verify(llmService).chat(captor.capture());
+
+        String prompt = captor.getValue().getMessages().get(0).getContent();
+        assertTrue(prompt.contains("W-P6"));
+        assertTrue(prompt.contains("案例数据抄袭"));
+        assertFalse(prompt.contains("W-P1"));
+    }
+
 }

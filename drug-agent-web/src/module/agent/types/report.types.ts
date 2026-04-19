@@ -17,7 +17,7 @@ export interface ReportData {
 export interface ExecutiveSummary {
   /** 结论正文（人话，不是"高风险"） */
   conclusionText: string;
-  /** 风险综合判定标签，如"重大围标风险" */
+  /** 风险综合判定标签，如"重大风险" */
   riskLevelLabel?: string;
   /** 3个业务指标（按原型：有效违规命中/关联证据簇/参与审查文书） */
   metrics: {
@@ -34,6 +34,9 @@ export interface ExecutiveSummary {
   reviewNote: string;
   /** 兼容旧版 V3 */
   riskLevel?: string;
+  primaryRiskName?: string;
+  primaryRiskCode?: string;
+  primaryRiskType?: string;
   riskScore?: number;
   overallConclusion?: string;
   recommendedAction?: string;

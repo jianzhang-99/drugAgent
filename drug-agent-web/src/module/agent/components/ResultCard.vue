@@ -18,13 +18,13 @@
               </svg>
             </div>
             <div>
-              <div class="scene-name">标书围标风险审查</div>
+              <div class="scene-name">标书审查</div>
               <div class="trace-id" v-if="data?.traceId">TRACE · {{ shortTraceId }}</div>
             </div>
           </div>
           <div class="risk-badge" :class="`badge-${derivedLevel}`">
             <span class="badge-dot"></span>
-            {{ riskLabel }}
+            {{ riskBadgeText }}
           </div>
         </div>
 
@@ -106,6 +106,17 @@ const riskLabel = computed(() => {
   return map[derivedLevel.value] || '未知';
 });
 
+const primaryRiskName = computed(() => {
+  return props.data?.reportData?.executiveSummary?.primaryRiskName
+    || props.data?.report?.riskItems?.[0]?.title
+    || props.data?.report?.riskItems?.[0]?.summary
+    || '';
+});
+
+const riskBadgeText = computed(() => {
+  return primaryRiskName.value ? `${riskLabel.value} · ${primaryRiskName.value}` : riskLabel.value;
+});
+
 // 显示分数（优先用后端原始分，否则用计算分）
 const displayScore = computed(() => {
   if (props.data?.score !== undefined) return props.data.score;
@@ -121,10 +132,8 @@ const conclusionText = computed(() => {
     return backendSummary;
   }
   const level = derivedLevel.value;
-  if (level === 'high') return `发现明显围标特征，建议立即人工复核`;
-  if (level === 'medium') return `存在疑似特征，建议进行人工核查`;
-  if (level === 'low') return `相似度较低，持续关注即可`;
-  if (level === 'safe') return `未发现明显围标嫌疑`;
+  if (level === 'high') return `发现明显风险特征，建议立即人工复核`;
+  if (level === 'safe') return `未发现明显风险嫌疑`;
   return '风险等级待确认';
 });
 

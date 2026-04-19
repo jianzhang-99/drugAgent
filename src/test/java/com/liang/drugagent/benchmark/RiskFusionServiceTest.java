@@ -522,4 +522,61 @@ class RiskFusionServiceTest {
         // 使用adjustedWeight=90，应触发HIGH_PRIORITY_RULE
         assertTrue(result.getReasonCodes().contains("HIGH_PRIORITY_RULE"), "应使用adjustedWeight计算");
     }
+    /**
+     * 测试：当 W-M4 与更具体的规则共存时，需降低 W-M4 的权重。
+     */
+    @Test
+    void shouldDownweightWM4WhenSpecificRulesCoexist() {
+        TenderReviewData data = new TenderReviewData();
+        RuleHit wm4Hit = RuleHit.builder()
+                .ruleCode("W-M4")
+                .ruleName("版式模板同源")
+                .weight(70)
+                .confidence(0.8)
+                .priority("MEDIUM")
+                .documentIds(List.of("doc-1", "doc-2"))
+                .build();
+        RuleHit wm6Hit = RuleHit.builder()
+                .ruleCode("W-M6")
+                .ruleName("商务条款雷同")
+                .weight(60)
+                .confidence(0.8)
+                .priority("MEDIUM")
+                .documentIds(List.of("doc-1", "doc-2"))
+                .build();
+
+        riskFusionService.fuse(data, List.of(wm4Hit, wm6Hit), null);
+
+        assertNotNull(wm4Hit.getAdjustedWeight());
+        assertTrue(wm4Hit.getAdjustedWeight() < wm4Hit.getWeight());
+    }
+
+    /**
+     * 测试：当 W-P4 与更具体的文本规则共存时，需降低 W-P4 的权重。
+     */
+    @Test
+    void shouldDownweightWP4WhenSpecificRulesCoexist() {
+        TenderReviewData data = new TenderReviewData();
+        RuleHit wp4Hit = RuleHit.builder()
+                .ruleCode("W-P4")
+                .ruleName("风险识别抄袭")
+                .weight(85)
+                .confidence(0.8)
+                .priority("MEDIUM_HIGH")
+                .documentIds(List.of("doc-1", "doc-2"))
+                .build();
+        RuleHit wp6Hit = RuleHit.builder()
+                .ruleCode("W-P6")
+                .ruleName("案例数据抄袭")
+                .weight(70)
+                .confidence(0.8)
+                .priority("MEDIUM_HIGH")
+                .documentIds(List.of("doc-1", "doc-2"))
+                .build();
+
+        riskFusionService.fuse(data, List.of(wp4Hit, wp6Hit), null);
+
+        assertNotNull(wp4Hit.getAdjustedWeight());
+        assertTrue(wp4Hit.getAdjustedWeight() < wp4Hit.getWeight());
+    }
 }

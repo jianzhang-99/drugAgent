@@ -84,6 +84,9 @@ public class ReportData {
         private String reviewNote;
         /** 兼容旧版 */
         private String riskLevel;
+        private String primaryRiskName;
+        private String primaryRiskCode;
+        private String primaryRiskType;
         private Integer riskScore;
         private String overallConclusion;
         private String recommendedAction;

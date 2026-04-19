@@ -46,7 +46,7 @@
         <t-textarea
           v-model="queryText"
           :autosize="{ minRows: 2, maxRows: 4 }"
-          placeholder="补充你的审查重点，例如：优先看围标、商务条款或技术方案雷同。"
+          placeholder="补充你的审查重点，例如：优先看商务条款或技术方案雷同。"
         />
       </div>
     </div>

@@ -26,6 +26,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -914,6 +915,7 @@ public class ReportGenerationService {
                                                              EvidenceAssemblyResult evidenceAssemblyResult) {
         String riskLevelCode = normalizeRiskLevelCode(fusionResult == null ? null : fusionResult.getRiskLevel());
         String riskLevelLabel = resolveRiskLevelLabel(riskLevelCode);
+        RuleHit primaryHit = pickPrimaryHit(effectiveHits);
         int hitCount = effectiveHits == null ? 0 : effectiveHits.size();
         int evidenceCount = evidenceAssemblyResult == null ? 0 : evidenceAssemblyResult.getGroups().size();
         int docCount = data == null || data.getDocuments() == null ? 0 : data.getDocuments().size();
@@ -924,6 +926,9 @@ public class ReportGenerationService {
         return ReportData.ExecutiveSummary.builder()
                 .conclusionText(conclusionText)
                 .riskLevelLabel(riskLevelLabel)
+                .primaryRiskName(primaryHit == null ? null : buildCoreRiskTitle(primaryHit))
+                .primaryRiskCode(primaryHit == null ? null : primaryHit.getRuleCode())
+                .primaryRiskType(primaryHit == null ? null : resolveCategoryName(resolveGroupKeyForReport(primaryHit)))
                 .metrics(ReportData.ExecutiveSummary.Metrics.builder()
                         .effectiveHits(hitCount)
                         .evidenceClusters(evidenceCount)
@@ -939,41 +944,187 @@ public class ReportGenerationService {
 
     /**
      * 按原型生成 V2 版本的完整结论正文。
+     * 根据实际命中的规则、数量、置信度生成个性化结论。
      */
     private String buildV2Conclusion(List<RuleHit> effectiveHits, RiskFusionResult fusionResult, EvidenceAssemblyResult evidenceAssemblyResult) {
         if (effectiveHits == null || effectiveHits.isEmpty()) {
             return "本次比对未发现明显的高风险线索，当前材料在报价结构、核心团队成员和关键条款表述上未见显著异常。";
         }
 
-        // 统计各类型命中
-        long pricingHits = effectiveHits.stream().filter(h -> "pricing".equals(resolveGroupKeyForReport(h))).count();
-        long teamHits = effectiveHits.stream().filter(h -> "team".equals(resolveGroupKeyForReport(h))).count();
-        long textHits = effectiveHits.stream().filter(h -> "text_similarity".equals(resolveGroupKeyForReport(h))).count();
+        // 按权重排序获取关键命中
+        List<RuleHit> sortedHits = new ArrayList<>(effectiveHits);
+        sortedHits.sort(Comparator.comparing(this::effectiveWeight, Comparator.nullsLast(Comparator.reverseOrder())));
+        RuleHit topHit = sortedHits.get(0);
 
-        StringBuilder builder = new StringBuilder("本次比对发现两份投标文件");
-        List<String> findings = new ArrayList<>();
+        // 统计各类型
+        Map<String, Long> typeCount = effectiveHits.stream()
+                .collect(Collectors.groupingBy(h -> resolveGroupKeyForReport(h), Collectors.counting()));
 
-        if (pricingHits > 0) {
-            findings.add("报价结构出现规律性价差");
-        }
-        if (teamHits > 0) {
-            findings.add("核心团队中多名成员重复");
-        }
-        if (textHits > 0) {
-            findings.add("技术方案与风险应对内容存在高度相似表述");
+        // 获取高置信度命中
+        List<RuleHit> highConfidenceHits = effectiveHits.stream()
+                .filter(h -> h.getConfidence() != null && h.getConfidence() >= 0.85)
+                .toList();
+
+        String riskLevel = fusionResult == null ? "MEDIUM" : fusionResult.getRiskLevel();
+        int totalHits = effectiveHits.size();
+        String topRuleName = resolveDisplayLabel(topHit.getRuleCode());
+        String topRuleCode = topHit.getRuleCode();
+
+        StringBuilder builder = new StringBuilder();
+
+        // 第一句：根据风险等级和命中数量生成开场
+        if ("HIGH".equals(riskLevel)) {
+            builder.append("本次比对发现两份投标文件存在高度协同特征，共识别出").append(totalHits).append("条异常线索");
+            if (topRuleName != null && !topRuleName.equals(topHit.getRuleCode())) {
+                builder.append("，其中「").append(topRuleName).append("」风险最为突出");
+            }
+            builder.append("。");
+        } else if ("MEDIUM".equals(riskLevel)) {
+            builder.append("本次比对发现两份投标文件存在多处相似特征，共计").append(totalHits).append("条异常线索");
+            if (typeCount.size() > 1) {
+                builder.append("，涵盖").append(typeCount.size()).append("个风险维度");
+            }
+            builder.append("。");
+        } else {
+            builder.append("本次比对发现两份投标文件存在一定相似性，共计").append(totalHits).append("条异常线索");
+            if (typeCount.size() > 0) {
+                String topType = resolveCategoryName(typeCount.entrySet().stream()
+                        .max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse("auxiliary"));
+                builder.append("，以").append(topType).append("为主");
+            }
+            builder.append("。");
         }
 
-        if (!findings.isEmpty()) {
-            builder.append(findings.get(0));
-            for (int i = 1; i < findings.size(); i++) {
-                builder.append("、").append(findings.get(i));
+        // 第二句：描述具体发现（根据命中类型）
+        List<String> specificFindings = buildSpecificFindings(sortedHits, typeCount, highConfidenceHits);
+        if (!specificFindings.isEmpty()) {
+            builder.append(specificFindings.get(0));
+            if (specificFindings.size() > 1) {
+                builder.append("；");
+                for (int i = 1; i < specificFindings.size(); i++) {
+                    builder.append(specificFindings.get(i));
+                    if (i < specificFindings.size() - 1) {
+                        builder.append("；");
+                    } else {
+                        builder.append("。");
+                    }
+                }
+            } else {
+                builder.append("。");
             }
         }
 
-        builder.append("。上述线索共同指向两份文件可能存在非独立编制或协同编写风险。");
-        builder.append("建议先暂停自动通过流程，进入人工重点复核。");
+        // 第三句：风险解读
+        if ("HIGH".equals(riskLevel)) {
+            builder.append("上述多项高置信度线索交叉印证，共同指向两份文件存在非独立编制或协同编写的较大可能。");
+        } else if ("MEDIUM".equals(riskLevel)) {
+            builder.append("上述相似特征超出了正常独立编制的合理范围，建议结合业务背景进行人工复核。");
+        } else {
+            builder.append("当前线索置信度有限，但仍建议关注是否存在联合投标准入限制情形。");
+        }
+
+        // 第四句：处置建议
+        if ("HIGH".equals(riskLevel)) {
+            builder.append("建议暂停自动通过流程，由评标委员会对核心异常段落开展人工重点复核。");
+        } else if ("MEDIUM".equals(riskLevel)) {
+            builder.append("建议在评标过程中补充人工核验环节，重点关注报价形成依据和人员独立性。");
+        } else {
+            builder.append("建议将该线索纳入评标参考，必要时在复核意见中注明系统识别结果。");
+        }
 
         return builder.toString();
+    }
+
+    /**
+     * 根据命中类型生成具体发现描述。
+     */
+    private List<String> buildSpecificFindings(List<RuleHit> sortedHits,
+                                               Map<String, Long> typeCount,
+                                               List<RuleHit> highConfidenceHits) {
+        List<String> findings = new ArrayList<>();
+
+        // 报价风险
+        if (typeCount.containsKey("pricing")) {
+            long count = typeCount.get("pricing");
+            RuleHit pricingHit = sortedHits.stream()
+                    .filter(h -> "pricing".equals(resolveGroupKeyForReport(h)))
+                    .findFirst().orElse(null);
+
+            String ruleName = pricingHit != null ? resolveDisplayLabel(pricingHit.getRuleCode()) : "报价梯度异常";
+            String evidence = "";
+            if (pricingHit != null && pricingHit.getConfidence() != null) {
+                evidence = "置信度" + String.format("%.0f", pricingHit.getConfidence() * 100) + "%";
+            }
+            if (pricingHit != null && pricingHit.getTriggerSummary() != null && !pricingHit.getTriggerSummary().isBlank()) {
+                evidence = pricingHit.getTriggerSummary();
+            }
+
+            String finding = "报价维度命中「" + ruleName + "」" + count + "处";
+            if (!evidence.isBlank() && evidence.length() < 50) {
+                finding += "（" + evidence + "）";
+            }
+            findings.add(finding);
+        }
+
+        // 团队风险
+        if (typeCount.containsKey("team")) {
+            long count = typeCount.get("team");
+            RuleHit teamHit = sortedHits.stream()
+                    .filter(h -> "team".equals(resolveGroupKeyForReport(h)))
+                    .findFirst().orElse(null);
+
+            String ruleName = teamHit != null ? resolveDisplayLabel(teamHit.getRuleCode()) : "核心团队重复";
+            String detail = "";
+            if (teamHit != null && teamHit.getEvidences() != null && !teamHit.getEvidences().isEmpty()) {
+                RuleEvidence ev = teamHit.getEvidences().get(0);
+                if (ev.getMatchedValue() != null && !ev.getMatchedValue().isBlank()) {
+                    String name = ev.getMatchedValue();
+                    if (name.length() > 15) {
+                        name = name.substring(0, 15) + "...";
+                    }
+                    detail = "涉及人员「" + name + "」";
+                }
+            }
+
+            String finding = "团队维度命中「" + ruleName + "」" + count + "处";
+            if (!detail.isBlank()) {
+                finding += "，" + detail;
+            }
+            findings.add(finding);
+        }
+
+        // 文本相似风险
+        if (typeCount.containsKey("text_similarity")) {
+            long count = typeCount.get("text_similarity");
+            RuleHit textHit = sortedHits.stream()
+                    .filter(h -> "text_similarity".equals(resolveGroupKeyForReport(h)))
+                    .findFirst().orElse(null);
+
+            String ruleName = textHit != null ? resolveDisplayLabel(textHit.getRuleCode()) : "关键条款相似";
+            String similarity = "";
+            if (textHit != null && textHit.getConfidence() != null) {
+                similarity = "相似度" + String.format("%.0f", textHit.getConfidence() * 100) + "%";
+            }
+
+            String finding = "文本维度命中「" + ruleName + "」" + count + "处";
+            if (!similarity.isBlank()) {
+                finding += "，" + similarity;
+            }
+            findings.add(finding);
+        }
+
+        // 模板同源风险
+        if (typeCount.containsKey("template")) {
+            long count = typeCount.get("template");
+            RuleHit templateHit = sortedHits.stream()
+                    .filter(h -> "template".equals(resolveGroupKeyForReport(h)))
+                    .findFirst().orElse(null);
+
+            String ruleName = templateHit != null ? resolveDisplayLabel(templateHit.getRuleCode()) : "模板同源";
+            findings.add("模板维度命中「" + ruleName + "」" + count + "处");
+        }
+
+        return findings;
     }
 
     private String buildV2RecommendedAction(List<RuleHit> effectiveHits, String riskLevelCode) {
@@ -1732,6 +1883,17 @@ public class ReportGenerationService {
                 .distinct()
                 .limit(3)
                 .collect(Collectors.joining("、"));
+    }
+
+    private RuleHit pickPrimaryHit(List<RuleHit> effectiveHits) {
+        if (effectiveHits == null || effectiveHits.isEmpty()) {
+            return null;
+        }
+        return effectiveHits.stream()
+                .filter(Objects::nonNull)
+                .sorted(Comparator.comparing(this::effectiveWeight, Comparator.nullsLast(Comparator.reverseOrder())))
+                .findFirst()
+                .orElse(null);
     }
 
     private String buildDecisionAction(List<RuleHit> effectiveHits, String riskLevelCode) {

@@ -124,6 +124,14 @@ public class AgentChatService {
                 } catch (Exception ex) {
                     log.warn("[AgentChatService] 序列化 metadata 失败，将以空 metadata 保存: {}", ex.getMessage());
                 }
+            } else if (executionResult.getReasoningContent() != null && !executionResult.getReasoningContent().isBlank()) {
+                messageType = "assistant_text";
+                try {
+                    AgentChatResp respForMetadata = agentResponseService.buildResponse(context, execution.getDecision(), executionResult);
+                    metadataJson = objectMapper.writeValueAsString(respForMetadata);
+                } catch (Exception ex) {
+                    log.warn("[AgentChatService] 序列化 reasoning metadata 失败，将以空 metadata 保存: {}", ex.getMessage());
+                }
             } else {
                 messageType = "assistant_text";
             }
@@ -254,21 +262,41 @@ public class AgentChatService {
 
                 // 6. 开启真流式返回 LLM 响应
                 final String finalSessionId = sessionId;
-                Flux<String> tokenStream = agentSceneService.streamGeneralChat(context);
+                final String finalTraceId = context.getTraceId();
+                Flux<LlmResponse> tokenStream = agentSceneService.streamGeneralChat(context);
                 StringBuilder fullAnswer = new StringBuilder();
+                StringBuilder fullReasoning = new StringBuilder();
 
-                tokenStream.subscribe(token -> {
-                    if (token != null && !token.isEmpty()) {
-                        fullAnswer.append(token);
-                        AgentChatResp resp = AgentChatResp.builder()
-                                .sessionId(finalSessionId)
-                                .traceId(req.getSessionId())
-                                .scene(SceneEnum.DEFAULT.name())
-                                .answer(token)
-                                .streamed(true)
-                                .build();
-                        sink.next(ServerSentEvent.<AgentChatResp>builder().event("message").data(resp).build());
+                tokenStream.subscribe(chunk -> {
+                    if (chunk == null) {
+                        return;
                     }
+
+                    String answerChunk = chunk.getContent();
+                    String reasoningChunk = chunk.getReasoningContent();
+                    boolean hasAnswer = answerChunk != null && !answerChunk.isEmpty();
+                    boolean hasReasoning = reasoningChunk != null && !reasoningChunk.isEmpty();
+
+                    if (!hasAnswer && !hasReasoning) {
+                        return;
+                    }
+
+                    if (hasAnswer) {
+                        fullAnswer.append(answerChunk);
+                    }
+                    if (hasReasoning) {
+                        fullReasoning.append(reasoningChunk);
+                    }
+
+                    AgentChatResp resp = AgentChatResp.builder()
+                            .sessionId(finalSessionId)
+                            .traceId(finalTraceId)
+                            .scene(SceneEnum.DEFAULT.name())
+                            .answer(hasAnswer ? answerChunk : null)
+                            .reasoningContent(hasReasoning ? reasoningChunk : null)
+                            .streamed(true)
+                            .build();
+                    sink.next(ServerSentEvent.<AgentChatResp>builder().event("message").data(resp).build());
                 }, error -> {
                     log.error("[AgentChatService] 流式传输失败", error);
                     sink.error(error);
@@ -278,6 +306,7 @@ public class AgentChatService {
                             .event("done")
                             .data(AgentChatResp.builder()
                                     .sessionId(finalSessionId)
+                                    .traceId(finalTraceId)
                                     .scene(SceneEnum.DEFAULT.name())
                                     .answer("")
                                     .streamed(true)
@@ -285,7 +314,21 @@ public class AgentChatService {
                             .build());
 
                     // 保存助手消息，落库
-                    agentMessageService.saveAssistantMessage(finalSessionId, fullAnswer.toString(), null, "assistant_text");
+                    String metadataJson = null;
+                    try {
+                        AgentChatResp respForMetadata = AgentChatResp.builder()
+                                .sessionId(finalSessionId)
+                                .traceId(finalTraceId)
+                                .scene(SceneEnum.DEFAULT.name())
+                                .answer(fullAnswer.toString())
+                                .reasoningContent(fullReasoning.toString())
+                                .streamed(true)
+                                .build();
+                        metadataJson = objectMapper.writeValueAsString(respForMetadata);
+                    } catch (Exception ex) {
+                        log.warn("[AgentChatService] 序列化流式通用对话 metadata 失败，将以空 metadata 保存: {}", ex.getMessage());
+                    }
+                    agentMessageService.saveAssistantMessage(finalSessionId, fullAnswer.toString(), metadataJson, "assistant_text");
                     agentSessionService.touchSession(finalSessionId, SceneEnum.DEFAULT.name());
                     agentSessionService.increaseMessageCount(finalSessionId, 2);
 

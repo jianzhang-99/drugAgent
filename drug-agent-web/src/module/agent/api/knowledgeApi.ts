@@ -218,6 +218,19 @@ export function deleteKnowledgeFile(ossFileId: string) {
 }
 
 /**
+ * 清空所有知识库文件
+ * 同时删除：向量库chunks + rag_file记录 + COS文件
+ */
+export function batchDeleteKnowledgeByOrgId() {
+  return request.delete<ApiResponse<{
+    message: string;
+    deletedRagFileCount: number;
+    deletedChunkCount: number;
+    deletedCosCount: number;
+  }>>(`/api/knowledge/cleanup/all`);
+}
+
+/**
  * 获取知识库文件列表（fileType=2）
  */
 export function getKnowledgeFiles(_orgId?: string) {

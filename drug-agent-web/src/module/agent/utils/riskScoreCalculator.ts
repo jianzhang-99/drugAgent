@@ -1,5 +1,5 @@
 /**
- * 围标风险综合评分算法
+ * 风险综合评分算法
  *
  * 采用多维度加权模型，综合以下四个维度计算 0~100 分的风险分：
  *
@@ -13,7 +13,7 @@
  * └─────────────────────────────────────────────────────┘
  *
  * 分数含义：
- *   85~100 → 高风险（围标特征明显）
+ *   85~100 → 高风险（风险特征明显）
  *   60~84  → 中风险（存在疑似特征）
  *   30~59  → 低风险（少量相似，需关注）
  *   0~29   → 安全（相似度极低）
@@ -224,11 +224,11 @@ export function calcRiskScore(data?: ResultData): RiskScoreBreakdown {
  */
 function interpretScore(score: number, ruleCount: number): string {
   if (score >= 85) return `综合风险极高，命中 ${ruleCount} 条规则，建议立即介入核实`;
-  if (score >= 70) return `围标特征较显著，已发现 ${ruleCount} 处疑似规律，需重点关注`;
+  if (score >= 70) return `风险特征较显著，已发现 ${ruleCount} 处疑似规律，需重点关注`;
   if (score >= 60) return `存在一定相似风险，命中 ${ruleCount} 条规则，建议人工复核`;
   if (score >= 40) return `相似度偏高，发现 ${ruleCount} 条潜在规则，可进一步观察`;
-  if (score >= 20) return `风险较低，仅存在少量形式相似，暂无明显围标特征`;
-  return '相似度极低，未发现围标风险特征';
+  if (score >= 20) return `风险较低，仅存在少量形式相似，暂无明显风险特征`;
+  return '相似度极低，未发现风险特征';
 }
 
 /**

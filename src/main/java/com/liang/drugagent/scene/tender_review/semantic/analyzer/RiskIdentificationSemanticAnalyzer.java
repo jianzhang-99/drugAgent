@@ -50,7 +50,7 @@ public class RiskIdentificationSemanticAnalyzer implements TenderSemanticAnalyze
     private static final String RISK_TYPE = "collusion";
     private static final String RULE_NAME = "风险识别语义抄袭";
     private static final double HIGH_CONFIDENCE_THRESHOLD = 0.85;
-    private static final double MEDIUM_CONFIDENCE_THRESHOLD = 0.60;
+    private static final double MEDIUM_CONFIDENCE_THRESHOLD = 0.70;
 
     private final TenderSemanticCandidateService candidateService;
     private final TenderSemanticReviewService reviewService;
@@ -178,17 +178,20 @@ public class RiskIdentificationSemanticAnalyzer implements TenderSemanticAnalyze
 
     /**
      * 根据置信度计算权重。
+     *
+     * <p>权重上限为 70，与 LLM_BASE_WEIGHT_CAP 保持一致，避免 W-P4 在融合阶段过度压制其他规则。
+     * 调整后的权重映射：0.90+ -> 70, 0.85+ -> 55, 0.70+ -> 35
      */
     private int calculateWeight(Double confidence) {
         if (confidence == null) {
             return 0;
         }
         if (confidence >= 0.90) {
-            return 80;
+            return 70;  // 原为 80，与 LLM_BASE_WEIGHT_CAP 看齐
         } else if (confidence >= HIGH_CONFIDENCE_THRESHOLD) {
-            return 60;
+            return 55;  // 原为 60，按比例调整
         } else {
-            return 40;
+            return 35;  // 原为 40，按比例调整
         }
     }
 

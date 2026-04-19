@@ -67,4 +67,9 @@ public class ModelBenchmarkResult {
      */
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime benchmarkTime;
+
+    /**
+     * 模型回复内容
+     */
+    private String response;
 }

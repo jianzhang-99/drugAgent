@@ -52,6 +52,8 @@ public class AgentChatResp {
     /** AI回答内容 */
     private String answer;
 
+    private String reasoningContent;
+
     /** 风险等级 */
     private String riskLevel;
 
