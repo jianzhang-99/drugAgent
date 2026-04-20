@@ -14570,3 +14570,15 @@ Caused by: com.alibaba.dashscope.exception.ApiException: {"statusCode":429,"mess
 {"level":30,"time":1776599514669,"pid":38456,"hostname":"DESKTOP-60KNQ85","msg":"MySQL MCP server running on stdio"}
 {"level":30,"time":1776599515041,"pid":29832,"hostname":"DESKTOP-60KNQ85","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"root\",\"password\":\"******\",\"database\":\"mysql_moway\",\"port\":3306}"}
 {"level":30,"time":1776599515041,"pid":29832,"hostname":"DESKTOP-60KNQ85","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1776651121209,"pid":95806,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
+{"level":30,"time":1776651121210,"pid":95806,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1776651121413,"pid":95828,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
+{"level":30,"time":1776651121414,"pid":95828,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1776651192646,"pid":96706,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
+{"level":30,"time":1776651192646,"pid":96706,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1776651192916,"pid":96728,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
+{"level":30,"time":1776651192916,"pid":96728,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1776651212122,"pid":97354,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"drug-agent-test\",\"password\":\"******\",\"database\":\"drug-agent-test\",\"port\":3306}"}
+{"level":30,"time":1776651212123,"pid":97354,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}
+{"level":30,"time":1776651212491,"pid":97382,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"config>{\"host\":\"118.195.198.44\",\"user\":\"PPYCLUB\",\"password\":\"******\",\"database\":\"ppy-test\",\"port\":3306}"}
+{"level":30,"time":1776651212491,"pid":97382,"hostname":"liangjiajiandeMacBook-Pro.local","msg":"MySQL MCP server running on stdio"}

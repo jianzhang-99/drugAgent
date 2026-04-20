@@ -195,7 +195,7 @@ public class LLMChatService {
     }
 
     private String defaultModelFor(LlmProviderType provider) {
-        return LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7-highspeed" : "qwen3.5-plus";
+        return LlmProviderType.MINIMAX.equals(provider) ? "MiniMax-M2.7-highspeed" : "qwen-plus";
     }
 
     private LlmProviderType normalizeProviderType(LlmProviderType providerType) {
@@ -244,7 +244,7 @@ public class LLMChatService {
 
             String defaultModel = LlmProviderType.MINIMAX.equals(providerType)
                     ? "MiniMax-M2.7-highspeed"
-                    : "qwen3.5-plus";
+                    : "qwen-plus";
 
             result.add(ModelInfo.builder()
                     .model(providerType.getConfigKey())

@@ -43,7 +43,7 @@ public class DashScopeResponsesService {
 
     public DashScopeResponsesService(
             @Value("${aliyun.dashscope.api-key:}") String apiKey,
-            @Value("${aliyun.dashscope.chat-model:qwen3.5-plus}") String defaultModel,
+            @Value("${aliyun.dashscope.chat-model:qwen-plus}") String defaultModel,
             @Value("${aliyun.dashscope.base-url:https://dashscope.aliyuncs.com}") String baseUrl) {
         this.apiKey = apiKey;
         this.defaultModel = defaultModel;

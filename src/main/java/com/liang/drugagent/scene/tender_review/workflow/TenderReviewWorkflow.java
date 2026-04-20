@@ -872,7 +872,7 @@ public class TenderReviewWorkflow {
 
             LlmRequest request = LlmRequest.builder()
                     .provider(LlmProviderType.DASHSCOPE)
-                    .model("qwen3.5-plus")
+                    .model("qwen-plus")
                     .sessionId(null)
                     .systemPrompt(TenderReviewValidatePrompt.SYSTEM_PROMPT)
                     .messages(List.of(LlmRequest.ChatMessage.builder()

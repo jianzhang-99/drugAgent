@@ -211,7 +211,7 @@ public class DashScopeMcpService {
     @SuppressWarnings("unchecked")
     private String buildMcpRequestBody(LlmRequest request) throws Exception {
         Map<String, Object> body = new HashMap<>();
-        String model = request.getModel() != null ? request.getModel() : "qwen3.5-plus";
+        String model = request.getModel() != null ? request.getModel() : "qwen-plus";
         body.put("model", model);
 
         // 构建 input
@@ -370,7 +370,7 @@ public class DashScopeMcpService {
         LlmResponse.LlmResponseBuilder builder = LlmResponse.builder()
                 .success(true)
                 .content(content)
-                .model(model != null ? model : "qwen3.5-plus")
+                .model(model != null ? model : "qwen-plus")
                 .provider(com.liang.drugagent.shared.llm.LlmProviderType.DASHSCOPE);
 
         if (toolCall != null) {

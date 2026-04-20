@@ -46,7 +46,7 @@ public class DashScopeLlmClient implements LlmClient {
 
     public DashScopeLlmClient(
             @Value("${aliyun.dashscope.api-key:}") String apiKey,
-            @Value("${aliyun.dashscope.chat-model:qwen3.5-plus}") String defaultModel) {
+            @Value("${aliyun.dashscope.chat-model:qwen-plus}") String defaultModel) {
         this.apiKey = apiKey;
         this.defaultModel = defaultModel;
         this.objectMapper = new ObjectMapper();

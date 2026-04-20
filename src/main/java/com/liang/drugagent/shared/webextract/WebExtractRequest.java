@@ -28,7 +28,7 @@ public class WebExtractRequest {
     private String prompt;
 
     /**
-     * 模型名称（可选，默认使用 qwen3.5-plus）
+     * 模型名称（可选，默认使用 qwen-plus）
      */
     private String model;
 }

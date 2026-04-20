@@ -262,7 +262,7 @@ public class DashScopeContextCacheService {
 
     private String buildCreateCacheRequest(String content) throws Exception {
         Map<String, Object> body = new HashMap<>();
-        body.put("model", "qwen3.5-plus");
+        body.put("model", "qwen-plus");
         body.put("content", content);
         return objectMapper.writeValueAsString(body);
     }
@@ -307,7 +307,7 @@ public class DashScopeContextCacheService {
 
     private String buildChatWithCacheRequest(LlmRequest request, String cacheId) throws Exception {
         Map<String, Object> body = new HashMap<>();
-        body.put("model", request.getModel() != null ? request.getModel() : "qwen3.5-plus");
+        body.put("model", request.getModel() != null ? request.getModel() : "qwen-plus");
         body.put("cache_id", cacheId);
 
         Map<String, Object> input = new HashMap<>();
@@ -387,7 +387,7 @@ public class DashScopeContextCacheService {
         return LlmResponse.builder()
                 .success(true)
                 .content(content)
-                .model(model != null ? model : "qwen3.5-plus")
+                .model(model != null ? model : "qwen-plus")
                 .provider(com.liang.drugagent.shared.llm.LlmProviderType.DASHSCOPE)
                 .finishReason(finishReason)
                 .build();

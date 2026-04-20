@@ -24,7 +24,7 @@ public class BatchInferenceRequest {
      * 模型名称
      */
     @Builder.Default
-    private String model = "qwen3.5-plus";
+    private String model = "qwen-plus";
 
     /**
      * 批量任务名称（可选）

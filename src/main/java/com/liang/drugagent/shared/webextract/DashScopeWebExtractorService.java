@@ -76,7 +76,7 @@ public class DashScopeWebExtractorService {
      */
     private String buildRequestBody(WebExtractRequest request) throws Exception {
         Map<String, Object> body = new HashMap<>();
-        body.put("model", request.getModel() != null ? request.getModel() : "qwen3.5-plus");
+        body.put("model", request.getModel() != null ? request.getModel() : "qwen-plus");
 
         // 构建 input
         Map<String, Object> input = new HashMap<>();
